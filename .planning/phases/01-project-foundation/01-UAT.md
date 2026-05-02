@@ -2,8 +2,8 @@
 status: complete
 phase: 01-project-foundation
 source: [01-SUMMARY.md]
-started: 2026-05-02T16:25:00Z
-updated: 2026-05-02T16:39:00Z
+started: 2026-05-03T02:12:00+07:00
+updated: 2026-05-03T02:16:55+07:00
 ---
 
 ## Current Test
@@ -13,46 +13,36 @@ updated: 2026-05-02T16:39:00Z
 ## Tests
 
 ### 1. Build dự án trong Xcode
-expected: |
-  1. Mở Xcode và mở thư mục chứa dự án `LiiO_EatClean` (nếu chưa có file `.xcodeproj` bạn cần tạo project mới bằng Xcode rồi đưa các file code vào, hoặc mở trực tiếp package nếu đã cấu hình).
-  2. Chọn một Simulator (ví dụ: iPhone 15 Pro).
-  3. Nhấn tổ hợp phím `Cmd + B` để build code.
-  4. **Quan sát:** Dự án phải báo "Build Succeeded" và không xuất hiện lỗi đỏ (red errors) nào.
-result: issue
-reported: "tôi làm xong hết rồi, nó báo build failed"
-severity: blocker
+expected: Mở project LiiO_EatClean.xcodeproj trong Xcode, chọn Simulator, nhấn Cmd+B. Kết quả: "Build Succeeded" — không có lỗi đỏ nào.
+result: pass
 
-### 2. Khởi chạy App & Khởi tạo CoreData
-expected: |
-  1. Nhấn `Cmd + R` để chạy ứng dụng trên Simulator.
-  2. Theo dõi ứng dụng lúc mở lên.
-  3. **Quan sát:** Ứng dụng phải mở lên thành công, không bị crash (văng app). Trong cửa sổ Console của Xcode ở bên dưới không được hiển thị lỗi nào liên quan đến CoreData (như lỗi khởi tạo `PersistenceController` hoặc không tìm thấy Model).
-result: skipped
-reason: "Build failed ở test 1"
+### 2. Khởi chạy App & CoreData khởi tạo thành công
+expected: Nhấn Cmd+R để chạy app trên Simulator. App mở lên thành công, không crash. Console Xcode không hiện lỗi liên quan đến CoreData (như lỗi PersistenceController hoặc không tìm thấy Model).
+result: pass
 
-### 3. Kiểm tra thanh điều hướng (Tab Navigation)
-expected: |
-  1. Nhìn xuống dưới cùng của màn hình ứng dụng trên Simulator.
-  2. Bạn sẽ thấy thanh Tab Bar gồm 4 tab với các biểu tượng tương ứng: "Home" (ngôi nhà), "Meals" (dao nĩa), "Progress" (biểu đồ), và "Profile" (hình người).
-  3. Hãy bấm lần lượt vào từng tab.
-  4. **Quan sát:** Khi bấm vào mỗi tab, màn hình sẽ hiển thị các đoạn text giữ chỗ tương ứng (ví dụ: "Home View", "Meals View", v.v.).
-result: skipped
-reason: "Build failed ở test 1"
+### 3. Tab Navigation hoạt động
+expected: Nhìn xuống dưới cùng màn hình app, thấy thanh Tab Bar gồm 4 tab: "Home" (ngôi nhà), "Meals" (dao nĩa), "Progress" (biểu đồ), "Profile" (hình người). Bấm từng tab — màn hình chuyển sang nội dung tương ứng.
+result: pass
+note: "cosmetic — tab đang chọn có text bị trùng màu nền, không thấy được chữ (ví dụ: chữ 'Home' bị ẩn khi đang ở tab Home). Nguyên nhân: .tint(Color('Primary')) trong ContentView.swift"
 
 ## Summary
 
 total: 3
-passed: 0
-issues: 1
+passed: 3
+issues: 0
 pending: 0
-skipped: 2
+skipped: 0
+blocked: 0
 
 ## Gaps
 
-- truth: "Dự án phải báo Build Succeeded và không xuất hiện lỗi đỏ (red errors) nào."
-  status: failed
-  reason: "User reported: tôi làm xong hết rồi, nó báo build failed"
-  severity: blocker
-  test: 1
-  artifacts: []
-  missing: []
+- truth: "Tab đang chọn phải hiển thị rõ text label"
+  status: cosmetic
+  reason: "User reported: text tab đang chọn bị trùng màu nền, không thấy được chữ"
+  severity: cosmetic
+  test: 3
+  artifacts:
+    - path: "LiiO_EatClean/App/ContentView.swift"
+      issue: ".tint(Color('Primary')) gây ra text color trùng với nền tab bar"
+  missing:
+    - "Đổi tint color hoặc thêm .accentColor để text tab nổi bật trên nền"
