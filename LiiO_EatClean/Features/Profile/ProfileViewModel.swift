@@ -56,7 +56,7 @@ class ProfileViewModel {
         let updatedUser = UserModel(
             id: user?.id ?? UUID(),
             name: name,
-            age: Int16(age) ?? user?.age ?? 0,
+            age: Double(age) ?? user?.age ?? 0,
             gender: user?.gender ?? "male",
             height: Double(height) ?? user?.height ?? 0,
             weight: Double(weight) ?? user?.weight ?? 0,

@@ -109,17 +109,17 @@ struct MealCardView: View {
         // With items
         let mealModel = MealModel(
             id: UUID(),
-            mealType: "Bữa trưa",
             date: Date(),
+            mealType: "Bữa trưa",
             mealFoods: [
                 MealFoodModel(
                     id: UUID(),
-                    foodItem: FoodItemModel(id: UUID(), name: "Phở bò", calories: 450, protein: 20, carbs: 50, fat: 15, servingSize: 1, isCustom: false),
                     quantity: 1,
                     caloriesSnapshot: 450,
                     proteinSnapshot: 20,
                     carbsSnapshot: 50,
-                    fatSnapshot: 15
+                    fatSnapshot: 15,
+                    foodItem: FoodItemModel(id: UUID(), name: "Phở bò", calories: 450, protein: 20, carbs: 50, fat: 15, servingSize: 1, isCustom: false)
                 )
             ]
         )

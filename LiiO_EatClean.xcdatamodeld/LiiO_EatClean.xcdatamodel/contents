@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21815" systemVersion="22A380" minimumToolsVersion="Xcode 13.0" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
-    <entity name="APIKey" representedClassName="APIKey" syncable="YES">
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21815" systemVersion="22A380" minimumToolsVersion="Xcode 9.0" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="APIKey" representedClassName="APIKey" codeGenerationType="class" syncable="YES">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="isActive" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="key" optional="YES" attributeType="String"/>
         <attribute name="lastUsed" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="provider" optional="YES" attributeType="String"/>
     </entity>
-    <entity name="DailyLog" representedClassName="DailyLog" syncable="YES">
+    <entity name="DailyLog" representedClassName="DailyLog" codeGenerationType="class" syncable="YES">
         <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="notes" optional="YES" attributeType="String"/>
@@ -15,7 +15,7 @@
         <relationship name="meals" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Meal" inverseName="dailyLog" inverseEntity="Meal"/>
         <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="User" inverseName="dailyLogs" inverseEntity="User"/>
     </entity>
-    <entity name="FoodItem" representedClassName="FoodItem" syncable="YES">
+    <entity name="FoodItem" representedClassName="FoodItem" codeGenerationType="class" syncable="YES">
         <attribute name="apiId" optional="YES" attributeType="String"/>
         <attribute name="calories" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="carbs" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
@@ -29,14 +29,14 @@
         <attribute name="source" optional="YES" attributeType="String"/>
         <relationship name="mealFoods" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="MealFood" inverseName="foodItem" inverseEntity="MealFood"/>
     </entity>
-    <entity name="Meal" representedClassName="Meal" syncable="YES">
+    <entity name="Meal" representedClassName="Meal" codeGenerationType="class" syncable="YES">
         <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="mealType" optional="YES" attributeType="String"/>
         <relationship name="dailyLog" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="DailyLog" inverseName="meals" inverseEntity="DailyLog"/>
         <relationship name="mealFoods" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="MealFood" inverseName="meal" inverseEntity="MealFood"/>
     </entity>
-    <entity name="MealFood" representedClassName="MealFood" syncable="YES">
+    <entity name="MealFood" representedClassName="MealFood" codeGenerationType="class" syncable="YES">
         <attribute name="caloriesSnapshot" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="carbsSnapshot" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="fatSnapshot" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
@@ -46,7 +46,7 @@
         <relationship name="foodItem" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FoodItem" inverseName="mealFoods" inverseEntity="FoodItem"/>
         <relationship name="meal" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Meal" inverseName="mealFoods" inverseEntity="Meal"/>
     </entity>
-    <entity name="User" representedClassName="User" syncable="YES">
+    <entity name="User" representedClassName="User" codeGenerationType="class" syncable="YES">
         <attribute name="age" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="dailyCalorieTarget" optional="YES" attributeType="Double" defaultValueString="2000.0" usesScalarValueType="YES"/>
         <attribute name="gender" optional="YES" attributeType="String"/>
@@ -58,7 +58,7 @@
         <relationship name="dailyLogs" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="DailyLog" inverseName="user" inverseEntity="DailyLog"/>
         <relationship name="weightEntries" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="WeightEntry" inverseName="user" inverseEntity="WeightEntry"/>
     </entity>
-    <entity name="WeightEntry" representedClassName="WeightEntry" syncable="YES">
+    <entity name="WeightEntry" representedClassName="WeightEntry" codeGenerationType="class" syncable="YES">
         <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="weight" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>

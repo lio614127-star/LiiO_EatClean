@@ -1,5 +1,5 @@
 import SwiftUI
-
+import CoreData
 struct GoalSetupView: View {
     @AppStorage("hasCompletedOnboarding") var hasCompletedOnboarding = false
     @Environment(\.managedObjectContext) private var viewContext

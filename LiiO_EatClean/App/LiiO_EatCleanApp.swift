@@ -1,5 +1,5 @@
 import SwiftUI
-
+import CoreData
 @main
 struct LiiO_EatCleanApp: App {
     let persistenceController = PersistenceController.shared

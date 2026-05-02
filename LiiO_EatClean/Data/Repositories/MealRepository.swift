@@ -9,7 +9,7 @@ class MealRepository: MealRepositoryProtocol {
     }
     
     func fetchMeals(by date: Date) async throws -> [MealModel] {
-        try await context.perform {
+        return try await context.perform {
             let calendar = Calendar.current
             let startOfDay = calendar.startOfDay(for: date)
             guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return [] }
@@ -62,7 +62,7 @@ class MealRepository: MealRepositoryProtocol {
     }
     
     func fetchMeals(from startDate: Date, to endDate: Date) async throws -> [MealModel] {
-        try await context.perform {
+        return try await context.perform {
             let request: NSFetchRequest<Meal> = Meal.fetchRequest()
             request.predicate = NSPredicate(format: "date >= %@ AND date <= %@", startDate as CVarArg, endDate as CVarArg)
             
@@ -117,7 +117,6 @@ class MealRepository: MealRepositoryProtocol {
                 targetMeal.id = meal.id
                 targetMeal.date = date
                 targetMeal.mealType = meal.mealType
-                targetMeal.createdAt = Date()
             }
             
             for food in meal.mealFoods {

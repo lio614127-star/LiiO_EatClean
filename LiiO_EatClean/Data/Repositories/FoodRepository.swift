@@ -9,7 +9,7 @@ class FoodRepository: FoodRepositoryProtocol {
     }
     
     func fetchAllFoods() async throws -> [FoodItemModel] {
-        try await context.perform {
+        return try await context.perform {
             let request: NSFetchRequest<FoodItem> = FoodItem.fetchRequest()
             let results = try self.context.fetch(request)
             return self.mapToModels(results)
@@ -23,7 +23,7 @@ class FoodRepository: FoodRepositoryProtocol {
     
     func searchLocalFoods(query: String) async throws -> [FoodItemModel] {
         guard !query.isEmpty else { return [] }
-        try await context.perform {
+        return try await context.perform {
             let request: NSFetchRequest<FoodItem> = FoodItem.fetchRequest()
             request.predicate = NSPredicate(format: "name CONTAINS[cd] %@", query)
             let results = try self.context.fetch(request)
@@ -32,7 +32,7 @@ class FoodRepository: FoodRepositoryProtocol {
     }
     
     func fetchSuggestions() async throws -> [FoodItemModel] {
-        try await context.perform {
+        return try await context.perform {
             let request: NSFetchRequest<FoodItem> = FoodItem.fetchRequest()
             request.sortDescriptors = [NSSortDescriptor(keyPath: \FoodItem.lastUsed, ascending: false)]
             request.fetchLimit = 10

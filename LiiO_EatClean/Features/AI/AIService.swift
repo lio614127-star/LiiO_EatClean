@@ -44,7 +44,7 @@ struct AISuggestedFood: Codable, Identifiable {
             carbs: carbs,
             fat: fat,
             servingSize: servingSize,
-            source: .local
+            source: "local"
         )
     }
 }
