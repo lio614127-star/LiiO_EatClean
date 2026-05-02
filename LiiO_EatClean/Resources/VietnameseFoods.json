@@ -1,0 +1,82 @@
+[
+  {
+    "name": "Phở bò",
+    "calories": 450,
+    "protein": 20,
+    "carbs": 50,
+    "fat": 15,
+    "servingSize": 1
+  },
+  {
+    "name": "Bún chả",
+    "calories": 550,
+    "protein": 25,
+    "carbs": 45,
+    "fat": 20,
+    "servingSize": 1
+  },
+  {
+    "name": "Cơm tấm sườn bì chả",
+    "calories": 750,
+    "protein": 35,
+    "carbs": 80,
+    "fat": 25,
+    "servingSize": 1
+  },
+  {
+    "name": "Bánh mì thịt",
+    "calories": 400,
+    "protein": 18,
+    "carbs": 45,
+    "fat": 12,
+    "servingSize": 1
+  },
+  {
+    "name": "Gỏi cuốn",
+    "calories": 150,
+    "protein": 8,
+    "carbs": 20,
+    "fat": 3,
+    "servingSize": 1
+  },
+  {
+    "name": "Bún bò Huế",
+    "calories": 600,
+    "protein": 28,
+    "carbs": 55,
+    "fat": 22,
+    "servingSize": 1
+  },
+  {
+    "name": "Xôi gấc",
+    "calories": 450,
+    "protein": 10,
+    "carbs": 70,
+    "fat": 8,
+    "servingSize": 1
+  },
+  {
+    "name": "Cà phê sữa đá",
+    "calories": 180,
+    "protein": 3,
+    "carbs": 25,
+    "fat": 6,
+    "servingSize": 1
+  },
+  {
+    "name": "Sinh tố bơ",
+    "calories": 300,
+    "protein": 4,
+    "carbs": 30,
+    "fat": 18,
+    "servingSize": 1
+  },
+  {
+    "name": "Phở gà",
+    "calories": 400,
+    "protein": 22,
+    "carbs": 48,
+    "fat": 10,
+    "servingSize": 1
+  }
+]
