@@ -6,6 +6,8 @@ struct CalorieChartView: View {
     let dailyTarget: Double
     let timeRange: TimeRange
     
+    @State private var selectedDate: Date?
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Lượng Calo nạp vào")
@@ -22,6 +24,28 @@ struct CalorieChartView: View {
                         )
                         .foregroundStyle(item.total > dailyTarget ? Color.orange.gradient : Color.green.gradient)
                         .cornerRadius(4)
+                        .annotation(position: .top) {
+                            if let selected = selectedDate, Calendar.current.isDate(selected, inSameDayAs: item.date) {
+                                Text("\(Int(item.total))")
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color(.systemBackground))
+                                    .cornerRadius(4)
+                                    .shadow(radius: 2)
+                            }
+                        }
+                        .annotation(position: .bottom) {
+                            if let selected = selectedDate, Calendar.current.isDate(selected, inSameDayAs: item.date) {
+                                Text(item.date, format: .dateTime.day().month(.defaultDigits))
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background(Color(.systemBackground))
+                                    .cornerRadius(4)
+                                    .shadow(radius: 1)
+                            }
+                        }
                     }
                     
                     RuleMark(y: .value("Mục tiêu", dailyTarget))
@@ -36,9 +60,10 @@ struct CalorieChartView: View {
                                 .cornerRadius(4)
                         }
                 }
+                .chartXSelection(value: $selectedDate)
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .day, count: timeRange == .week ? 1 : 5)) { value in
-                        if let date = value.as(Date.self) {
+                        if value.as(Date.self) != nil {
                             AxisValueLabel(format: .dateTime.day().month(.defaultDigits))
                         }
                         AxisGridLine()

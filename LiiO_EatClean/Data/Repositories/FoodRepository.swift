@@ -43,18 +43,27 @@ class FoodRepository: FoodRepositoryProtocol {
     
     func saveFood(_ food: FoodItemModel) async throws {
         try await context.perform {
-            let newFood = FoodItem(context: self.context)
-            newFood.id = food.id
-            newFood.name = food.name
-            newFood.calories = food.calories
-            newFood.protein = food.protein
-            newFood.carbs = food.carbs
-            newFood.fat = food.fat
-            newFood.servingSize = food.servingSize
-            newFood.source = food.source
-            newFood.apiId = food.apiId
-            newFood.isCustom = food.isCustom
-            newFood.lastUsed = food.lastUsed
+            let request: NSFetchRequest<FoodItem> = FoodItem.fetchRequest()
+            request.predicate = NSPredicate(format: "name ==[cd] %@", food.name)
+            
+            let entity: FoodItem
+            if let existing = try self.context.fetch(request).first {
+                entity = existing
+            } else {
+                entity = FoodItem(context: self.context)
+                entity.id = food.id
+            }
+            
+            entity.name = food.name
+            entity.calories = food.calories
+            entity.protein = food.protein
+            entity.carbs = food.carbs
+            entity.fat = food.fat
+            entity.servingSize = food.servingSize
+            entity.source = "local" // Convert API source to local upon caching
+            entity.apiId = food.apiId
+            entity.isCustom = food.isCustom
+            entity.lastUsed = food.lastUsed
             try self.context.save()
         }
     }

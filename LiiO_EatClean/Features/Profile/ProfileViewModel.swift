@@ -10,7 +10,7 @@ class ProfileViewModel {
     var age: String = ""
     var height: String = ""
     var weight: String = ""
-    var goalType: String = "Duy trì cân nặng"
+    var goalType: String = "maintain"
     var dailyCalorieTarget: String = ""
     
     // API Key inputs
@@ -20,7 +20,22 @@ class ProfileViewModel {
     var isSaving = false
     var errorMessage: String? = nil
     
-    let goalOptions = ["Giảm cân", "Duy trì cân nặng", "Tăng cơ"]
+    let goalOptions = ["lose", "maintain", "gain"]
+    
+    // Map goal IDs to Vietnamese labels
+    static let goalLabels: [String: String] = [
+        "lose": "Giảm cân",
+        "maintain": "Duy trì cân nặng",
+        "gain": "Tăng cơ",
+        // Legacy Vietnamese values
+        "Giảm cân": "Giảm cân",
+        "Duy trì cân nặng": "Duy trì cân nặng",
+        "Tăng cơ": "Tăng cơ"
+    ]
+    
+    func goalLabel(for id: String) -> String {
+        Self.goalLabels[id] ?? id
+    }
     
     private let userRepository: UserRepositoryProtocol
     
@@ -36,7 +51,7 @@ class ProfileViewModel {
                 age = u.age > 0 ? String(Int(u.age)) : ""
                 height = u.height > 0 ? String(format: "%.0f", u.height) : ""
                 weight = u.weight > 0 ? String(format: "%.1f", u.weight) : ""
-                goalType = u.goalType.isEmpty ? "Duy trì cân nặng" : u.goalType
+                goalType = u.goalType.isEmpty ? "maintain" : u.goalType
                 dailyCalorieTarget = u.dailyCalorieTarget > 0 ? String(Int(u.dailyCalorieTarget)) : ""
             }
             
@@ -115,24 +130,20 @@ class ProfileViewModel {
     }
     
     // MARK: - Reminder Settings
-    @ObservationIgnored var reminderStartHour: Int {
-        get { UserDefaults.standard.integer(forKey: "reminderStartHour").nonZero ?? 8 }
-        set { UserDefaults.standard.set(newValue, forKey: "reminderStartHour") }
+    var reminderStartHour: Int = UserDefaults.standard.integer(forKey: "reminderStartHour").nonZero ?? 8 {
+        didSet { UserDefaults.standard.set(reminderStartHour, forKey: "reminderStartHour") }
     }
     
-    @ObservationIgnored var reminderEndHour: Int {
-        get { UserDefaults.standard.integer(forKey: "reminderEndHour").nonZero ?? 20 }
-        set { UserDefaults.standard.set(newValue, forKey: "reminderEndHour") }
+    var reminderEndHour: Int = UserDefaults.standard.integer(forKey: "reminderEndHour").nonZero ?? 20 {
+        didSet { UserDefaults.standard.set(reminderEndHour, forKey: "reminderEndHour") }
     }
     
-    @ObservationIgnored var reminderIntervalHours: Int {
-        get { UserDefaults.standard.integer(forKey: "reminderIntervalHours").nonZero ?? 2 }
-        set { UserDefaults.standard.set(newValue, forKey: "reminderIntervalHours") }
+    var reminderIntervalHours: Int = UserDefaults.standard.integer(forKey: "reminderIntervalHours").nonZero ?? 2 {
+        didSet { UserDefaults.standard.set(reminderIntervalHours, forKey: "reminderIntervalHours") }
     }
     
-    var remindersEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: "remindersEnabled") }
-        set { UserDefaults.standard.set(newValue, forKey: "remindersEnabled") }
+    var remindersEnabled: Bool = UserDefaults.standard.bool(forKey: "remindersEnabled") {
+        didSet { UserDefaults.standard.set(remindersEnabled, forKey: "remindersEnabled") }
     }
     
     func updateReminders() async {

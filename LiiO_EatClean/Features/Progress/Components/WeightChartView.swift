@@ -51,7 +51,7 @@ struct WeightChartView: View {
                 .chartYScale(domain: yAxisDomain)
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .day, count: timeRange == .week ? 1 : 5)) { value in
-                        if let date = value.as(Date.self) {
+                        if value.as(Date.self) != nil {
                             AxisValueLabel(format: .dateTime.day().month(.defaultDigits))
                         }
                         AxisGridLine()

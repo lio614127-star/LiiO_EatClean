@@ -8,6 +8,7 @@ struct AddMealView: View {
     @State private var showingQuantityAlert = false
     @State private var quantityInput = "1"
     @State private var selectedFood: FoodItemModel?
+    @State private var showingCartDetails = false
     
     let mealTypes = ["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"]
     
@@ -71,7 +72,10 @@ struct AddMealView: View {
                 }
             }
             .alert("Cần API Key", isPresented: $viewModel.needsAPIKey) {
-                Button("Đến Profile", role: .none) { viewModel.needsAPIKey = false }
+                Button("Đến Profile", role: .none) {
+                    UserDefaults.standard.set(3, forKey: "selectedTab")
+                    dismiss()
+                }
                 Button("Huỷ", role: .cancel) {}
             } message: {
                 Text("Vui lòng thêm Gemini hoặc OpenAI API Key trong mục Hồ sơ để dùng tính năng AI.")
@@ -131,13 +135,16 @@ struct AddMealView: View {
                 .background(Color(.systemGroupedBackground))
                 
             } else if let error = viewModel.aiError {
-                HStack(spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
-                    Text(error.localizedDescription ?? "Lỗi không xác định")
+                        .padding(.top, 2)
+                    Text(error.localizedDescription)
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
                 .background(Color(.systemGroupedBackground))
                 
@@ -230,17 +237,24 @@ struct AddMealView: View {
             Divider()
             
             HStack {
-                VStack(alignment: .leading) {
-                    Text("\(viewModel.cartItems.count) món đã chọn")
-                        .font(.headline)
-                    
-                    let totalCals = viewModel.cartItems.reduce(0) { $0 + $1.caloriesSnapshot }
-                    Text("\(Int(totalCals)) kcal")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                Button(action: {
+                    showingCartDetails = true
+                }) {
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("\(viewModel.cartItems.count) món đã chọn")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            let totalCals = viewModel.cartItems.reduce(0) { $0 + $1.caloriesSnapshot }
+                            Text("\(Int(totalCals)) kcal")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
                 }
-                
-                Spacer()
                 
                 Button(action: {
                     Task {
@@ -259,6 +273,64 @@ struct AddMealView: View {
             }
             .padding()
             .background(Color(.systemBackground))
+        }
+        .sheet(isPresented: $showingCartDetails) {
+            NavigationStack {
+                List {
+                    ForEach(viewModel.cartItems) { item in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(item.foodItem?.name ?? "Món ăn")
+                                    .font(.headline)
+                                Text("\(item.quantity, specifier: "%.1f") phần")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Text("\(Int(item.caloriesSnapshot)) kcal")
+                                .font(.subheadline.bold())
+                                .padding(.trailing, 8)
+                                
+                            Button(action: {
+                                viewModel.removeFromCart(id: item.id)
+                                if viewModel.cartItems.isEmpty {
+                                    showingCartDetails = false
+                                }
+                            }) {
+                                Image(systemName: "trash")
+                                    .foregroundColor(.red)
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
+                        }
+                    }
+                    .onDelete { indexSet in
+                        for index in indexSet {
+                            let item = viewModel.cartItems[index]
+                            viewModel.removeFromCart(id: item.id)
+                        }
+                        if viewModel.cartItems.isEmpty {
+                            showingCartDetails = false
+                        }
+                    }
+                }
+                .navigationTitle("Giỏ hàng (\(viewModel.cartItems.count))")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button(action: {
+                            viewModel.cartItems.removeAll()
+                            showingCartDetails = false
+                        }) {
+                            Text("Xoá tất cả")
+                                .foregroundColor(.red)
+                        }
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Đóng") { showingCartDetails = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
         }
     }
 }

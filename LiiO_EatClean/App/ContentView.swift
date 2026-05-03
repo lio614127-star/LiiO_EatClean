@@ -3,29 +3,35 @@ import CoreData
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     
+    @AppStorage("selectedTab") private var selectedTab = 0
+    
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             HomeView()
                 .tabItem {
                     Label("Home", systemImage: "house.fill")
                 }
+                .tag(0)
             
             MealsView()
                 .tabItem {
                     Label("Meals", systemImage: "fork.knife")
                 }
+                .tag(1)
             
             ProgressTabView()
                 .tabItem {
                     Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
                 }
+                .tag(2)
             
             ProfileView()
                 .tabItem {
                     Label("Profile", systemImage: "person.fill")
                 }
+                .tag(3)
         }
-        .tint(Color("Primary", bundle: nil)) // Uses the Primary accent color if defined in Assets
+        .tint(.green)
     }
 }
 

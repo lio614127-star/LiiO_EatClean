@@ -128,12 +128,27 @@ class MealRepository: MealRepositoryProtocol {
                 mealFood.carbsSnapshot = food.carbsSnapshot
                 mealFood.fatSnapshot = food.fatSnapshot
                 
-                // Link FoodItem if it exists
-                if let foodItemId = food.foodItem?.id {
+                // Link FoodItem if it exists, otherwise create it
+                if let foodItemModel = food.foodItem {
                     let foodRequest: NSFetchRequest<FoodItem> = FoodItem.fetchRequest()
-                    foodRequest.predicate = NSPredicate(format: "id == %@", foodItemId as CVarArg)
+                    foodRequest.predicate = NSPredicate(format: "id == %@", foodItemModel.id as CVarArg)
                     if let foodEntity = try self.context.fetch(foodRequest).first {
                         mealFood.foodItem = foodEntity
+                    } else {
+                        // Create it!
+                        let newFoodEntity = FoodItem(context: self.context)
+                        newFoodEntity.id = foodItemModel.id
+                        newFoodEntity.name = foodItemModel.name
+                        newFoodEntity.calories = foodItemModel.calories
+                        newFoodEntity.protein = foodItemModel.protein
+                        newFoodEntity.carbs = foodItemModel.carbs
+                        newFoodEntity.fat = foodItemModel.fat
+                        newFoodEntity.servingSize = foodItemModel.servingSize
+                        newFoodEntity.source = foodItemModel.source
+                        newFoodEntity.apiId = foodItemModel.apiId
+                        newFoodEntity.isCustom = foodItemModel.isCustom
+                        newFoodEntity.lastUsed = Date()
+                        mealFood.foodItem = newFoodEntity
                     }
                 }
                 

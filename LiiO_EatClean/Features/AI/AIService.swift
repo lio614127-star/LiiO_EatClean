@@ -3,6 +3,7 @@ import Foundation
 // MARK: - Error types
 enum AIError: LocalizedError {
     case missingKey
+    case invalidKey
     case networkError(String)
     case invalidResponse
     case quotaExceeded
@@ -11,6 +12,8 @@ enum AIError: LocalizedError {
         switch self {
         case .missingKey:
             return "Chưa có API Key. Vui lòng thêm key trong mục Profile."
+        case .invalidKey:
+            return "API Key không hợp lệ. Vui lòng kiểm tra lại trong mục Profile."
         case .networkError(let msg):
             return "Lỗi mạng: \(msg)"
         case .invalidResponse:
@@ -70,34 +73,43 @@ class AIService {
             throw AIError.missingKey
         }
         
+        var lastError: Error = AIError.quotaExceeded
+        
         // Try Gemini first
         if let gemKey = geminiKey {
             do {
                 return try await callGemini(apiKey: gemKey.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
-            } catch AIError.quotaExceeded {
-                // Fall through to OpenAI
-            } catch AIError.missingKey {
-                // Fall through
+            } catch {
+                lastError = error
+                // Only fall through if we have OpenAI as backup
             }
         }
         
         // Fallback to OpenAI
         if let oaiKey = openAIKey {
-            return try await callOpenAI(apiKey: oaiKey.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
+            do {
+                return try await callOpenAI(apiKey: oaiKey.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
+            } catch {
+                lastError = error
+            }
         }
         
-        throw AIError.quotaExceeded
+        // If we reach here, both failed or only one was tried and failed
+        throw lastError
     }
     
     // MARK: - Gemini API
     private func callGemini(apiKey: String, remainingCalories: Double, mealType: String, userGoal: String) async throws -> [AISuggestedFood] {
-        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(apiKey)")!
+        let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let url = URL(string: "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=\(cleanKey)")!
         
         let prompt = buildPrompt(remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
         
         let requestBody: [String: Any] = [
             "contents": [["parts": [["text": prompt]]]],
-            "generationConfig": ["temperature": 0.7, "maxOutputTokens": 512]
+            "generationConfig": [
+                "temperature": 0.7
+            ]
         ]
         
         let data = try await performRequest(url: url, body: requestBody)
@@ -109,7 +121,8 @@ class AIService {
               let content = first["content"] as? [String: Any],
               let parts = content["parts"] as? [[String: Any]],
               let text = parts.first?["text"] as? String else {
-            throw AIError.invalidResponse
+            let rawStr = String(data: data, encoding: .utf8) ?? "unknown"
+            throw AIError.networkError("Cấu trúc trả về không hợp lệ:\n\(rawStr)")
         }
         
         return try parseJSONResponse(text)
@@ -117,6 +130,7 @@ class AIService {
     
     // MARK: - OpenAI API
     private func callOpenAI(apiKey: String, remainingCalories: Double, mealType: String, userGoal: String) async throws -> [AISuggestedFood] {
+        let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         let url = URL(string: "https://api.openai.com/v1/chat/completions")!
         
         let prompt = buildPrompt(remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
@@ -129,9 +143,9 @@ class AIService {
         ]
         
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(cleanKey)", forHTTPHeaderField: "Authorization")
         
-        let data = try await performRequest(url: url, body: requestBody, extraHeaders: ["Authorization": "Bearer \(apiKey)"])
+        let data = try await performRequest(url: url, body: requestBody, extraHeaders: ["Authorization": "Bearer \(cleanKey)"])
         
         // Parse OpenAI response structure
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -181,36 +195,42 @@ class AIService {
         case 429:
             throw AIError.quotaExceeded
         case 401, 403:
-            throw AIError.missingKey
+            throw AIError.invalidKey
         default:
-            throw AIError.networkError("HTTP \(httpResponse.statusCode)")
+            let errorBody = String(data: data, encoding: .utf8) ?? ""
+            var errorMessage = "HTTP \(httpResponse.statusCode)"
+            
+            // Try to extract Google's JSON error message
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let errorDict = json["error"] as? [String: Any],
+               let message = errorDict["message"] as? String {
+                errorMessage += ": \(message)"
+            }
+            
+            throw AIError.networkError(errorMessage)
         }
     }
     
     private func parseJSONResponse(_ text: String) throws -> [AISuggestedFood] {
-        // Clean markdown fences if present
         var cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if cleaned.hasPrefix("```") {
-            // Remove first and last ``` lines
-            let lines = cleaned.components(separatedBy: "\n")
-            let bodyLines = lines.dropFirst().dropLast().filter { !$0.hasPrefix("```") }
-            cleaned = bodyLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Find the first '[' and last ']' to extract the JSON array
+        if let firstBracket = cleaned.firstIndex(of: "["),
+           let lastBracket = cleaned.lastIndex(of: "]") {
+            cleaned = String(cleaned[firstBracket...lastBracket])
+        } else {
+            throw AIError.networkError("Không tìm thấy JSON array trong phản hồi: \(cleaned)")
         }
         
-        // Also handle ```json prefix specifically
-        cleaned = cleaned.replacingOccurrences(of: "```json", with: "")
-            .replacingOccurrences(of: "```", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        
         guard let data = cleaned.data(using: .utf8) else {
-            throw AIError.invalidResponse
+            throw AIError.networkError("Không thể chuyển đổi text sang data: \(cleaned)")
         }
         
         do {
             let foods = try JSONDecoder().decode([AISuggestedFood].self, from: data)
             return foods
         } catch {
-            throw AIError.invalidResponse
+            throw AIError.networkError("Lỗi parse JSON: \(error.localizedDescription) \n\nRaw text: \(cleaned)")
         }
     }
 }

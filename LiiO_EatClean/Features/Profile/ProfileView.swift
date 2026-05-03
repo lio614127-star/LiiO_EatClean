@@ -52,7 +52,7 @@ struct ProfileView: View {
                 Section {
                     Picker("Mục tiêu", selection: $viewModel.goalType) {
                         ForEach(viewModel.goalOptions, id: \.self) { option in
-                            Text(option).tag(option)
+                            Text(viewModel.goalLabel(for: option)).tag(option)
                         }
                     }
                     
@@ -146,10 +146,12 @@ struct ProfileView: View {
                             Label("Google Gemini", systemImage: "sparkles")
                                 .font(.subheadline.bold())
                             HStack {
-                                SecureField("Nhập Gemini API Key...", text: $viewModel.geminiKeyInput)
+                                TextField("Nhập Gemini API Key...", text: $viewModel.geminiKeyInput)
                                     .font(.caption)
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled()
+                                    .textContentType(.oneTimeCode)
+                                    .keyboardType(.asciiCapable)
                                 Button("Lưu") {
                                     Task { await viewModel.saveGeminiKey() }
                                 }
@@ -186,10 +188,12 @@ struct ProfileView: View {
                             Label("OpenAI (Backup)", systemImage: "cpu")
                                 .font(.subheadline.bold())
                             HStack {
-                                SecureField("Nhập OpenAI API Key...", text: $viewModel.openAIKeyInput)
+                                TextField("Nhập OpenAI API Key...", text: $viewModel.openAIKeyInput)
                                     .font(.caption)
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled()
+                                    .textContentType(.oneTimeCode)
+                                    .keyboardType(.asciiCapable)
                                 Button("Lưu") {
                                     Task { await viewModel.saveOpenAIKey() }
                                 }
