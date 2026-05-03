@@ -310,7 +310,9 @@ class AIService {
         QUAN TRỌNG: Chỉ trả về JSON array hợp lệ. Không giải thích thêm. Không dùng markdown code block.
         
         Định dạng JSON:
-        [{"name":"Tên món","calories":350,"protein":25,"carbs":40,"fat":8,"servingSize":200}]
+        [{"name":"Tên món","calories":350,"protein":25,"carbs":40,"fat":8,"servingSize":1.0}]
+        
+        Lưu ý: "servingSize" là số phần ăn (thường là 1.0). Calo và macros phải tính theo đúng số phần ăn này.
         """
     }
     
