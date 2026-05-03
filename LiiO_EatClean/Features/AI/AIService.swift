@@ -33,9 +33,11 @@ struct AISuggestedFood: Codable, Identifiable {
     let carbs: Double
     let fat: Double
     let servingSize: Double
+    var isEaten: Bool? = nil
+    var mealType: String? = nil
     
     enum CodingKeys: String, CodingKey {
-        case name, calories, protein, carbs, fat, servingSize
+        case name, calories, protein, carbs, fat, servingSize, isEaten, mealType
     }
     
     func toFoodItemModel() -> FoodItemModel {
@@ -48,6 +50,32 @@ struct AISuggestedFood: Codable, Identifiable {
             fat: fat,
             servingSize: servingSize,
             source: "local"
+        )
+    }
+    
+    func toMealFoodModel() -> MealFoodModel {
+        let qty = servingSize > 0 ? servingSize : 1.0
+        
+        // Normalize: store the food item as 1 portion unit
+        let normalizedFood = FoodItemModel(
+            id: UUID(),
+            name: name,
+            calories: calories / qty,
+            protein: protein / qty,
+            carbs: carbs / qty,
+            fat: fat / qty,
+            servingSize: 1.0, // Base unit is always 1
+            source: "ai"
+        )
+        
+        return MealFoodModel(
+            quantity: qty,
+            caloriesSnapshot: calories, // Keep total for the initial log
+            proteinSnapshot: protein,
+            carbsSnapshot: carbs,
+            fatSnapshot: fat,
+            isEaten: isEaten ?? false,
+            foodItem: normalizedFood
         )
     }
 }
@@ -97,6 +125,39 @@ class AIService {
         // If we reach here, both failed or only one was tried and failed
         throw lastError
     }
+    
+    // MARK: - Chat API
+    func sendChatMessage(history: [ChatMessage], systemPrompt: String) async throws -> ChatMessage {
+        let keys = try await userRepository.fetchAPIKeys()
+        
+        let geminiKey = keys.first(where: { $0.provider == "gemini" && $0.isActive })
+        let openAIKey = keys.first(where: { $0.provider == "openai" && $0.isActive })
+        
+        guard geminiKey != nil || openAIKey != nil else {
+            throw AIError.missingKey
+        }
+        
+        var lastError: Error = AIError.quotaExceeded
+        
+        if let gemKey = geminiKey {
+            do {
+                return try await callGeminiChat(apiKey: gemKey.key, history: history, systemPrompt: systemPrompt)
+            } catch {
+                lastError = error
+            }
+        }
+        
+        if let oaiKey = openAIKey {
+            do {
+                return try await callOpenAIChat(apiKey: oaiKey.key, history: history, systemPrompt: systemPrompt)
+            } catch {
+                lastError = error
+            }
+        }
+        
+        throw lastError
+    }
+
     
     // MARK: - Gemini API
     private func callGemini(apiKey: String, remainingCalories: Double, mealType: String, userGoal: String) async throws -> [AISuggestedFood] {
@@ -158,6 +219,86 @@ class AIService {
         
         return try parseJSONResponse(text)
     }
+    
+    // MARK: - Chat API Implementations
+    private func callGeminiChat(apiKey: String, history: [ChatMessage], systemPrompt: String) async throws -> ChatMessage {
+        let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let url = URL(string: "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=\(cleanKey)")!
+        
+        // Convert history
+        var contents: [[String: Any]] = []
+        // System instructions in Gemini API are ideally passed via system_instruction field, but injecting into first user prompt is a common fallback
+        // We'll inject system prompt into a dummy user message at the start if history is empty, or prepend to the first user message.
+        // For simplicity, we prepend it to the first message we send, or create one.
+        
+        var isFirstUser = true
+        for msg in history {
+            let role = msg.role == .user ? "user" : "model"
+            var text = msg.text
+            if isFirstUser && msg.role == .user {
+                text = "\(systemPrompt)\n\n\(text)"
+                isFirstUser = false
+            }
+            contents.append(["role": role, "parts": [["text": text]]])
+        }
+        
+        if isFirstUser { // History was empty?
+            contents.append(["role": "user", "parts": [["text": systemPrompt]]])
+        }
+
+        let requestBody: [String: Any] = [
+            "contents": contents,
+            "generationConfig": [
+                "temperature": 0.7
+            ]
+        ]
+        
+        let data = try await performRequest(url: url, body: requestBody)
+        
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let candidates = json["candidates"] as? [[String: Any]],
+              let first = candidates.first,
+              let content = first["content"] as? [String: Any],
+              let parts = content["parts"] as? [[String: Any]],
+              let text = parts.first?["text"] as? String else {
+            throw AIError.invalidResponse
+        }
+        
+        return parseChatResponse(text)
+    }
+    
+    private func callOpenAIChat(apiKey: String, history: [ChatMessage], systemPrompt: String) async throws -> ChatMessage {
+        let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let url = URL(string: "https://api.openai.com/v1/chat/completions")!
+        
+        var messages: [[String: Any]] = [
+            ["role": "system", "content": systemPrompt]
+        ]
+        
+        for msg in history {
+            messages.append(["role": msg.role.rawValue, "content": msg.text])
+        }
+        
+        let requestBody: [String: Any] = [
+            "model": "gpt-4o-mini",
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 1024
+        ]
+        
+        let data = try await performRequest(url: url, body: requestBody, extraHeaders: ["Authorization": "Bearer \(cleanKey)"])
+        
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let first = choices.first,
+              let message = first["message"] as? [String: Any],
+              let text = message["content"] as? String else {
+            throw AIError.invalidResponse
+        }
+        
+        return parseChatResponse(text)
+    }
+
     
     // MARK: - Shared Helpers
     private func buildPrompt(remainingCalories: Double, mealType: String, userGoal: String) -> String {
@@ -232,5 +373,35 @@ class AIService {
         } catch {
             throw AIError.networkError("Lỗi parse JSON: \(error.localizedDescription) \n\nRaw text: \(cleaned)")
         }
+    }
+    
+    private func parseChatResponse(_ text: String) -> ChatMessage {
+        let pattern = "```json(.*?)```"
+        let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
+        let nsString = text as NSString
+        let results = regex?.matches(in: text, options: [], range: NSRange(location: 0, length: nsString.length))
+        
+        var cleanText = text
+        var foods: [AISuggestedFood]? = nil
+        
+        if let match = results?.last { // Find the last JSON block
+            let jsonString = nsString.substring(with: match.range(at: 1))
+            // Remove the block from the text
+            cleanText = nsString.replacingCharacters(in: match.range, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            struct ActionWrapper: Codable {
+                let action: String
+                let items: [AISuggestedFood]
+            }
+            
+            if let data = jsonString.data(using: .utf8),
+               let wrapper = try? JSONDecoder().decode(ActionWrapper.self, from: data) {
+                if wrapper.action == "suggest_meal" {
+                    foods = wrapper.items
+                }
+            }
+        }
+        
+        return ChatMessage(role: .assistant, text: cleanText, suggestedFoods: foods)
     }
 }

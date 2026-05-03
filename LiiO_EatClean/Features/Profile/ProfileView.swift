@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     @State private var viewModel = ProfileViewModel()
     @State private var showingSaveAlert = false
+    @State private var showingResetConfirmation = false
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -210,6 +211,26 @@ struct ProfileView: View {
                     Text("Key được lưu mã hóa cục bộ trên thiết bị. Gemini được ưu tiên, OpenAI là backup tự động.")
                         .font(.caption2)
                 }
+                
+                // MARK: - Danger Zone
+                Section {
+                    Button(role: .destructive) {
+                        showingResetConfirmation = true
+                    } label: {
+                        HStack {
+                            Label("Xóa sạch dữ liệu", systemImage: "trash.fill")
+                            Spacer()
+                            Text("Reset app")
+                                .font(.caption)
+                        }
+                    }
+                } header: {
+                    Text("Vùng nguy hiểm")
+                } footer: {
+                    Text("Hành động này sẽ xóa vĩnh viễn toàn bộ lịch sử ăn uống, cân nặng và nước uống. Không thể hoàn tác.")
+                        .font(.caption2)
+                        .foregroundColor(.red)
+                }
             }
             .navigationTitle("Hồ sơ")
             .toolbar {
@@ -232,6 +253,14 @@ struct ProfileView: View {
                 Button("OK", role: .cancel) { viewModel.errorMessage = nil }
             } message: {
                 Text(viewModel.errorMessage ?? "")
+            }
+            .alert("Xác nhận xóa?", isPresented: $showingResetConfirmation) {
+                Button("Xóa tất cả", role: .destructive) {
+                    Task { await viewModel.resetAllData() }
+                }
+                Button("Hủy", role: .cancel) {}
+            } message: {
+                Text("Bạn có chắc chắn muốn xóa sạch toàn bộ lịch sử? Hành động này không thể hoàn tác.")
             }
         }
         .task {

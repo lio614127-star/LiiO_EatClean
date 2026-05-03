@@ -60,6 +60,7 @@ struct CalorieChartView: View {
                                 .cornerRadius(4)
                         }
                 }
+                .chartYScale(domain: 0...max(3000, dailyTarget * 1.2))
                 .chartXSelection(value: $selectedDate)
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .day, count: timeRange == .week ? 1 : 5)) { value in

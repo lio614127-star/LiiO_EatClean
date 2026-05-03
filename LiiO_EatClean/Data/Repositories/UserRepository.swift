@@ -183,4 +183,34 @@ class UserRepository: UserRepositoryProtocol {
             try self.context.save()
         }
     }
+    
+    func resetWater(for date: Date) async throws {
+        try await context.perform {
+            let calendar = Calendar.current
+            let startOfDay = calendar.startOfDay(for: date)
+            guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return }
+            
+            let request: NSFetchRequest<DailyLog> = DailyLog.fetchRequest()
+            request.predicate = NSPredicate(format: "date >= %@ AND date < %@", startOfDay as CVarArg, endOfDay as CVarArg)
+            
+            if let log = try self.context.fetch(request).first {
+                log.waterIntake = 0
+                try self.context.save()
+            }
+        }
+    }
+    
+    func resetAllData() async throws {
+        try await context.perform {
+            let weightRequest: NSFetchRequest<NSFetchRequestResult> = WeightEntry.fetchRequest()
+            let deleteWeight = NSBatchDeleteRequest(fetchRequest: weightRequest)
+            try self.context.execute(deleteWeight)
+            
+            let logRequest: NSFetchRequest<NSFetchRequestResult> = DailyLog.fetchRequest()
+            let deleteLog = NSBatchDeleteRequest(fetchRequest: logRequest)
+            try self.context.execute(deleteLog)
+            
+            try self.context.save()
+        }
+    }
 }

@@ -8,6 +8,22 @@ class MealRepository: MealRepositoryProtocol {
         self.context = context
     }
     
+    func deleteAllMeals() async throws {
+        try await context.perform {
+            let request: NSFetchRequest<NSFetchRequestResult> = Meal.fetchRequest()
+            let deleteRequest = NSBatchDeleteRequest(fetchRequest: request)
+            try self.context.execute(deleteRequest)
+            
+            let foodRequest: NSFetchRequest<NSFetchRequestResult> = MealFood.fetchRequest()
+            let deleteFoodRequest = NSBatchDeleteRequest(fetchRequest: foodRequest)
+            try self.context.execute(deleteFoodRequest)
+            
+            try self.context.save()
+            // Clear status manager too
+            MealFoodStatusManager.shared.clearAll()
+        }
+    }
+    
     func fetchMeals(by date: Date) async throws -> [MealModel] {
         return try await context.perform {
             let calendar = Calendar.current
@@ -46,6 +62,7 @@ class MealRepository: MealRepositoryProtocol {
                             proteinSnapshot: mf.proteinSnapshot,
                             carbsSnapshot: mf.carbsSnapshot,
                             fatSnapshot: mf.fatSnapshot,
+                            isEaten: MealFoodStatusManager.shared.isEaten(id: mf.id ?? UUID()),
                             foodItem: foodItemModel
                         )
                     }
@@ -78,6 +95,7 @@ class MealRepository: MealRepositoryProtocol {
                             proteinSnapshot: mf.proteinSnapshot,
                             carbsSnapshot: mf.carbsSnapshot,
                             fatSnapshot: mf.fatSnapshot,
+                            isEaten: MealFoodStatusManager.shared.isEaten(id: mf.id ?? UUID()),
                             foodItem: nil // Not needed for aggregate charts
                         )
                     }
@@ -127,6 +145,9 @@ class MealRepository: MealRepositoryProtocol {
                 mealFood.proteinSnapshot = food.proteinSnapshot
                 mealFood.carbsSnapshot = food.carbsSnapshot
                 mealFood.fatSnapshot = food.fatSnapshot
+                
+                // Save eaten status to Manager
+                MealFoodStatusManager.shared.setEaten(id: food.id, isEaten: food.isEaten)
                 
                 // Link FoodItem if it exists, otherwise create it
                 if let foodItemModel = food.foodItem {

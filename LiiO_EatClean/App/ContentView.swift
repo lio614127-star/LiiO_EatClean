@@ -30,6 +30,12 @@ struct ContentView: View {
                     Label("Profile", systemImage: "person.fill")
                 }
                 .tag(3)
+                
+            ChatView()
+                .tabItem {
+                    Label("AI Coach", systemImage: "message.badge.filled.fill")
+                }
+                .tag(4)
         }
         .tint(.green)
     }

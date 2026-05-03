@@ -27,8 +27,10 @@ struct CalorieCalculator {
             bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161
         }
         
-        // TDEE with moderate activity multiplier (default for v1)
-        let tdee = bmr * 1.55
+        // TDEE with activity multiplier
+        // Default to 1.55 (Moderate), but structured to be adjustable in v2
+        let activityMultiplier = 1.55
+        let tdee = bmr * activityMultiplier
         
         // Goal adjustment
         let adjustment: Double
@@ -38,7 +40,12 @@ struct CalorieCalculator {
         default: adjustment = 0 // maintain
         }
         
-        // Enforce minimum 1200 kcal
-        return max(1200, tdee + adjustment)
+        let result = tdee + adjustment
+        
+        // Enforce safe minimums based on gender
+        // Men: 1500 kcal, Women: 1200 kcal
+        let minCalories: Double = (gender == "male") ? 1500 : 1200
+        
+        return max(minCalories, result)
     }
 }

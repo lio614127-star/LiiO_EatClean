@@ -7,6 +7,10 @@ struct HomeView: View {
     @State private var isShowingAddMeal = false
     @State private var selectedMealTypeForAdd = "Bữa sáng"
     
+    // Meal Detail Sheet
+    @State private var isShowingMealDetail = false
+    @State private var selectedMealTypeForDetail = ""
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -39,6 +43,11 @@ struct HomeView: View {
                                     Task {
                                         await viewModel.addWater(amount: amount)
                                     }
+                                },
+                                onReset: {
+                                    Task {
+                                        await viewModel.resetWater()
+                                    }
                                 }
                             )
                             .padding(.horizontal, 24)
@@ -66,14 +75,19 @@ struct HomeView: View {
             }) {
                 AddMealView(selectedMealType: selectedMealTypeForAdd)
             }
+            .sheet(isPresented: $isShowingMealDetail) {
+                MealDetailSheet(
+                    mealType: selectedMealTypeForDetail,
+                    meals: viewModel.meals(for: selectedMealTypeForDetail),
+                    onUpdate: {
+                        Task { await viewModel.loadDashboard() }
+                    }
+                )
+            }
         }
         .task {
+            print("🚀 HomeView: Loading dashboard data...")
             await viewModel.loadDashboard()
-        }
-        .onAppear {
-            Task {
-                await viewModel.loadDashboard()
-            }
         }
     }
     
@@ -110,6 +124,7 @@ struct HomeView: View {
                 icon: "sunrise.fill",
                 meals: viewModel.meals(for: "Bữa sáng"),
                 onAddTapped: { showAddMealSheet(for: "Bữa sáng") },
+                onRowTapped: { showMealDetailSheet(for: "Bữa sáng") },
                 onDelete: deleteMealFood
             )
             
@@ -118,6 +133,7 @@ struct HomeView: View {
                 icon: "sun.max.fill",
                 meals: viewModel.meals(for: "Bữa trưa"),
                 onAddTapped: { showAddMealSheet(for: "Bữa trưa") },
+                onRowTapped: { showMealDetailSheet(for: "Bữa trưa") },
                 onDelete: deleteMealFood
             )
             
@@ -126,6 +142,7 @@ struct HomeView: View {
                 icon: "moon.fill",
                 meals: viewModel.meals(for: "Bữa tối"),
                 onAddTapped: { showAddMealSheet(for: "Bữa tối") },
+                onRowTapped: { showMealDetailSheet(for: "Bữa tối") },
                 onDelete: deleteMealFood
             )
             
@@ -134,6 +151,7 @@ struct HomeView: View {
                 icon: "leaf.fill",
                 meals: viewModel.meals(for: "Ăn vặt"),
                 onAddTapped: { showAddMealSheet(for: "Ăn vặt") },
+                onRowTapped: { showMealDetailSheet(for: "Ăn vặt") },
                 onDelete: deleteMealFood
             )
         }
@@ -161,6 +179,11 @@ struct HomeView: View {
     private func showAddMealSheet(for type: String) {
         selectedMealTypeForAdd = type
         isShowingAddMeal = true
+    }
+    
+    private func showMealDetailSheet(for type: String) {
+        selectedMealTypeForDetail = type
+        isShowingMealDetail = true
     }
     
     private func deleteMealFood(id: UUID) {

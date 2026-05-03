@@ -57,6 +57,10 @@ class ProgressViewModel {
             
             // Load and aggregate meals
             let meals = try await mealRepository.fetchMeals(from: startDate, to: endOfDay)
+            print("📊 Progress: Fetched \(meals.count) meals from \(startDate) to \(endOfDay)")
+            for meal in meals {
+                print("  - Meal on \(meal.date): \(meal.mealFoods.count) items, total \(meal.mealFoods.reduce(0) { $0 + $1.caloriesSnapshot }) kcal")
+            }
             
             var dailyCalories: [Date: Double] = [:]
             

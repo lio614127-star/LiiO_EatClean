@@ -72,6 +72,14 @@
 - [ ] **RMND-01**: Local notification reminders cho meal logging
 - [ ] **RMND-02**: Configurable reminder timing trong Settings
 
+### AI Nutritionist Chatbox
+
+- [ ] **CHAT-01**: Giao diện Chatbot chuyên nghiệp (bubble chat, typing indicator, markdown)
+- [ ] **CHAT-02**: Persona Chuyên gia dinh dưỡng (kiến thức về calories, macros, chế độ ăn uống)
+- [ ] **CHAT-03**: App context awareness (AI hiểu và hướng dẫn được các chức năng của app)
+- [ ] **CHAT-04**: Phân tích thói quen (AI phân tích food logs/activity để đưa ra nhận xét cá nhân hóa)
+- [ ] **CHAT-05**: Gợi ý món ăn thông minh (AI gợi ý món ăn phù hợp với thói quen và mục tiêu hiện tại)
+
 ## v2 Requirements
 
 ### Enhanced Features
@@ -138,10 +146,15 @@
 | WATR-02 | Phase 8 | Pending |
 | RMND-01 | Phase 8 | Pending |
 | RMND-02 | Phase 8 | Pending |
+| CHAT-01 | Phase 9 | Pending |
+| CHAT-02 | Phase 9 | Pending |
+| CHAT-03 | Phase 9 | Pending |
+| CHAT-04 | Phase 9 | Pending |
+| CHAT-05 | Phase 9 | Pending |
 
 **Coverage:**
-- v1 requirements: 38 total
-- Mapped to phases: 38
+- v1 requirements: 43 total
+- Mapped to phases: 43
 - Unmapped: 0 ✓
 
 ---

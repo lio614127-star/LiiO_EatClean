@@ -41,6 +41,15 @@ class HomeViewModel {
         }
     }
     
+    func resetWater() async {
+        do {
+            try await userRepository.resetWater(for: Date())
+            waterConsumed = 0
+        } catch {
+            print("Failed to reset water: \(error)")
+        }
+    }
+    
     func deleteMealFood(id: UUID) async {
         do {
             try await mealRepository.deleteMealFood(by: id)
@@ -51,20 +60,38 @@ class HomeViewModel {
     }
     
     // Computed properties for Dashboard
+    private var validMealTypes: [String] { ["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"] }
+    
     var totalCalories: Double {
-        todayMeals.flatMap { $0.mealFoods }.reduce(0) { $0 + $1.caloriesSnapshot }
+        todayMeals
+            .filter { meal in validMealTypes.contains { $0.lowercased() == meal.mealType.lowercased() } }
+            .flatMap { $0.mealFoods }
+            .filter { $0.isEaten }
+            .reduce(0) { $0 + $1.caloriesSnapshot }
     }
     
     var totalProtein: Double {
-        todayMeals.flatMap { $0.mealFoods }.reduce(0) { $0 + $1.proteinSnapshot }
+        todayMeals
+            .filter { meal in validMealTypes.contains { $0.lowercased() == meal.mealType.lowercased() } }
+            .flatMap { $0.mealFoods }
+            .filter { $0.isEaten }
+            .reduce(0) { $0 + $1.proteinSnapshot }
     }
     
     var totalCarbs: Double {
-        todayMeals.flatMap { $0.mealFoods }.reduce(0) { $0 + $1.carbsSnapshot }
+        todayMeals
+            .filter { meal in validMealTypes.contains { $0.lowercased() == meal.mealType.lowercased() } }
+            .flatMap { $0.mealFoods }
+            .filter { $0.isEaten }
+            .reduce(0) { $0 + $1.carbsSnapshot }
     }
     
     var totalFat: Double {
-        todayMeals.flatMap { $0.mealFoods }.reduce(0) { $0 + $1.fatSnapshot }
+        todayMeals
+            .filter { meal in validMealTypes.contains { $0.lowercased() == meal.mealType.lowercased() } }
+            .flatMap { $0.mealFoods }
+            .filter { $0.isEaten }
+            .reduce(0) { $0 + $1.fatSnapshot }
     }
     
     var dailyTarget: Double {

@@ -30,10 +30,14 @@ class AddMealViewModel {
     }
     
     func addToCart(food: FoodItemModel, quantity: Double) {
-        let caloriesSnapshot = food.calories * quantity
-        let proteinSnapshot = food.protein * quantity
-        let carbsSnapshot = food.carbs * quantity
-        let fatSnapshot = food.fat * quantity
+        // Since ViewModel now normalizes everything to 1 portion = base calories,
+        // we just multiply quantity directly by those calories.
+        let ratio = quantity
+        
+        let caloriesSnapshot = food.calories * ratio
+        let proteinSnapshot = food.protein * ratio
+        let carbsSnapshot = food.carbs * ratio
+        let fatSnapshot = food.fat * ratio
         
         let mealFood = MealFoodModel(
             id: UUID(),
@@ -42,6 +46,8 @@ class AddMealViewModel {
             proteinSnapshot: proteinSnapshot,
             carbsSnapshot: carbsSnapshot,
             fatSnapshot: fatSnapshot,
+            isEaten: true,
+            mealType: selectedMealType, // Capture the current meal type when adding to cart
             foodItem: food
         )
         
@@ -50,7 +56,7 @@ class AddMealViewModel {
     
     func addSuggestedFood(_ suggested: AISuggestedFood) {
         let food = suggested.toFoodItemModel()
-        addToCart(food: food, quantity: 1)
+        addToCart(food: food, quantity: suggested.servingSize)
         // Remove from suggestions after logging
         suggestedFoods.removeAll { $0.id == suggested.id }
     }
@@ -62,19 +68,25 @@ class AddMealViewModel {
     func saveCart(for date: Date) async {
         guard !cartItems.isEmpty else { return }
         
-        let meal = MealModel(
-            id: UUID(),
-            date: date,
-            mealType: selectedMealType,
-            mealFoods: cartItems
-        )
+        // Group items by their assigned mealType
+        let groupedItems = Dictionary(grouping: cartItems) { $0.mealType ?? selectedMealType }
         
-        do {
-            try await mealRepository.saveMeal(meal, for: date)
-            cartItems.removeAll()
-        } catch {
-            print("Failed to save meal: \(error)")
+        for (mealType, items) in groupedItems {
+            let meal = MealModel(
+                id: UUID(),
+                date: date,
+                mealType: mealType,
+                mealFoods: items
+            )
+            
+            do {
+                try await mealRepository.saveMeal(meal, for: date)
+            } catch {
+                print("Failed to save meal (\(mealType)): \(error)")
+            }
         }
+        
+        cartItems.removeAll()
     }
     
     func loadRemainingCalories() async {
@@ -87,8 +99,10 @@ class AddMealViewModel {
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
             let mealsToday = try await mealRepository.fetchMeals(from: today, to: tomorrow)
             
+            let validMealTypes = ["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"]
             let consumed = mealsToday.reduce(0.0) { total, meal in
-                total + meal.mealFoods.reduce(0.0) { $0 + $1.caloriesSnapshot }
+                guard validMealTypes.contains(where: { $0.lowercased() == meal.mealType.lowercased() }) else { return total }
+                return total + meal.mealFoods.reduce(0.0) { $0 + $1.caloriesSnapshot }
             }
             
             remainingCalories = max(0, target - consumed)

@@ -4,6 +4,7 @@ struct WaterCardView: View {
     let consumed: Double
     let target: Double
     let onAdd: (Double) -> Void
+    let onReset: () -> Void
     
     private var progress: Double {
         guard target > 0 else { return 0 }
@@ -18,10 +19,22 @@ struct WaterCardView: View {
                     .foregroundColor(.blue)
                 Text("Nước uống")
                     .font(.headline)
+                
                 Spacer()
+                
                 Text("\(Int(consumed)) / \(Int(target)) ml")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
+                
+                Button(action: {
+                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    generator.impactOccurred()
+                    onReset()
+                }) {
+                    Image(systemName: "arrow.counterclockwise.circle.fill")
+                        .foregroundColor(.gray.opacity(0.5))
+                        .font(.title3)
+                }
             }
             
             // Progress Bar with animation

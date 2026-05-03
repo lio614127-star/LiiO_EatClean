@@ -18,6 +18,17 @@ struct WeightChartView: View {
         return lower...upper
     }
     
+    // Calculate X-axis domain based on timeRange
+    private var xAxisDomain: ClosedRange<Date> {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let daysToSubtract = timeRange == .week ? 6 : 29
+        let start = calendar.date(byAdding: .day, value: -daysToSubtract, to: today) ?? today
+        // Add 1 day of padding to the end to avoid clipping annotations
+        let end = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        return start...end
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Xu hướng cân nặng")
@@ -43,25 +54,30 @@ struct WeightChartView: View {
                         .symbolSize(100)
                         .annotation(position: .top) {
                             Text(String(format: "%.1f", entry.weight))
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .font(.caption2.bold())
+                                .foregroundColor(.blue)
                         }
                     }
                 }
                 .chartYScale(domain: yAxisDomain)
+                .chartXScale(domain: xAxisDomain)
                 .chartXAxis {
-                    AxisMarks(values: .stride(by: .day, count: timeRange == .week ? 1 : 5)) { value in
-                        if value.as(Date.self) != nil {
-                            AxisValueLabel(format: .dateTime.day().month(.defaultDigits))
+                    AxisMarks(values: .stride(by: .day, count: timeRange == .week ? 1 : 7)) { value in
+                        if let date = value.as(Date.self) {
+                            AxisValueLabel {
+                                Text(date, format: .dateTime.day().month(.defaultDigits))
+                                    .font(.caption2)
+                            }
+                            AxisGridLine()
+                            AxisTick()
                         }
-                        AxisGridLine()
                     }
                 }
                 .chartYAxis {
-                    AxisMarks { value in
+                    AxisMarks(position: .trailing) { value in
                         AxisGridLine()
                         if let count = value.as(Double.self) {
-                            AxisValueLabel(String(format: "%.1f kg", count))
+                            AxisValueLabel(String(format: "%.0f", count))
                         }
                     }
                 }

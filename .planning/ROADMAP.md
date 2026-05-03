@@ -1,7 +1,7 @@
 # Roadmap: LiiO EatClean
 
 **Version:** v1.0
-**Phases:** 8
+**Phases:** 9
 **Requirements:** 38
 
 ## Milestone 1: v1.0 — MVP Calorie Tracker
@@ -124,6 +124,21 @@
 3. Local notification reminders cho meal logging
 4. Configurable reminder timing trong Settings
 5. UI polish: animations, transitions, dark mode support
+
+---
+
+### Phase 9: AI Nutritionist Chatbox
+**Goal:** Chatbox AI chuyên gia dinh dưỡng: hiểu sâu về app, phân tích thói quen người dùng và tư vấn lộ trình ăn uống cá nhân hóa.
+**Requirements:** CHAT-01, CHAT-02, CHAT-03, CHAT-04, CHAT-05
+**UI hint:** yes
+**Depends on:** Phase 7, Phase 8
+
+**Success criteria:**
+1. Giao diện Chatbot mượt mà, hỗ trợ định dạng markdown (bold, list) để tư vấn rõ ràng.
+2. AI đóng vai trò chuyên gia, trả lời đúng trọng tâm về dinh dưỡng và lộ trình ăn uống.
+3. AI có khả năng giải thích các tính năng app (VD: "Làm sao để log bữa sáng?", "Mục tiêu calories của tôi là bao nhiêu?").
+4. AI tự động truy vấn dữ liệu thói quen (lịch sử ăn uống, cân nặng) để đưa ra lời khuyên cá nhân hóa.
+5. Gợi ý món ăn thông minh dựa trên sở thích và calories còn lại trong ngày.
 
 ---
 *Roadmap created: 2026-04-29*

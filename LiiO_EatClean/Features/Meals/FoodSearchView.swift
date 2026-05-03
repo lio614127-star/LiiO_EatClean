@@ -81,7 +81,9 @@ struct FoodSearchView: View {
                         }
                     }
                     
-                    Text("\(Int(food.servingSize))g")
+                    // Always show "1 phần" in suggestions to keep it clean, 
+                    // as the ViewModel has normalized the calories to 1 unit.
+                    Text("1 phần")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

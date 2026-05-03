@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây
-**Current focus:** Phase 1 — Project Foundation & Data Layer
+**Current focus:** Milestone 1 Completion & Final Polish
 
 ## Current Milestone
 
@@ -21,6 +21,7 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 | 6 | Progress & Weight Tracking | ✅ Verified | 06-PLAN.md |
 | 7 | Profile + AI Meal Suggestions | ✅ Verified | 07-PLAN.md |
 | 8 | Water Tracking + Smart Reminders + Polish | ✅ Verified | 08-PLAN.md |
+| 9 | AI Nutritionist Chatbox | ✅ Verified | 09-PLAN.md |
 
 ## Memory
 
@@ -34,9 +35,23 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 - MealFood snapshot pattern for historical accuracy
 - 3 domain repos: MealRepository, FoodRepository, UserRepository
 - Hybrid folder structure: Features/ + Data/ + Core/
+- **Suggestion vs Eaten Logic**: AI suggestions are stored but not counted toward calories until user ticks "eaten" in the new Interactive Meal Detail Sheet.
+- **AI Data Normalization**: Multi-portion AI suggestions (e.g. 3 bananas) are divided into a single-unit base food item + a quantity multiplier to ensure reusable suggestions.
+- **Calorie Calculation Safety**: Minimum daily calories enforced by gender (Men: 1500 kcal, Women: 1200 kcal) using Mifflin-St Jeor + 1.55 activity factor.
+- **Reactive Profile**: Automatic calorie target recalculation triggered by any change in age, weight, height, or goal type in the Profile screen.
+- **Chart UX**: Applied X-axis padding to weight charts and forced Y-axis 0-minimum on calorie charts to prevent label clipping and negative scale artifacts.
+- **Data Management**: "Danger Zone" implemented in Profile to allow users to completely purge all CoreData records (Meals, Weights, Logs) and reset app state.
+- **Water Management**: Added "Undo/Reset" capability for water intake to handle over-logging errors.
+- **Custom Branding**: Integrated `avatar_tool` as the primary visual identity. Replaced text-based Splash Screen with a styled image logo and generated a full suite of optimized App Icons (40px to 1024px) for production-grade display.
 
 ### Learnings
+- AI `mealType` mapping must strictly match UI categories ("Bữa phụ" -> "Ăn vặt") to prevent ghost data.
+- User portions need normalization (divided by servingSize) to handle manual quantity changes correctly later.
+- Ephemeral state (UserDefaults for isEaten) is a reliable way to add properties without complex CoreData migrations mid-development.
 (None yet)
+
+### Roadmap Evolution
+- Phase 9 added: AI Nutritionist Chatbox (Expert advice, habit-aware, app context)
 
 ## Session Log
 
@@ -67,6 +82,8 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 | 2026-04-29 | Phase 8 context gathered | `.planning/phases/08-water-reminders-polish/08-CONTEXT.md` |
 | 2026-04-29 | Phase 8 planned | `.planning/phases/08-water-reminders-polish/08-PLAN.md` |
 | 2026-04-29 | Phase 8 executed | `.planning/phases/08-water-reminders-polish/08-SUMMARY.md` |
+| 2026-05-03 | Debugging & Calorie Logic | Fixed startup black screens, gendered calorie minimums, chart clipping, and added global data reset. |
+| 2026-05-03 | Branding & Visual Identity | Rebranded Splash Screen with custom logo and configured optimized App Icon suite in Assets.xcassets. |
 
 ---
-*Last updated: 2026-04-29 after Phase 8 execution*
+*Last updated: 2026-05-03 after Branding & Visual Identity Refresh*

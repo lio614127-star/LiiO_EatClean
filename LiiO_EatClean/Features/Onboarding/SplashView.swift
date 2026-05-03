@@ -24,14 +24,18 @@ struct SplashView: View {
                 .ignoresSafeArea()
                 
                 // Logo
-                VStack(spacing: 4) {
-                    Text("LiiO")
-                        .font(.system(size: 40, weight: .bold, design: .default))
-                        .foregroundColor(.green)
+                VStack(spacing: 20) {
+                    Image("avatar_tool")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 160, height: 160)
+                        .clipShape(RoundedRectangle(cornerRadius: 36))
+                        .shadow(color: .green.opacity(0.3), radius: 25)
                     
-                    Text("EatClean")
-                        .font(.system(size: 16, weight: .regular, design: .default))
-                        .foregroundColor(Color(.systemGray))
+                    Text("LiiO EatClean")
+                        .font(.title3.bold())
+                        .foregroundColor(.green)
+                        .tracking(2)
                 }
                 .scaleEffect(scale)
                 .opacity(opacity)

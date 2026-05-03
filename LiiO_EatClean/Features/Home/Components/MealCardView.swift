@@ -5,11 +5,12 @@ struct MealCardView: View {
     let icon: String
     let meals: [MealModel]
     var onAddTapped: (() -> Void)? = nil
+    var onRowTapped: (() -> Void)? = nil
     var onDelete: ((UUID) -> Void)? = nil
     
     // Calculate total calories for this meal type
     private var totalCalories: Double {
-        meals.flatMap { $0.mealFoods }.reduce(0) { $0 + $1.caloriesSnapshot }
+        meals.flatMap { $0.mealFoods }.filter { $0.isEaten }.reduce(0) { $0 + $1.caloriesSnapshot }
     }
     
     // Get all foods flattened across multiple meals of this type (if any)
@@ -30,7 +31,7 @@ struct MealCardView: View {
                 
                 Spacer()
                 
-                if !meals.isEmpty {
+                if !allFoods.isEmpty {
                     Text("\(Int(totalCalories)) kcal")
                         .font(.subheadline.bold())
                         .foregroundColor(.primary)
@@ -46,7 +47,7 @@ struct MealCardView: View {
             }
             
             // Content
-            if meals.isEmpty {
+            if allFoods.isEmpty {
                 // Empty state
                 HStack {
                     Text("Chưa có bữa ăn")
@@ -94,6 +95,9 @@ struct MealCardView: View {
                 .fill(Color(.systemBackground))
                 .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
+        .onTapGesture {
+            onRowTapped?()
+        }
     }
 }
 

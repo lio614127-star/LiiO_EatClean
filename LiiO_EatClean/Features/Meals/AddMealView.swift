@@ -40,6 +40,7 @@ struct AddMealView: View {
                 // Embedded Food Search
                 FoodSearchView { food in
                     selectedFood = food
+                    // For manual search/suggestions, always default to 1 portion
                     quantityInput = "1"
                     showingQuantityAlert = true
                 }
@@ -68,7 +69,8 @@ struct AddMealView: View {
                 }
             } message: {
                 if let food = selectedFood {
-                    Text("Nhập số lượng cho \(food.name) (1 khẩu phần = \(Int(food.servingSize))g)")
+                    let perPortionCals = food.servingSize > 0 ? food.calories / food.servingSize : food.calories
+                    Text("Nhập số lượng cho \(food.name) (Mỗi phần ≈ \(Int(perPortionCals)) kcal)")
                 }
             }
             .alert("Cần API Key", isPresented: $viewModel.needsAPIKey) {
@@ -277,39 +279,39 @@ struct AddMealView: View {
         .sheet(isPresented: $showingCartDetails) {
             NavigationStack {
                 List {
-                    ForEach(viewModel.cartItems) { item in
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(item.foodItem?.name ?? "Món ăn")
-                                    .font(.headline)
-                                Text("\(item.quantity, specifier: "%.1f") phần")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            Text("\(Int(item.caloriesSnapshot)) kcal")
-                                .font(.subheadline.bold())
-                                .padding(.trailing, 8)
-                                
-                            Button(action: {
-                                viewModel.removeFromCart(id: item.id)
-                                if viewModel.cartItems.isEmpty {
-                                    showingCartDetails = false
+                    let grouped = Dictionary(grouping: viewModel.cartItems) { $0.mealType ?? viewModel.selectedMealType }
+                    let sortedTypes = ["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"].filter { grouped.keys.contains($0) }
+                    
+                    ForEach(sortedTypes, id: \.self) { type in
+                        Section(header: Text(type).font(.subheadline.bold()).foregroundColor(.green)) {
+                            if let items = grouped[type] {
+                                ForEach(items) { item in
+                                    HStack {
+                                        VStack(alignment: .leading) {
+                                            Text(item.foodItem?.name ?? "Món ăn")
+                                                .font(.headline)
+                                            Text("\(item.quantity, specifier: "%.1f") phần")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        Spacer()
+                                        Text("\(Int(item.caloriesSnapshot)) kcal")
+                                            .font(.subheadline.bold())
+                                            .padding(.trailing, 8)
+                                            
+                                        Button(action: {
+                                            viewModel.removeFromCart(id: item.id)
+                                            if viewModel.cartItems.isEmpty {
+                                                showingCartDetails = false
+                                            }
+                                        }) {
+                                            Image(systemName: "trash")
+                                                .foregroundColor(.red)
+                                        }
+                                        .buttonStyle(BorderlessButtonStyle())
+                                    }
                                 }
-                            }) {
-                                Image(systemName: "trash")
-                                    .foregroundColor(.red)
                             }
-                            .buttonStyle(BorderlessButtonStyle())
-                        }
-                    }
-                    .onDelete { indexSet in
-                        for index in indexSet {
-                            let item = viewModel.cartItems[index]
-                            viewModel.removeFromCart(id: item.id)
-                        }
-                        if viewModel.cartItems.isEmpty {
-                            showingCartDetails = false
                         }
                     }
                 }

@@ -7,11 +7,31 @@ class ProfileViewModel {
     
     // Editable fields (bound to Form)
     var name: String = ""
-    var age: String = ""
-    var height: String = ""
-    var weight: String = ""
-    var goalType: String = "maintain"
+    var goalType: String = "maintain" {
+        didSet { recalculateCalories() }
+    }
+    var age: String = "" {
+        didSet { recalculateCalories() }
+    }
+    var height: String = "" {
+        didSet { recalculateCalories() }
+    }
+    var weight: String = "" {
+        didSet { recalculateCalories() }
+    }
     var dailyCalorieTarget: String = ""
+    
+    private func recalculateCalories() {
+        guard let w = Double(weight), let h = Double(height), let a = Double(age) else { return }
+        let calculated = CalorieCalculator.calculateDailyCalories(
+            weight: w,
+            height: h,
+            age: a,
+            gender: user?.gender ?? "male",
+            goal: goalType
+        )
+        dailyCalorieTarget = String(Int(calculated))
+    }
     
     // API Key inputs
     var geminiKeyInput: String = ""
@@ -156,6 +176,20 @@ class ProfileViewModel {
             await ReminderService.shared.scheduleMealReminders()
         } else {
             await ReminderService.shared.cancelAllWaterReminders()
+        }
+    }
+    
+    func resetAllData() async {
+        isSaving = true
+        defer { isSaving = false }
+        
+        do {
+            try await (userRepository as? UserRepository)?.resetAllData()
+            let mealRepo = MealRepository()
+            try await mealRepo.deleteAllMeals()
+            await loadData()
+        } catch {
+            errorMessage = "Reset thất bại: \(error.localizedDescription)"
         }
     }
 }
