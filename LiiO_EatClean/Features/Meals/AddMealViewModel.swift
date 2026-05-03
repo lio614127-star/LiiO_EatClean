@@ -56,7 +56,8 @@ class AddMealViewModel {
     
     func addSuggestedFood(_ suggested: AISuggestedFood) {
         let food = suggested.toFoodItemModel()
-        addToCart(food: food, quantity: suggested.servingSize)
+        // Force quantity to 1.0 portion for AI suggestions
+        addToCart(food: food, quantity: 1.0)
         // Remove from suggestions after logging
         suggestedFoods.removeAll { $0.id == suggested.id }
     }
