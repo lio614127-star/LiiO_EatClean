@@ -54,28 +54,30 @@ struct AISuggestedFood: Codable, Identifiable {
     }
     
     func toMealFoodModel() -> MealFoodModel {
-        let qty = servingSize > 0 ? servingSize : 1.0
+        // AI suggestions are always treated as 1 single portion initially
+        let qty = 1.0
+        let baseServingSize = servingSize > 0 ? servingSize : 100.0
         
-        // Normalize: store the food item as 1 portion unit
-        let normalizedFood = FoodItemModel(
+        // Store the food item with the AI-provided calories as the value for 1 portion
+        let food = FoodItemModel(
             id: UUID(),
             name: name,
-            calories: calories / qty,
-            protein: protein / qty,
-            carbs: carbs / qty,
-            fat: fat / qty,
-            servingSize: 1.0, // Base unit is always 1
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            servingSize: baseServingSize,
             source: "ai"
         )
         
         return MealFoodModel(
             quantity: qty,
-            caloriesSnapshot: calories, // Keep total for the initial log
+            caloriesSnapshot: calories,
             proteinSnapshot: protein,
             carbsSnapshot: carbs,
             fatSnapshot: fat,
             isEaten: isEaten ?? false,
-            foodItem: normalizedFood
+            foodItem: food
         )
     }
 }
