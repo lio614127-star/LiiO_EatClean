@@ -2,7 +2,7 @@
 
 ## What This Is
 
-LiiO EatClean là app iOS theo dõi calories và bữa ăn hàng ngày, giúp người dùng đạt mục tiêu giảm cân. App tập trung vào trải nghiệm log đồ ăn nhanh gọn, dashboard trực quan với progress ring, và gợi ý bữa ăn thông minh bằng AI — ưu tiên món Việt Nam. Thiết kế theo phong cách Apple-native với SwiftUI, bo góc mềm mại và animation mượt.
+LiiO EatClean là app iOS theo dõi calories và bữa ăn hàng ngày, giúp người dùng đạt mục tiêu giảm cân. App tập trung vào trải nghiệm log đồ ăn nhanh gọn, dashboard trực quan với progress ring, và tab AI Meals thông minh — gợi ý bữa ăn cá nhân hóa với khả năng học thói quen (memory system), ưu tiên món Việt Nam. Thiết kế theo phong cách Apple-native với SwiftUI, bo góc mềm mại và animation mượt.
 
 ## Core Value
 
@@ -12,24 +12,22 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ App foundation, CoreData schema, Tab bar navigation — v1.0
+- ✓ Splash screen với logo custom + auto transition — v1.0
+- ✓ Onboarding slides + Setup Goal (tính calories bằng Mifflin-St Jeor) — v1.0
+- ✓ Home Dashboard (progress ring, summary, quick add) — v1.0
+- ✓ Add Meal Flow (search hybrid local JSON + CalorieNinjas) — v1.0
+- ✓ Progress Screen (Swift Charts cho cân nặng và calories) — v1.0
+- ✓ Profile & Settings (quản lý API keys, mục tiêu) — v1.0
+- ✓ Water tracking & Smart reminders — v1.0
+- ✓ AI Nutritionist Chatbox — v1.0
+- ✓ AI-Powered Meals Tab (Smart Suggestions, Context Memory, Log Ngay) — v1.0
 
 ### Active
 
-- [ ] Splash screen với logo + auto transition sau 1-2s
-- [ ] Onboarding 3 slides (track calories, theo dõi tiến trình, đạt body mong muốn) + Skip/Continue
-- [ ] Setup Goal: nhập cân nặng, chiều cao, tuổi, mục tiêu → tính calories/ngày (step-by-step + progress bar)
-- [ ] Home Dashboard: header greeting, calories progress ring, meals hôm nay (Breakfast/Lunch/Dinner), nút Add Meal
-- [ ] Meals Screen: list bữa ăn theo ngày, card từng món, click vào detail
-- [ ] Add Meal: search món ăn (hybrid local + API), nhập calories, save
-- [ ] Progress Screen: biểu đồ cân nặng, weekly/monthly toggle
-- [ ] Profile Screen: thông tin cá nhân, mục tiêu, settings, quản lý API keys
-- [ ] Food database hybrid: local Vietnamese foods JSON + API (Nutritionix/FatSecret) + cache
-- [ ] AI meal suggestion: tích hợp OpenAI/Gemini, multi API key với auto swap
-- [ ] Tab bar navigation: Home / Meals / Progress / Profile
-- [ ] Water tracking (theo dõi nước uống)
-- [ ] Smart reminders (nhắc nhở thông minh)
-- [ ] Scan food (nâng cao — camera scan món ăn)
+- [ ] Scan food (camera scan món ăn)
+- [ ] HealthKit integration (sync weight, calories)
+- [ ] Macro tracking (protein, carbs, fat breakdown chi tiết hơn)
 
 ### Out of Scope
 
@@ -43,57 +41,32 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 
 **Target user:** Người Việt Nam muốn giảm cân, theo dõi calories hàng ngày. App cá nhân (LiiO).
 
-**Daily loop:** Open app → xem calories → log đồ ăn → xem progress
-
-**Key action flow:** Home → Add Meal → Save → Dashboard update
-
-**Vietnamese food focus:** Đây là lợi thế cạnh tranh — hỗ trợ sẵn cơm, bún bò, phở, bánh mì... với calories chính xác. Food search ưu tiên local DB trước, API sau, cache lại.
-
-**AI integration:** Dùng AI thật từ v1. User nhập nhiều API key (OpenAI/Gemini), app tự swap khi key fail. AI nhận input: calories còn lại + mục tiêu + món đã ăn → suggest 2 bữa ăn đơn giản (JSON format) ưu tiên món Việt.
-
-**Data schema (chuẩn bị cho sync sau):**
-- User (profile, goals)
-- Meal (breakfast/lunch/dinner, date)
-- FoodItem (name, calories, source: local/api)
-- DailyLog (date, total calories, water intake)
+**Current State (v1.0 MVP Shipped):** App đang có đầy đủ tính năng cốt lõi cho việc tracking calories. AI System đã phát triển từ chatbot cơ bản thành một hệ thống thông minh (Learning System) có thể tự trích xuất sở thích, dị ứng của user vào Memory và dùng đó làm context injection cho các Tab gợi ý món ăn. Các bug liên quan đến logic đồ thị, navigation và sheet reload đã được khắc phục. UI/UX đạt chuẩn Apple design guidelines. 
 
 ## Constraints
 
 - **Platform**: iOS only — SwiftUI, minimum iOS 17+
 - **Tech stack**: Swift + SwiftUI native — không cross-platform
-- **Data**: CoreData local-first — Repository pattern để swap backend sau
-- **Food API**: Nutritionix hoặc FatSecret — cần API key
-- **AI API**: OpenAI hoặc Gemini — user tự nhập key, multi-key rotation
-- **Design**: Apple-style — SF Pro font, bo góc 16-24px, shadow nhẹ, màu xanh lá #4CAF50 vibe, nền trắng
-- **Architecture**: App Layer → ViewModel → Repository → Local DB (CoreData)
+- **Data**: CoreData local-first — Repository pattern
+- **Food API**: CalorieNinjas fallback cho local JSON
+- **AI API**: OpenAI hoặc Gemini (tích hợp multi-key)
+- **Design**: Apple-style — SF Pro font, bo góc 16-24px, màu xanh lá #4CAF50, custom app icon/logo.
+- **Architecture**: MVVM + Repository
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Swift + SwiftUI native | UI mượt, animation nhiều, HealthKit-ready, build nhanh cho MVP | — Pending |
-| CoreData local-first | Đơn giản cho v1, không cần backend, schema chuẩn bị sync sau | — Pending |
-| Hybrid food database | API cho international foods + local JSON cho món Việt → lợi thế cạnh tranh | — Pending |
-| AI thật từ v1 | Multi API key + auto swap, đủ đơn giản để implement, UX value cao | — Pending |
-| Repository pattern | Tách data layer → dễ swap CoreData sang CloudKit/API sau | — Pending |
-| Tab bar 4 tabs | Home/Meals/Progress/Profile — chuẩn iOS, không quá phức tạp | — Pending |
+| Swift + SwiftUI native | UI mượt, animation nhiều, HealthKit-ready | ✓ Good |
+| CoreData local-first | Đơn giản cho v1, không cần backend | ✓ Good |
+| Hybrid food database | Lợi thế cạnh tranh: hỗ trợ món Việt instant | ✓ Good |
+| AI Chat & Learning Memory | Nâng cao UX cá nhân hóa, prompt injection tối ưu token | ✓ Good |
+| Repository pattern | Tách data layer → dễ bảo trì và test | ✓ Good |
+| Ephemeral State (UserDefaults) | Hỗ trợ lưu trạng thái nhỏ không cần migration CoreData | ✓ Good |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
-
-**After each milestone** (via `/gsd-complete-milestone`):
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
-
 ---
-*Last updated: 2026-04-29 after initialization*
+*Last updated: 2026-05-04 after v1.0 MVP milestone completion*

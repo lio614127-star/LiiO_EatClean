@@ -9,20 +9,9 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 
 ## Current Milestone
 
-**Milestone 1: v1.0 — MVP Calorie Tracker**
+**Milestone: Next (TBD)**
 
-| Phase | Name | Status | Plans |
-|-------|------|--------|-------|
-| 1 | Project Foundation & Data Layer | ✅ Verified | 01-PLAN.md |
-| 2 | Splash + Onboarding + Goal Setup | ✅ Verified | 02-PLAN.md |
-| 3 | Home Dashboard | ✅ Verified | 03-PLAN.md |
-| 4 | Food Database (Hybrid Search) | ✅ Verified | 04-PLAN.md |
-| 5 | Meal Logging (Core Loop) | ✅ Verified | 05-PLAN.md |
-| 6 | Progress & Weight Tracking | ✅ Verified | 06-PLAN.md |
-| 7 | Profile + AI Meal Suggestions | ✅ Verified | 07-PLAN.md |
-| 8 | Water Tracking + Smart Reminders + Polish | ✅ Verified | 08-PLAN.md |
-| 9 | AI Nutritionist Chatbox | ✅ Verified | 09-PLAN.md |
-| 10 | AI-Powered Meals Tab — Smart Suggestions, Memory & Actionable AI | ✅ Verified | 10-SUMMARY.md |
+*Run `/gsd-new-milestone` to start planning the next phase of development.*
 
 ## Memory
 
