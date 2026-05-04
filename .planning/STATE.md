@@ -9,9 +9,22 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 
 ## Current Milestone
 
-**Milestone: Next (TBD)**
+**Milestone: v1.1 Trải Nghiệm Nhanh & AI Chủ Động**
 
-*Run `/gsd-new-milestone` to start planning the next phase of development.*
+- Daily AI Summary
+- Streak & Gamification
+- Voice Input
+- AI Meal Planning
+- Barcode Scan
+- Advanced Memory Insight
+- UI Polish & Micro-interactions
+
+## Current Position
+
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-04 — Milestone v1.1 started
 
 ## Memory
 

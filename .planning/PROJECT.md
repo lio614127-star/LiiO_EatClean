@@ -8,6 +8,19 @@ LiiO EatClean là app iOS theo dõi calories và bữa ăn hàng ngày, giúp ng
 
 User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — nhanh, đẹp, chính xác.
 
+## Current Milestone: v1.1 Trải Nghiệm Nhanh & AI Chủ Động
+
+**Goal:** Nâng cao tốc độ log bữa ăn qua đa phương thức (Voice, Barcode) và biến AI thành huấn luyện viên cá nhân chủ động (Tóm tắt ngày, Lên thực đơn, Memory insight) kết hợp với hệ thống Gamification để giữ chân người dùng.
+
+**Target features:**
+- Daily AI Summary
+- Streak & Gamification
+- Voice Input (Log bằng giọng nói)
+- AI Meal Planning
+- Barcode Scan (Basic)
+- Advanced Memory Insight
+- UI Polish & Micro-interactions
+
 ## Requirements
 
 ### Validated
@@ -25,9 +38,15 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 
 ### Active
 
-- [ ] Scan food (camera scan món ăn)
-- [ ] HealthKit integration (sync weight, calories)
-- [ ] Macro tracking (protein, carbs, fat breakdown chi tiết hơn)
+- [ ] Voice Input: Cho phép người dùng nói để log nhanh đồ ăn
+- [ ] Barcode Scan: Quét mã vạch sản phẩm để tra cứu nhanh calories (CalorieNinjas/OpenFoodFacts)
+- [ ] Daily AI Summary: Tóm tắt hành vi ăn uống cuối ngày và đưa ra lời khuyên
+- [ ] AI Meal Planning: Sinh thực đơn theo ngày/tuần dựa trên memory và calo mục tiêu
+- [ ] Streak Tracking: Đếm và hiển thị chuỗi ngày hoàn thành log bữa ăn/mục tiêu calo
+- [ ] Advanced Memory Insight: Nhận diện pattern chưa tốt (ví dụ: thiếu protein, ăn khuya)
+- [ ] UI Polish: Thêm haptic feedback, micro-animations khi tương tác
+- [ ] HealthKit integration (sync weight, calories) — *Pending backlog*
+- [ ] Macro tracking (protein, carbs, fat breakdown chi tiết hơn) — *Pending backlog*
 
 ### Out of Scope
 
