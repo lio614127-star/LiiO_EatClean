@@ -68,6 +68,7 @@ class HomeViewModel {
         do {
             try await userRepository.addWater(amount: amount, for: Date())
             waterConsumed += amount
+            await refreshStreak()
         } catch {
             print("Failed to log water: \(error)")
         }
@@ -77,9 +78,20 @@ class HomeViewModel {
         do {
             try await userRepository.resetWater(for: Date())
             waterConsumed = 0
+            await refreshStreak()
         } catch {
             print("Failed to reset water: \(error)")
         }
+    }
+    
+    private func refreshStreak() async {
+        streak = await streakService.evaluateToday(
+            meals: todayMeals,
+            totalCalories: totalCalories,
+            dailyTarget: dailyTarget,
+            waterConsumed: waterConsumed,
+            waterTarget: waterTarget
+        )
     }
     
     func deleteMealFood(id: UUID) async {
