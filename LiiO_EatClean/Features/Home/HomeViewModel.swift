@@ -11,13 +11,21 @@ class HomeViewModel {
     var waterConsumed: Double = 0
     var waterTarget: Double = 2000 // default 2000ml
     
+    // Gamification
+    var streak: StreakModel?
+    var showMilestonePopup = false
+    var milestoneValue = 0
+    
     private let mealRepository: MealRepositoryProtocol
     private let userRepository: UserRepositoryProtocol
+    private let streakService: StreakService
     
     init(mealRepository: MealRepositoryProtocol = MealRepository(),
-         userRepository: UserRepositoryProtocol = UserRepository()) {
+         userRepository: UserRepositoryProtocol = UserRepository(),
+         streakService: StreakService = StreakService()) {
         self.mealRepository = mealRepository
         self.userRepository = userRepository
+        self.streakService = streakService
     }
     
     func loadDashboard() async {
@@ -26,6 +34,30 @@ class HomeViewModel {
             user = try await userRepository.fetchUser()
             todayMeals = try await mealRepository.fetchMeals(by: Date())
             waterConsumed = try await userRepository.fetchWaterLog(for: Date())
+            
+            let previousIsOverTarget = isOverTarget
+            
+            streak = await streakService.evaluateToday(
+                meals: todayMeals,
+                totalCalories: totalCalories,
+                dailyTarget: dailyTarget,
+                waterConsumed: waterConsumed,
+                waterTarget: waterTarget
+            )
+            
+            if let streak = streak, [7, 14, 30].contains(streak.currentStreak) {
+                // Determine if we just hit it today
+                let calendar = Calendar.current
+                if calendar.isDateInToday(streak.lastActiveDate) && streak.conditionsMet == 3 {
+                    milestoneValue = streak.currentStreak
+                    showMilestonePopup = true
+                }
+            }
+            
+            if !previousIsOverTarget && isOverTarget {
+                HapticManager.warning()
+            }
+            
         } catch {
             print("Error loading dashboard data: \(error)")
         }
@@ -53,6 +85,7 @@ class HomeViewModel {
     func deleteMealFood(id: UUID) async {
         do {
             try await mealRepository.deleteMealFood(by: id)
+            HapticManager.success()
             await loadDashboard()
         } catch {
             print("Failed to delete meal food: \(error)")

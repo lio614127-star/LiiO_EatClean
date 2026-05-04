@@ -213,4 +213,39 @@ class UserRepository: UserRepositoryProtocol {
             try self.context.save()
         }
     }
+    
+    func fetchStreak() async throws -> StreakModel? {
+        try await context.perform {
+            let request: NSFetchRequest<StreakRecord> = StreakRecord.fetchRequest()
+            request.fetchLimit = 1
+            guard let record = try self.context.fetch(request).first else { return nil }
+            return StreakModel(
+                id: record.id ?? UUID(),
+                currentStreak: Int(record.currentStreak),
+                longestStreak: Int(record.longestStreak),
+                lastActiveDate: record.lastActiveDate ?? Date(),
+                mealConditionMet: record.mealConditionMet,
+                calorieConditionMet: record.calorieConditionMet,
+                waterConditionMet: record.waterConditionMet
+            )
+        }
+    }
+    
+    func saveStreak(_ streak: StreakModel) async throws {
+        try await context.perform {
+            let request: NSFetchRequest<StreakRecord> = StreakRecord.fetchRequest()
+            let results = try self.context.fetch(request)
+            
+            let record = results.first ?? StreakRecord(context: self.context)
+            record.id = streak.id
+            record.currentStreak = Int32(streak.currentStreak)
+            record.longestStreak = Int32(streak.longestStreak)
+            record.lastActiveDate = streak.lastActiveDate
+            record.mealConditionMet = streak.mealConditionMet
+            record.calorieConditionMet = streak.calorieConditionMet
+            record.waterConditionMet = streak.waterConditionMet
+            
+            try self.context.save()
+        }
+    }
 }

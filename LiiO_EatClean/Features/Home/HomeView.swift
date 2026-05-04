@@ -33,6 +33,12 @@ struct HomeView: View {
                             // Macro Bars
                             macroBarsSection
                             
+                            if let streak = viewModel.streak {
+                                StreakCardView(streak: streak, onTap: { })
+                                    .padding(.horizontal, 24)
+                                    .transition(.asymmetric(insertion: .slide.combined(with: .opacity), removal: .opacity))
+                            }
+                            
                             // Water Card (Daily Control Center)
                             WaterCardView(
                                 consumed: viewModel.waterConsumed,
@@ -53,6 +59,7 @@ struct HomeView: View {
                             
                             // Meal Cards
                             mealsSection
+                                .animation(.easeInOut(duration: 0.3), value: viewModel.todayMeals.count)
                             
                             // Add Meal Button (Fallback)
                             addMealButton
@@ -67,6 +74,7 @@ struct HomeView: View {
             }
             .navigationBarHidden(true)
             .sheet(item: $activeAddMealType, onDismiss: {
+                HapticManager.success()
                 Task {
                     await viewModel.loadDashboard()
                 }
@@ -82,6 +90,11 @@ struct HomeView: View {
                     }
                 )
                 .id(item.id + "-\(viewModel.todayMeals.flatMap { $0.mealFoods }.count)")
+            }
+            .overlay {
+                if viewModel.showMilestonePopup {
+                    MilestonePopupView(milestone: viewModel.milestoneValue, isPresented: $viewModel.showMilestonePopup)
+                }
             }
         }
         .task {

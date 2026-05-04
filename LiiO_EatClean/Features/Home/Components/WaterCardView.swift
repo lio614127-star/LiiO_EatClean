@@ -27,8 +27,7 @@ struct WaterCardView: View {
                     .foregroundColor(.secondary)
                 
                 Button(action: {
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
+                    HapticManager.interaction()
                     onReset()
                 }) {
                     Image(systemName: "arrow.counterclockwise.circle.fill")
@@ -74,8 +73,7 @@ struct WaterCardView: View {
     
     private func quickButton(amount: Int) -> some View {
         Button(action: {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+            HapticManager.interaction()
             onAdd(Double(amount))
         }) {
             Text("+\(amount)ml")

@@ -75,6 +75,7 @@ struct MealCardView: View {
                             
                             if let onDelete = onDelete {
                                 Button(action: {
+                                    HapticManager.success()
                                     onDelete(mealFood.id)
                                 }) {
                                     Image(systemName: "xmark.circle.fill")
@@ -83,9 +84,11 @@ struct MealCardView: View {
                                 }
                             }
                         }
+                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         Divider()
                     }
                 }
+                .animation(.easeInOut(duration: 0.3), value: allFoods.count)
                 .padding(.top, 4)
             }
         }

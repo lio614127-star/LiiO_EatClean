@@ -13,4 +13,7 @@ protocol UserRepositoryProtocol {
     func fetchWaterLog(for date: Date) async throws -> Double
     func addWater(amount: Double, for date: Date) async throws
     func resetWater(for date: Date) async throws
+    
+    func fetchStreak() async throws -> StreakModel?
+    func saveStreak(_ streak: StreakModel) async throws
 }
