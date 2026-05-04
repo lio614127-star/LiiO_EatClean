@@ -78,7 +78,7 @@ struct HomeView: View {
             .sheet(isPresented: $isShowingMealDetail) {
                 MealDetailSheet(
                     mealType: selectedMealTypeForDetail,
-                    meals: viewModel.meals(for: selectedMealTypeForDetail),
+                    initialMeals: viewModel.meals(for: selectedMealTypeForDetail),
                     onUpdate: {
                         Task { await viewModel.loadDashboard() }
                     }

@@ -33,7 +33,7 @@ class ChatViewModel {
         
         Task {
             do {
-                let systemPrompt = try await contextBuilder.buildSystemPrompt(for: trimmed)
+                let systemPrompt = try await contextBuilder.buildSystemPrompt(for: trimmed, strategy: .chat)
                 let responseMessage = try await aiService.sendChatMessage(history: historyToSend, systemPrompt: systemPrompt)
                 await MainActor.run {
                     self.messages.append(responseMessage)
@@ -46,6 +46,29 @@ class ChatViewModel {
                 }
             }
         }
+        
+        // Learning System extraction
+        Task {
+            let updates = await LearningService.shared.processMessage(trimmed)
+            if !updates.isEmpty {
+                await MainActor.run {
+                    self.pendingMemoryUpdates = updates
+                    self.showMemoryConfirmation = true
+                }
+            }
+        }
+    }
+    
+    // MARK: - Learning System State
+    var pendingMemoryUpdates: [MemoryUpdate] = []
+    var showMemoryConfirmation = false
+    
+    func confirmMemoryUpdates(_ updates: [MemoryUpdate]) {
+        for update in updates {
+            MemoryManager.shared.applyMemoryUpdate(update)
+        }
+        pendingMemoryUpdates = []
+        showMemoryConfirmation = false
     }
     
     func logSuggestedFood(_ food: AISuggestedFood, mealType: String = "Ăn vặt") {

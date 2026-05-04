@@ -97,6 +97,19 @@ struct ChatView: View {
                 }
             }
         }
+        .sheet(isPresented: $viewModel.showMemoryConfirmation) {
+            MemoryUpdateConfirmationView(
+                updates: viewModel.pendingMemoryUpdates,
+                onConfirm: { updates in
+                    viewModel.confirmMemoryUpdates(updates)
+                },
+                onDismiss: {
+                    viewModel.showMemoryConfirmation = false
+                    viewModel.pendingMemoryUpdates = []
+                }
+            )
+            .presentationDetents([.medium, .large])
+        }
     }
     
     private func sendMessage() {

@@ -25,7 +25,7 @@ enum AIError: LocalizedError {
 }
 
 // MARK: - Response model for parsing AI-suggested foods
-struct AISuggestedFood: Codable, Identifiable {
+struct AISuggestedFood: Codable, Identifiable, Equatable {
     var id = UUID()
     let name: String
     let calories: Double
@@ -128,6 +128,66 @@ class AIService {
         throw lastError
     }
     
+    // MARK: - Raw Generation API
+    func generateText(prompt: String) async throws -> String {
+        let keys = try await userRepository.fetchAPIKeys()
+        let geminiKey = keys.first(where: { $0.provider == "gemini" && $0.isActive })
+        let openAIKey = keys.first(where: { $0.provider == "openai" && $0.isActive })
+        
+        guard geminiKey != nil || openAIKey != nil else {
+            throw AIError.missingKey
+        }
+        
+        var lastError: Error = AIError.quotaExceeded
+        
+        if let gemKey = geminiKey {
+            do {
+                let cleanKey = gemKey.key.trimmingCharacters(in: .whitespacesAndNewlines)
+                let url = URL(string: "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=\(cleanKey)")!
+                let requestBody: [String: Any] = [
+                    "contents": [["parts": [["text": prompt]]]],
+                    "generationConfig": ["temperature": 0.3]
+                ]
+                let data = try await performRequest(url: url, body: requestBody)
+                guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let candidates = json["candidates"] as? [[String: Any]],
+                      let first = candidates.first,
+                      let content = first["content"] as? [String: Any],
+                      let parts = content["parts"] as? [[String: Any]],
+                      let text = parts.first?["text"] as? String else {
+                    throw AIError.invalidResponse
+                }
+                return text
+            } catch {
+                lastError = error
+            }
+        }
+        
+        if let oaiKey = openAIKey {
+            do {
+                let cleanKey = oaiKey.key.trimmingCharacters(in: .whitespacesAndNewlines)
+                let url = URL(string: "https://api.openai.com/v1/chat/completions")!
+                let requestBody: [String: Any] = [
+                    "model": "gpt-4o-mini",
+                    "messages": [["role": "user", "content": prompt]],
+                    "temperature": 0.3
+                ]
+                let data = try await performRequest(url: url, body: requestBody, extraHeaders: ["Authorization": "Bearer \(cleanKey)"])
+                guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let choices = json["choices"] as? [[String: Any]],
+                      let first = choices.first,
+                      let message = first["message"] as? [String: Any],
+                      let text = message["content"] as? String else {
+                    throw AIError.invalidResponse
+                }
+                return text
+            } catch {
+                lastError = error
+            }
+        }
+        
+        throw lastError
+    }
     // MARK: - Chat API
     func sendChatMessage(history: [ChatMessage], systemPrompt: String) async throws -> ChatMessage {
         let keys = try await userRepository.fetchAPIKeys()

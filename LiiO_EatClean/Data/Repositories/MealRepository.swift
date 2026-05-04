@@ -4,7 +4,7 @@ import CoreData
 class MealRepository: MealRepositoryProtocol {
     let context: NSManagedObjectContext
     
-    init(context: NSManagedObjectContext = PersistenceController.shared.container.newBackgroundContext()) {
+    init(context: NSManagedObjectContext = PersistenceController.shared.container.viewContext) {
         self.context = context
     }
     
@@ -25,46 +25,31 @@ class MealRepository: MealRepositoryProtocol {
     }
     
     func fetchMeals(by date: Date) async throws -> [MealModel] {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return [] }
+        
+        let request: NSFetchRequest<Meal> = Meal.fetchRequest()
+        request.predicate = NSPredicate(format: "date >= %@ AND date < %@", startOfDay as CVarArg, endOfDay as CVarArg)
+        request.returnsObjectsAsFaults = false
+        request.includesPendingChanges = true
+        
         return try await context.perform {
-            let calendar = Calendar.current
-            let startOfDay = calendar.startOfDay(for: date)
-            guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return [] }
-            
-            let request: NSFetchRequest<Meal> = Meal.fetchRequest()
-            request.predicate = NSPredicate(format: "date >= %@ AND date < %@", startOfDay as CVarArg, endOfDay as CVarArg)
-            
+            self.context.processPendingChanges()
             let results = try self.context.fetch(request)
             return results.map { meal in
                 var mealFoods: [MealFoodModel] = []
-                if let foodsSet = meal.mealFoods as? Set<MealFood> {
-                    mealFoods = foodsSet.map { mf in
-                        var foodItemModel: FoodItemModel? = nil
-                        if let foodEntity = mf.foodItem {
-                            foodItemModel = FoodItemModel(
-                                id: foodEntity.id ?? UUID(),
-                                name: foodEntity.name ?? "",
-                                calories: foodEntity.calories,
-                                protein: foodEntity.protein,
-                                carbs: foodEntity.carbs,
-                                fat: foodEntity.fat,
-                                servingSize: foodEntity.servingSize,
-                                source: foodEntity.source ?? "",
-                                apiId: foodEntity.apiId,
-                                isCustom: foodEntity.isCustom,
-                                lastUsed: foodEntity.lastUsed
-                            )
+                
+                // Be extremely robust in how we handle the to-many relationship
+                if let foods = meal.mealFoods {
+                    if let foodsSet = foods as? Set<MealFood> {
+                        mealFoods = foodsSet.map { mf in
+                            self.mapMealFood(mf, date: date)
                         }
-                        
-                        return MealFoodModel(
-                            id: mf.id ?? UUID(),
-                            quantity: mf.quantity,
-                            caloriesSnapshot: mf.caloriesSnapshot,
-                            proteinSnapshot: mf.proteinSnapshot,
-                            carbsSnapshot: mf.carbsSnapshot,
-                            fatSnapshot: mf.fatSnapshot,
-                            isEaten: MealFoodStatusManager.shared.isEaten(id: mf.id ?? UUID()),
-                            foodItem: foodItemModel
-                        )
+                    } else if let foodsOrderedSet = foods as? NSOrderedSet {
+                        mealFoods = foodsOrderedSet.array.compactMap { $0 as? MealFood }.map { mf in
+                            self.mapMealFood(mf, date: date)
+                        }
                     }
                 }
                 
@@ -82,22 +67,20 @@ class MealRepository: MealRepositoryProtocol {
         return try await context.perform {
             let request: NSFetchRequest<Meal> = Meal.fetchRequest()
             request.predicate = NSPredicate(format: "date >= %@ AND date <= %@", startDate as CVarArg, endDate as CVarArg)
+            request.returnsObjectsAsFaults = false
             
             let results = try self.context.fetch(request)
             return results.map { meal in
                 var mealFoods: [MealFoodModel] = []
-                if let foodsSet = meal.mealFoods as? Set<MealFood> {
-                    mealFoods = foodsSet.map { mf in
-                        MealFoodModel(
-                            id: mf.id ?? UUID(),
-                            quantity: mf.quantity,
-                            caloriesSnapshot: mf.caloriesSnapshot,
-                            proteinSnapshot: mf.proteinSnapshot,
-                            carbsSnapshot: mf.carbsSnapshot,
-                            fatSnapshot: mf.fatSnapshot,
-                            isEaten: MealFoodStatusManager.shared.isEaten(id: mf.id ?? UUID()),
-                            foodItem: nil // Not needed for aggregate charts
-                        )
+                if let foods = meal.mealFoods {
+                    if let foodsSet = foods as? Set<MealFood> {
+                        mealFoods = foodsSet.map { mf in
+                            self.mapMealFood(mf, date: startDate)
+                        }
+                    } else if let foodsOrderedSet = foods as? NSOrderedSet {
+                        mealFoods = foodsOrderedSet.array.compactMap { $0 as? MealFood }.map { mf in
+                            self.mapMealFood(mf, date: startDate)
+                        }
                     }
                 }
                 
@@ -111,6 +94,36 @@ class MealRepository: MealRepositoryProtocol {
         }
     }
     
+    private func mapMealFood(_ mf: MealFood, date: Date) -> MealFoodModel {
+        var foodItemModel: FoodItemModel? = nil
+        if let foodEntity = mf.foodItem {
+            foodItemModel = FoodItemModel(
+                id: foodEntity.id ?? UUID(),
+                name: foodEntity.name ?? "",
+                calories: foodEntity.calories,
+                protein: foodEntity.protein,
+                carbs: foodEntity.carbs,
+                fat: foodEntity.fat,
+                servingSize: foodEntity.servingSize,
+                source: foodEntity.source ?? "",
+                apiId: foodEntity.apiId,
+                isCustom: foodEntity.isCustom,
+                lastUsed: foodEntity.lastUsed
+            )
+        }
+        
+        return MealFoodModel(
+            id: mf.id ?? UUID(),
+            quantity: mf.quantity,
+            caloriesSnapshot: mf.caloriesSnapshot,
+            proteinSnapshot: mf.proteinSnapshot,
+            carbsSnapshot: mf.carbsSnapshot,
+            fatSnapshot: mf.fatSnapshot,
+            isEaten: MealFoodStatusManager.shared.isEaten(id: mf.id ?? UUID()),
+            foodItem: foodItemModel
+        )
+    }
+    
     func fetchDailyLog(by date: Date) async throws -> DailyLogModel? {
         return nil
     }
@@ -121,7 +134,6 @@ class MealRepository: MealRepositoryProtocol {
             let startOfDay = calendar.startOfDay(for: date)
             guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return }
             
-            // Check if meal of this type already exists for this date
             let request: NSFetchRequest<Meal> = Meal.fetchRequest()
             request.predicate = NSPredicate(format: "date >= %@ AND date < %@ AND mealType ==[c] %@", startOfDay as CVarArg, endOfDay as CVarArg, meal.mealType)
             
@@ -145,18 +157,17 @@ class MealRepository: MealRepositoryProtocol {
                 mealFood.proteinSnapshot = food.proteinSnapshot
                 mealFood.carbsSnapshot = food.carbsSnapshot
                 mealFood.fatSnapshot = food.fatSnapshot
+                mealFood.meal = targetMeal // Set inverse relationship explicitly
                 
                 // Save eaten status to Manager
                 MealFoodStatusManager.shared.setEaten(id: food.id, isEaten: food.isEaten)
                 
-                // Link FoodItem if it exists, otherwise create it
                 if let foodItemModel = food.foodItem {
                     let foodRequest: NSFetchRequest<FoodItem> = FoodItem.fetchRequest()
                     foodRequest.predicate = NSPredicate(format: "id == %@", foodItemModel.id as CVarArg)
                     if let foodEntity = try self.context.fetch(foodRequest).first {
                         mealFood.foodItem = foodEntity
                     } else {
-                        // Create it!
                         let newFoodEntity = FoodItem(context: self.context)
                         newFoodEntity.id = foodItemModel.id
                         newFoodEntity.name = foodItemModel.name
@@ -176,6 +187,7 @@ class MealRepository: MealRepositoryProtocol {
                 targetMeal.addToMealFoods(mealFood)
             }
             try self.context.save()
+            self.context.processPendingChanges()
         }
     }
     
@@ -198,7 +210,6 @@ class MealRepository: MealRepositoryProtocol {
                 let parentMeal = mealFood.meal
                 self.context.delete(mealFood)
                 
-                // Clean up parent meal if empty
                 if let parentMeal = parentMeal, let remainingFoods = parentMeal.mealFoods, remainingFoods.count == 0 {
                     self.context.delete(parentMeal)
                 }
@@ -210,5 +221,9 @@ class MealRepository: MealRepositoryProtocol {
     
     func saveDailyLog(_ log: DailyLogModel) async throws {
         // Implementation stub
+    }
+    
+    func updateMealFoodStatus(id: UUID, isEaten: Bool) async throws {
+        MealFoodStatusManager.shared.setEaten(id: id, isEaten: isEaten)
     }
 }

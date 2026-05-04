@@ -1,8 +1,8 @@
 # Roadmap: LiiO EatClean
 
 **Version:** v1.0
-**Phases:** 9
-**Requirements:** 38
+**Phases:** 10
+**Requirements:** 45
 
 ## Milestone 1: v1.0 — MVP Calorie Tracker
 
@@ -141,5 +141,22 @@
 5. Gợi ý món ăn thông minh dựa trên sở thích và calories còn lại trong ngày.
 
 ---
+
+### Phase 10: AI-Powered Meals Tab — Smart Suggestions, Memory & Actionable AI
+**Goal:** Xây dựng Meals tab thông minh với AI trợ lý dinh dưỡng: gợi ý bữa ăn cá nhân hóa dựa trên calo/sở thích/bệnh lý, persistent memory system, context injection, structured output với khả năng log meal trực tiếp, và learning system tự trích xuất thông tin từ hành vi người dùng.
+**Requirements:** AIMEAL-01, AIMEAL-02, AIMEAL-03, AIMEAL-04, AIMEAL-05, AIMEAL-06, AIMEAL-07
+**UI hint:** yes
+**Depends on:** Phase 5, Phase 7, Phase 9
+
+**Success criteria:**
+1. Memory System: Lưu trữ persistent user memory (sở thích, bệnh lý, kiêng cữ, ghi chú) tách biệt khỏi chat history, tồn tại khi reset chat.
+2. Context Builder: Inject đúng dữ liệu cần thiết theo ngữ cảnh câu hỏi (calo + sở thích cho gợi ý, bệnh lý cho tư vấn sức khỏe), không gửi toàn bộ data mỗi lần.
+3. AI gợi ý bữa ăn thông minh dựa trên: calo còn lại, sở thích, kiêng cữ, bệnh lý — trả về structured output (JSON) để render UI cards.
+4. Actionable AI: Mỗi gợi ý có nút "Log Meal" để lưu trực tiếp vào meal log mà không cần rời Meals tab.
+5. Learning System: AI tự phân tích chat để trích xuất bệnh mới, sở thích, kiêng cữ → xác nhận với user → lưu vào memory.
+6. AI không đưa chẩn đoán y khoa, luôn ưu tiên món user thích, không gợi ý món kiêng.
+7. Tối ưu token usage: memory + context injection giảm thiểu dữ liệu gửi đi, tránh lag.
+
+---
 *Roadmap created: 2026-04-29*
-*Last updated: 2026-04-29 after initial creation*
+*Last updated: 2026-05-04 after Phase 10 addition*

@@ -8,4 +8,5 @@ protocol MealRepositoryProtocol {
     func deleteMeal(by id: UUID) async throws
     func deleteMealFood(by id: UUID) async throws
     func saveDailyLog(_ log: DailyLogModel) async throws
+    func updateMealFoodStatus(id: UUID, isEaten: Bool) async throws
 }

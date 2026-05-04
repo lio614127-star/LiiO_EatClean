@@ -4,7 +4,7 @@ import CoreData
 class UserRepository: UserRepositoryProtocol {
     let context: NSManagedObjectContext
     
-    init(context: NSManagedObjectContext = PersistenceController.shared.container.newBackgroundContext()) {
+    init(context: NSManagedObjectContext = PersistenceController.shared.container.viewContext) {
         self.context = context
     }
     

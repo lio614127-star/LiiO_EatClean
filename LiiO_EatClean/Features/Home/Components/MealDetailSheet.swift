@@ -2,16 +2,17 @@ import SwiftUI
 
 struct MealDetailSheet: View {
     let mealType: String
-    @State private var meals: [MealModel]
+    @State private var meals: [MealModel] = []
+    @State private var isLoading = false
     var onUpdate: () -> Void
     
     @Environment(\.dismiss) var dismiss
     private let mealRepository: MealRepositoryProtocol = MealRepository()
     
-    init(mealType: String, meals: [MealModel], onUpdate: @escaping () -> Void) {
+    init(mealType: String, initialMeals: [MealModel] = [], onUpdate: @escaping () -> Void) {
         self.mealType = mealType
-        self._meals = State(initialValue: meals)
         self.onUpdate = onUpdate
+        self._meals = State(initialValue: initialMeals)
     }
     
     private var allFoods: [MealFoodModel] {
@@ -86,6 +87,11 @@ struct MealDetailSheet: View {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .overlay {
+                    if isLoading {
+                        ProgressView()
+                    }
+                }
             }
             .navigationTitle(mealType)
             .navigationBarTitleDisplayMode(.inline)
@@ -96,6 +102,41 @@ struct MealDetailSheet: View {
                     }
                     .bold()
                 }
+            }
+            .task {
+                await loadMeals()
+            }
+        }
+    }
+    
+    private func loadMeals() async {
+        guard !isLoading else { return }
+        isLoading = true
+        
+        do {
+            try await performLoad()
+            
+            // If empty, wait a bit and retry once (CoreData sync fallback)
+            if allFoods.isEmpty {
+                try await Task.sleep(nanoseconds: 500_000_000) // 0.5s
+                try await performLoad()
+            }
+        } catch {
+            print("Error loading meals in detail: \(error)")
+        }
+        
+        await MainActor.run {
+            isLoading = false
+        }
+    }
+    
+    private func performLoad() async throws {
+        let allTodayMeals = try await mealRepository.fetchMeals(by: Date())
+        await MainActor.run {
+            let targetType = mealType.trimmingCharacters(in: .whitespacesAndNewlines)
+            self.meals = allTodayMeals.filter { meal in
+                let mType = meal.mealType.trimmingCharacters(in: .whitespacesAndNewlines)
+                return mType.localizedCaseInsensitiveCompare(targetType) == .orderedSame
             }
         }
     }
@@ -115,28 +156,34 @@ struct MealDetailSheet: View {
     }
     
     private func updateEatenStatus(id: UUID, isEaten: Bool) {
-        // Update persistence manager
-        MealFoodStatusManager.shared.setEaten(id: id, isEaten: isEaten)
-        
-        // Find and update in local state for UI responsiveness
-        for (mIndex, meal) in meals.enumerated() {
-            if let fIndex = meal.mealFoods.firstIndex(where: { $0.id == id }) {
-                meals[mIndex].mealFoods[fIndex].isEaten = isEaten
-                
-                // Trigger global update
-                Task {
-                    await MainActor.run {
+        Task {
+            // Update CoreData
+            try? await mealRepository.updateMealFoodStatus(id: id, isEaten: isEaten)
+            
+            // Update local state for UI responsiveness
+            await MainActor.run {
+                for (mIndex, meal) in meals.enumerated() {
+                    if let fIndex = meal.mealFoods.firstIndex(where: { $0.id == id }) {
+                        meals[mIndex].mealFoods[fIndex].isEaten = isEaten
                         onUpdate()
+                        break
                     }
                 }
-                break
             }
         }
     }
     
     private func deleteFood(at offsets: IndexSet) {
-        // Implementation for deletion if needed
-        // For now, focus on the isEaten toggle
+        let foodsToDelete = offsets.map { allFoods[$0] }
+        Task {
+            for food in foodsToDelete {
+                try? await mealRepository.deleteMealFood(by: food.id)
+            }
+            await loadMeals()
+            await MainActor.run {
+                onUpdate()
+            }
+        }
     }
 }
 
