@@ -42,6 +42,9 @@ struct MemorySummaryCard: View {
         .onAppear {
             memory = MemoryManager.shared.fetchMemory()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .memoryDidUpdate)) { _ in
+            memory = MemoryManager.shared.fetchMemory()
+        }
     }
 }
 

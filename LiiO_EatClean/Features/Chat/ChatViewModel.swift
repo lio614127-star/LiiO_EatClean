@@ -76,8 +76,17 @@ class ChatViewModel {
         let date = Date()
         
         // Prioritize mealType from AI, and map common variants to standard UI types
-        var finalMealType = food.mealType ?? mealType
-        if finalMealType.lowercased().contains("phụ") || finalMealType.lowercased().contains("vặt") {
+        var rawMealType = food.mealType ?? mealType
+        var finalMealType = "Ăn vặt" // Default
+        
+        let lower = rawMealType.lowercased()
+        if lower.contains("sáng") {
+            finalMealType = "Bữa sáng"
+        } else if lower.contains("trưa") {
+            finalMealType = "Bữa trưa"
+        } else if lower.contains("tối") {
+            finalMealType = "Bữa tối"
+        } else if lower.contains("phụ") || lower.contains("vặt") || lower.contains("snack") {
             finalMealType = "Ăn vặt"
         }
         

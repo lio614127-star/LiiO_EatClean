@@ -25,6 +25,7 @@ class MemoryManager: MemoryManagerProtocol {
     func saveMemory(_ memory: UserProfileMemory) {
         if let data = try? JSONEncoder().encode(memory) {
             defaults.set(data, forKey: memoryKey)
+            NotificationCenter.default.post(name: .memoryDidUpdate, object: nil)
         }
     }
     
@@ -109,4 +110,8 @@ class MemoryManager: MemoryManagerProtocol {
             addDietaryNote(update.value)
         }
     }
+}
+
+extension Notification.Name {
+    static let memoryDidUpdate = Notification.Name("memoryDidUpdate")
 }

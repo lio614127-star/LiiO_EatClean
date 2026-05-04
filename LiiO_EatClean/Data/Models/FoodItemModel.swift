@@ -1,6 +1,6 @@
 import Foundation
 
-struct FoodItemModel: Identifiable, Codable {
+struct FoodItemModel: Identifiable, Codable, Equatable {
     let id: UUID
     var name: String
     var calories: Double

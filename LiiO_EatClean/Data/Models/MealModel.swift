@@ -1,6 +1,6 @@
 import Foundation
 
-struct MealModel: Identifiable, Codable {
+struct MealModel: Identifiable, Codable, Equatable {
     let id: UUID
     var date: Date
     var mealType: String

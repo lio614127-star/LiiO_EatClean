@@ -2,8 +2,7 @@ import SwiftUI
 
 struct MealDetailSheet: View {
     let mealType: String
-    @State private var meals: [MealModel] = []
-    @State private var isLoading = false
+    let initialMeals: [MealModel]
     var onUpdate: () -> Void
     
     @Environment(\.dismiss) var dismiss
@@ -11,12 +10,12 @@ struct MealDetailSheet: View {
     
     init(mealType: String, initialMeals: [MealModel] = [], onUpdate: @escaping () -> Void) {
         self.mealType = mealType
+        self.initialMeals = initialMeals
         self.onUpdate = onUpdate
-        self._meals = State(initialValue: initialMeals)
     }
     
     private var allFoods: [MealFoodModel] {
-        meals.flatMap { $0.mealFoods }
+        initialMeals.flatMap { $0.mealFoods }
     }
     
     private var totalCalories: Double {
@@ -87,11 +86,6 @@ struct MealDetailSheet: View {
                     }
                 }
                 .listStyle(.insetGrouped)
-                .overlay {
-                    if isLoading {
-                        ProgressView()
-                    }
-                }
             }
             .navigationTitle(mealType)
             .navigationBarTitleDisplayMode(.inline)
@@ -102,41 +96,6 @@ struct MealDetailSheet: View {
                     }
                     .bold()
                 }
-            }
-            .task {
-                await loadMeals()
-            }
-        }
-    }
-    
-    private func loadMeals() async {
-        guard !isLoading else { return }
-        isLoading = true
-        
-        do {
-            try await performLoad()
-            
-            // If empty, wait a bit and retry once (CoreData sync fallback)
-            if allFoods.isEmpty {
-                try await Task.sleep(nanoseconds: 500_000_000) // 0.5s
-                try await performLoad()
-            }
-        } catch {
-            print("Error loading meals in detail: \(error)")
-        }
-        
-        await MainActor.run {
-            isLoading = false
-        }
-    }
-    
-    private func performLoad() async throws {
-        let allTodayMeals = try await mealRepository.fetchMeals(by: Date())
-        await MainActor.run {
-            let targetType = mealType.trimmingCharacters(in: .whitespacesAndNewlines)
-            self.meals = allTodayMeals.filter { meal in
-                let mType = meal.mealType.trimmingCharacters(in: .whitespacesAndNewlines)
-                return mType.localizedCaseInsensitiveCompare(targetType) == .orderedSame
             }
         }
     }
@@ -160,15 +119,9 @@ struct MealDetailSheet: View {
             // Update CoreData
             try? await mealRepository.updateMealFoodStatus(id: id, isEaten: isEaten)
             
-            // Update local state for UI responsiveness
+            // Reload parent view model
             await MainActor.run {
-                for (mIndex, meal) in meals.enumerated() {
-                    if let fIndex = meal.mealFoods.firstIndex(where: { $0.id == id }) {
-                        meals[mIndex].mealFoods[fIndex].isEaten = isEaten
-                        onUpdate()
-                        break
-                    }
-                }
+                onUpdate()
             }
         }
     }
@@ -179,7 +132,6 @@ struct MealDetailSheet: View {
             for food in foodsToDelete {
                 try? await mealRepository.deleteMealFood(by: food.id)
             }
-            await loadMeals()
             await MainActor.run {
                 onUpdate()
             }

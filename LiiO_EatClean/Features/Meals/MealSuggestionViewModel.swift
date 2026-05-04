@@ -80,7 +80,7 @@ class MealSuggestionViewModel {
                 source: "AI Suggestion"
             )
             
-            let finalMealType = (food.mealType ?? "Ăn vặt").trimmingCharacters(in: .whitespacesAndNewlines)
+            let finalMealType = (food.mealType ?? self.suggestedMealType).trimmingCharacters(in: .whitespacesAndNewlines)
             
             let mealFood = MealFoodModel(
                 quantity: food.servingSize,

@@ -89,6 +89,7 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 | 2026-05-04 | Phase 10 context gathered | `.planning/phases/10-ai-meals-tab/10-CONTEXT.md` |
 | 2026-05-04 | Phase 10 planned | `.planning/phases/10-ai-meals-tab/10A-10D-PLAN.md` |
 | 2026-05-04 | Phase 10 executed | `.planning/phases/10-ai-meals-tab/10-SUMMARY.md` |
+| 2026-05-04 | Debugging | Fixed physical device Memory Save bug with NotificationCenter. Fixed AI mealType matching. Fixed severe SwiftUI iOS 17 Sheet State Capture bug using `.sheet(item:)` for `AddMealView` and `MealDetailSheet`. |
 
 ---
-*Last updated: 2026-05-04 after Phase 10 planning*
+*Last updated: 2026-05-04 after SwiftUI Sheet Debugging*

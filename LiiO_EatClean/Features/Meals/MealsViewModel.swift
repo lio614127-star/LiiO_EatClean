@@ -21,6 +21,12 @@ class MealsViewModel {
         do {
             user = try await userRepository.fetchUser()
             todayMeals = try await mealRepository.fetchMeals(by: Date())
+            
+            // CoreData sync fallback
+            if todayMeals.isEmpty {
+                try await Task.sleep(nanoseconds: 500_000_000)
+                todayMeals = try await mealRepository.fetchMeals(by: Date())
+            }
         } catch {
             print("Error loading today meals: \(error)")
         }

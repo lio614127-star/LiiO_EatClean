@@ -4,12 +4,10 @@ struct HomeView: View {
     @State private var viewModel = HomeViewModel()
     
     // Add Meal Sheet State
-    @State private var isShowingAddMeal = false
-    @State private var selectedMealTypeForAdd = "Bữa sáng"
+    @State private var activeAddMealType: MealSheetItem?
     
     // Meal Detail Sheet
-    @State private var isShowingMealDetail = false
-    @State private var selectedMealTypeForDetail = ""
+    @State private var activeDetailMealType: MealSheetItem?
     
     var body: some View {
         NavigationStack {
@@ -68,21 +66,22 @@ struct HomeView: View {
                 }
             }
             .navigationBarHidden(true)
-            .sheet(isPresented: $isShowingAddMeal, onDismiss: {
+            .sheet(item: $activeAddMealType, onDismiss: {
                 Task {
                     await viewModel.loadDashboard()
                 }
-            }) {
-                AddMealView(selectedMealType: selectedMealTypeForAdd)
+            }) { item in
+                AddMealView(selectedMealType: item.id)
             }
-            .sheet(isPresented: $isShowingMealDetail) {
+            .sheet(item: $activeDetailMealType) { item in
                 MealDetailSheet(
-                    mealType: selectedMealTypeForDetail,
-                    initialMeals: viewModel.meals(for: selectedMealTypeForDetail),
+                    mealType: item.id,
+                    initialMeals: viewModel.meals(for: item.id),
                     onUpdate: {
                         Task { await viewModel.loadDashboard() }
                     }
                 )
+                .id(item.id + "-\(viewModel.todayMeals.flatMap { $0.mealFoods }.count)")
             }
         }
         .task {
@@ -177,13 +176,11 @@ struct HomeView: View {
     }
     
     private func showAddMealSheet(for type: String) {
-        selectedMealTypeForAdd = type
-        isShowingAddMeal = true
+        activeAddMealType = MealSheetItem(id: type)
     }
     
     private func showMealDetailSheet(for type: String) {
-        selectedMealTypeForDetail = type
-        isShowingMealDetail = true
+        activeDetailMealType = MealSheetItem(id: type)
     }
     
     private func deleteMealFood(id: UUID) {

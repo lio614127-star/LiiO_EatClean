@@ -1,11 +1,13 @@
 import SwiftUI
 
+struct MealSheetItem: Identifiable, Equatable {
+    let id: String
+}
+
 struct MealsView: View {
     @State private var viewModel = MealsViewModel()
-    @State private var isShowingAddMeal = false
-    @State private var selectedMealTypeForAdd = "Bữa sáng"
-    @State private var isShowingMealDetail = false
-    @State private var selectedMealTypeForDetail = ""
+    @State private var activeAddMealType: MealSheetItem?
+    @State private var activeDetailMealType: MealSheetItem?
     
     var body: some View {
         NavigationStack {
@@ -57,19 +59,20 @@ struct MealsView: View {
             }
             .navigationTitle("Meals")
             .navigationBarHidden(true)
-            .sheet(isPresented: $isShowingAddMeal, onDismiss: {
+            .sheet(item: $activeAddMealType, onDismiss: {
                 Task { await viewModel.loadTodayMeals() }
-            }) {
-                AddMealView(selectedMealType: selectedMealTypeForAdd)
+            }) { item in
+                AddMealView(selectedMealType: item.id)
             }
-            .sheet(isPresented: $isShowingMealDetail) {
+            .sheet(item: $activeDetailMealType) { item in
                 MealDetailSheet(
-                    mealType: selectedMealTypeForDetail,
-                    initialMeals: viewModel.meals(for: selectedMealTypeForDetail),
+                    mealType: item.id,
+                    initialMeals: viewModel.meals(for: item.id),
                     onUpdate: {
                         Task { await viewModel.loadTodayMeals() }
                     }
                 )
+                .id(item.id + "-\(viewModel.todayMeals.flatMap { $0.mealFoods }.count)")
             }
         }
         .task {
@@ -95,8 +98,7 @@ struct MealsView: View {
                     MealItemRow(mealFood: food)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            selectedMealTypeForDetail = type
-                            isShowingMealDetail = true
+                            activeDetailMealType = MealSheetItem(id: type)
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
@@ -125,8 +127,7 @@ struct MealsView: View {
                     .foregroundColor(totalCals > 0 ? .primary : .secondary)
                 
                 Button {
-                    selectedMealTypeForAdd = type
-                    isShowingAddMeal = true
+                    activeAddMealType = MealSheetItem(id: type)
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .foregroundColor(.green)
