@@ -119,34 +119,32 @@ struct AddMealView: View {
             
             Spacer()
             
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Button(action: { showBarcodeScanner = true }) {
                     Image(systemName: "barcode.viewfinder")
-                        .font(.subheadline.bold())
+                        .font(.body)
                         .foregroundColor(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
+                        .frame(width: 36, height: 36)
                         .background(Color.orange)
-                        .clipShape(Capsule())
+                        .clipShape(Circle())
                 }
                 
                 Button(action: { showVoiceInput = true }) {
                     Image(systemName: "mic.fill")
-                        .font(.subheadline.bold())
+                        .font(.body)
                         .foregroundColor(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
+                        .frame(width: 36, height: 36)
                         .background(Color.blue)
-                        .clipShape(Capsule())
+                        .clipShape(Circle())
                 }
                 
                 Button(action: {
                     Task { await viewModel.requestAISuggestions() }
                 }) {
-                    Label(viewModel.isLoadingAI ? "Đang hỏi AI..." : "✨ Hỏi AI", systemImage: viewModel.isLoadingAI ? "" : "")
+                    Text(viewModel.isLoadingAI ? "AI..." : "✨ Hỏi AI")
                         .font(.subheadline.bold())
                         .foregroundColor(.white)
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(
                             LinearGradient(colors: [.green, Color(red: 0.1, green: 0.7, blue: 0.5)],
