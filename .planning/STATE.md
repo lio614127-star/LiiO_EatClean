@@ -23,8 +23,8 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 
 Phase: 12
 Plan: 12-PLAN.md
-Status: Executed
-Last activity: 2026-05-05 — Phase 12 Voice & Barcode Inputs implemented
+Status: Verified (UAT 9/9 passed)
+Last activity: 2026-05-05 — Phase 12 UAT complete, all tests passed
 
 ## Memory
 
@@ -94,6 +94,7 @@ Last activity: 2026-05-05 — Phase 12 Voice & Barcode Inputs implemented
 | 2026-05-04 | Debugging | Fixed physical device Memory Save bug with NotificationCenter. Fixed AI mealType matching. Fixed severe SwiftUI iOS 17 Sheet State Capture bug using `.sheet(item:)` for `AddMealView` and `MealDetailSheet`. |
 | 2026-05-04 | Phase 11 executed | `.planning/phases/11-gamification-ui-polish/11-SUMMARY.md` |
 | 2026-05-05 | Phase 12 executed | `.planning/phases/12-advanced-data-inputs/12-SUMMARY.md` |
+| 2026-05-05 | Phase 12 UAT verified | 9/9 passed. Fixed action bar layout + mic pulsing animation on device. |
 
 ---
-*Last updated: 2026-05-05 after Phase 12 execution*
+*Last updated: 2026-05-05 after Phase 12 UAT*
