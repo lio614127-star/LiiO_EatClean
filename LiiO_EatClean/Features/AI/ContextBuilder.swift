@@ -7,6 +7,7 @@ enum ContextStrategy {
     case healthAdvice            // Full health conditions + dietary notes + detailed explanations
     case progressAnalysis        // 7-day history + weight trend + goal progress
     case dailySummary            // End of day summary with insights
+    case mealPlan                // Full-day meal plan (4 meals) with adaptive context
 }
 
 // MARK: - Context Builder (Strategy Pattern)
@@ -70,6 +71,11 @@ class ContextBuilder {
             return buildDailySummaryContext(
                 goalType: goalType,
                 targetCalories: targetCalories,
+                memory: memory
+            )
+        case .mealPlan:
+            return try await buildMealPlanContext(
+                targetCalories: effectiveRemaining,
                 memory: memory
             )
         }
@@ -174,6 +180,84 @@ class ContextBuilder {
         ```
         
         Lưu ý: "servingSize" luôn là 1.0. Calo và macros tính cho đúng 1 phần ăn.
+        """
+        
+        return prompt
+    
+    // MARK: - Strategy: Meal Plan (Full Day — Adaptive Context)
+    
+    private func buildMealPlanContext(
+        targetCalories: Double,
+        memory: UserProfileMemory
+    ) async throws -> String {
+        var prompt = """
+        Bạn là chuyên gia dinh dưỡng chuyên về ẩm thực Việt Nam.
+        Hãy lên thực đơn 1 ngày gồm 4 bữa với tổng khoảng \(Int(targetCalories)) kcal.
+        
+        Phân bổ gợi ý:
+        - Bữa sáng: ~\(Int(targetCalories * 0.25)) kcal (25%)
+        - Bữa trưa: ~\(Int(targetCalories * 0.35)) kcal (35%)
+        - Bữa tối: ~\(Int(targetCalories * 0.30)) kcal (30%)
+        - Ăn vặt: ~\(Int(targetCalories * 0.10)) kcal (10%)
+        
+        """
+        
+        // Base context: Memory injection (always if available)
+        if memory.hasContent {
+            let allAvoid = memory.allAvoidFoods
+            if !allAvoid.isEmpty {
+                prompt += "\n⛔ CẤM — KHÔNG ĐƯỢC gợi ý: \(allAvoid.joined(separator: ", "))"
+            }
+            if !memory.dislikes.isEmpty {
+                prompt += "\nKhông thích: \(memory.dislikes.joined(separator: ", "))"
+            }
+            if !memory.likes.isEmpty {
+                prompt += "\nƯa thích: \(memory.likes.joined(separator: ", "))"
+            }
+            if !memory.healthConditions.isEmpty {
+                let conditions = memory.healthConditions.map { "\($0.name): \($0.dietaryNotes)" }.joined(separator: "; ")
+                prompt += "\nTình trạng sức khoẻ: \(conditions)"
+            }
+        }
+        
+        // Conditional: History (only if ≥3 days of data — tránh lặp món)
+        let calendar = Calendar.current
+        let threeDaysAgo = calendar.date(byAdding: .day, value: -3, to: Date()) ?? Date()
+        let recentMeals = try await mealRepository.fetchMeals(from: threeDaysAgo, to: Date())
+        
+        if recentMeals.count >= 3 {
+            let recentFoodNames = Array(Set(recentMeals.flatMap { $0.mealFoods }.compactMap { $0.foodItem?.name })).prefix(5)
+            if !recentFoodNames.isEmpty {
+                prompt += "\n\nMón đã ăn gần đây (tránh lặp): \(recentFoodNames.joined(separator: ", "))"
+            }
+        }
+        
+        // Conditional: Insights (only if patterns detected)
+        let insightDetector = InsightDetector()
+        let insights = await insightDetector.detectInsights()
+        if !insights.isEmpty {
+            let insightTexts = insights.prefix(2).map { "- \($0.message)" }.joined(separator: "\n")
+            prompt += "\n\nNhận xét dinh dưỡng gần đây:\n\(insightTexts)\nHãy điều chỉnh thực đơn để khắc phục các vấn đề trên."
+        }
+        
+        // Output format
+        prompt += """
+        
+        
+        QUAN TRỌNG: Trả về kết quả trong một Markdown code block chuẩn ` ```json ... ``` `. Không giải thích thêm.
+        
+        Định dạng JSON:
+        ```json
+        {
+          "action": "meal_plan",
+          "items": [
+            {"name":"Tên món","calories":400,"protein":25,"carbs":50,"fat":10,"servingSize":1.0,"mealType":"Bữa sáng"}
+          ]
+        }
+        ```
+        
+        Mỗi item PHẢI có mealType là 1 trong: "Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt".
+        Mỗi bữa nên có 2-3 món. servingSize luôn = 1.0. Calo và macros tính cho đúng 1 phần ăn.
         """
         
         return prompt
