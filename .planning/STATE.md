@@ -21,10 +21,10 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 
 ## Current Position
 
-Phase: 13
-Plan: 13-PLAN.md
-Status: Complete (UAT 9/9 ✅)
-Last activity: 2026-05-05 — Phase 13 verified, 3 bugs fixed during UAT
+Phase: 14
+Plan: 14A, 14B, 14C
+Status: Executed (Ready for UAT)
+Last activity: 2026-05-05 — Phase 14 executed, AI Meal Planning Engine implemented
 
 ## Memory
 
@@ -46,16 +46,19 @@ Last activity: 2026-05-05 — Phase 13 verified, 3 bugs fixed during UAT
 - **Data Management**: "Danger Zone" implemented in Profile to allow users to completely purge all CoreData records (Meals, Weights, Logs) and reset app state.
 - **Water Management**: Added "Undo/Reset" capability for water intake to handle over-logging errors.
 - **Custom Branding**: Integrated `avatar_tool` as the primary visual identity. Replaced text-based Splash Screen with a styled image logo and generated a full suite of optimized App Icons (40px to 1024px) for production-grade display.
+- **AI Meal Planning Flow**: Decoupled planning from tracking via a full-screen sheet. Implemented adaptive context (History + Insights) to prevent repetitive suggestions and address nutritional gaps.
+- **Proportional Calorie Trimming**: Implemented app-side logic to scale AI-suggested meal portions proportionally to fit within ±5% of the user's daily calorie target.
 
 ### Learnings
 - AI `mealType` mapping must strictly match UI categories ("Bữa phụ" -> "Ăn vặt") to prevent ghost data.
 - User portions need normalization (divided by servingSize) to handle manual quantity changes correctly later.
 - Ephemeral state (UserDefaults for isEaten) is a reliable way to add properties without complex CoreData migrations mid-development.
-(None yet)
+- Context injection strategy: Base memory is reliable, but history/insights should be conditional to avoid token bloat and "hallucinated" patterns for new users.
 
 ### Roadmap Evolution
 - Phase 9 added: AI Nutritionist Chatbox (Expert advice, habit-aware, app context)
 - Phase 10 added: AI-Powered Meals Tab — Smart Suggestions, Memory & Actionable AI
+- Phase 14 added: Dedicated AI Meal Planning Engine (Decoupled UI, Adaptive Context, Proportional Trimming)
 
 ## Session Log
 
@@ -100,8 +103,9 @@ Last activity: 2026-05-05 — Phase 13 verified, 3 bugs fixed during UAT
 | 2026-05-05 | Phase 13 executed | `.planning/phases/13-proactive-ai/13-SUMMARY.md` |
 | 2026-05-05 | Phase 13 UAT verified | 9/9 passed. Fixed: calo x4 bug, loading spinner block, auto-expand timing |
 | 2026-05-05 | Phase 14 context gathered | `.planning/phases/14-ai-meal-planning/14-CONTEXT.md` |
-| 2026-05-05 | Phase 14 planned | 3 plans (14A, 14B, 14C) in 2 waves. Ready to execute. |
+| 2026-05-05 | Phase 14 planned | 3 plans (14A, 14B, 14C) in 2 waves. |
+| 2026-05-05 | Phase 14 executed | `.planning/phases/14-ai-meal-planning/14-SUMMARY.md` |
 
 ---
-*Last updated: 2026-05-05 after Phase 14 planned*
+*Last updated: 2026-05-05 after Phase 14 executed*
 
