@@ -52,14 +52,18 @@ struct VoiceInputView: View {
             // Pulsing Mic
             ZStack {
                 Circle()
-                    .fill(Color.green.opacity(0.2))
-                    .frame(width: isPulsing ? 200 : 120, height: isPulsing ? 200 : 120)
-                    .animation(isPulsing ? .easeInOut(duration: 1.0).repeatForever(autoreverses: true) : .default, value: isPulsing)
+                    .fill(Color.green.opacity(0.15))
+                    .frame(width: 120, height: 120)
+                    .scaleEffect(isPulsing ? 1.8 : 1.0)
+                    .opacity(isPulsing ? 0.0 : 0.3)
+                    .animation(isPulsing ? .easeOut(duration: 1.5).repeatForever(autoreverses: false) : .default, value: isPulsing)
                 
                 Circle()
-                    .fill(Color.green.opacity(0.4))
-                    .frame(width: isPulsing ? 160 : 120, height: isPulsing ? 160 : 120)
-                    .animation(isPulsing ? .easeInOut(duration: 0.8).repeatForever(autoreverses: true) : .default, value: isPulsing)
+                    .fill(Color.green.opacity(0.25))
+                    .frame(width: 120, height: 120)
+                    .scaleEffect(isPulsing ? 1.4 : 1.0)
+                    .opacity(isPulsing ? 0.0 : 0.5)
+                    .animation(isPulsing ? .easeOut(duration: 1.5).repeatForever(autoreverses: false).delay(0.3) : .default, value: isPulsing)
                 
                 Button(action: {
                     if speechService.isListening {
@@ -76,6 +80,7 @@ struct VoiceInputView: View {
                         .clipShape(Circle())
                 }
             }
+            .frame(width: 220, height: 220) // Fixed container to prevent layout jumps
             
             // Status Text
             VStack(spacing: 8) {
