@@ -135,10 +135,9 @@ struct MealPlanSheet: View {
                 }
             }
             // Confirm dialog for bulk log (D-06)
-            .confirmationDialog(
-                "Bạn muốn log toàn bộ 4 bữa hôm nay?",
-                isPresented: $showConfirmDialog,
-                titleVisibility: .visible
+            .alert(
+                "Áp dụng toàn bộ kế hoạch?",
+                isPresented: $showConfirmDialog
             ) {
                 Button("Xác nhận") {
                     Task {
@@ -146,6 +145,8 @@ struct MealPlanSheet: View {
                     }
                 }
                 Button("Huỷ", role: .cancel) {}
+            } message: {
+                Text("Hành động này sẽ lưu toàn bộ 4 bữa ăn của kế hoạch hôm nay vào lịch sử của bạn.")
             }
             .sheet(isPresented: $showWeeklyPlan) {
                 WeeklyPlanView(viewModel: viewModel, targetCalories: targetCalories)
