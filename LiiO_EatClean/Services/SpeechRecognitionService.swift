@@ -32,7 +32,7 @@ class SpeechRecognitionService {
     }
     
     func startListening() {
-        guard let recognizer = recognizer, recognizer.isAvailable else {
+        guard let recognizer = recognizer else {
             self.error = "Nhận diện giọng nói không khả dụng."
             return
         }

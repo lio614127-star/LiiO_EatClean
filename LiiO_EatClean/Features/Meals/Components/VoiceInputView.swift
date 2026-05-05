@@ -12,6 +12,7 @@ struct VoiceInputView: View {
     var onFoodsConfirmed: ([AISuggestedFood]) -> Void
     
     @State private var isPulsing = false
+    @State private var isInitializing = false
     @State private var permissionError: String? = nil
     
     var body: some View {
@@ -35,7 +36,9 @@ struct VoiceInputView: View {
             }
             .task {
                 if !showResults {
+                    isInitializing = true
                     await startRecordingProcess()
+                    isInitializing = false
                 }
             }
             .onDisappear {
@@ -50,28 +53,32 @@ struct VoiceInputView: View {
             Spacer()
             
             // Pulsing Mic
-            ZStack {
-                Circle()
-                    .fill(Color.green.opacity(0.15))
-                    .frame(width: 120, height: 120)
-                    .scaleEffect(isPulsing ? 1.8 : 1.0)
-                    .opacity(isPulsing ? 0.0 : 0.3)
-                    .animation(isPulsing ? .easeOut(duration: 1.5).repeatForever(autoreverses: false) : .default, value: isPulsing)
-                
-                Circle()
-                    .fill(Color.green.opacity(0.25))
-                    .frame(width: 120, height: 120)
-                    .scaleEffect(isPulsing ? 1.4 : 1.0)
-                    .opacity(isPulsing ? 0.0 : 0.5)
-                    .animation(isPulsing ? .easeOut(duration: 1.5).repeatForever(autoreverses: false).delay(0.3) : .default, value: isPulsing)
-                
-                Button(action: {
-                    if speechService.isListening {
-                        stopAndParse()
-                    } else {
-                        Task { await startRecordingProcess() }
+            Button(action: {
+                if speechService.isListening {
+                    stopAndParse()
+                } else {
+                    Task {
+                        isInitializing = true
+                        await startRecordingProcess()
+                        isInitializing = false
                     }
-                }) {
+                }
+            }) {
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.15))
+                        .frame(width: 120, height: 120)
+                        .scaleEffect(isPulsing ? 1.8 : 1.0)
+                        .opacity(isPulsing ? 0.0 : 0.3)
+                        .animation(isPulsing ? .easeOut(duration: 1.5).repeatForever(autoreverses: false) : .default, value: isPulsing)
+                    
+                    Circle()
+                        .fill(Color.green.opacity(0.25))
+                        .frame(width: 120, height: 120)
+                        .scaleEffect(isPulsing ? 1.4 : 1.0)
+                        .opacity(isPulsing ? 0.0 : 0.5)
+                        .animation(isPulsing ? .easeOut(duration: 1.5).repeatForever(autoreverses: false).delay(0.3) : .default, value: isPulsing)
+                    
                     Image(systemName: speechService.isListening ? "stop.fill" : "mic.fill")
                         .font(.system(size: 40))
                         .foregroundColor(.white)
@@ -79,8 +86,10 @@ struct VoiceInputView: View {
                         .background(speechService.isListening ? Color.red : Color.green)
                         .clipShape(Circle())
                 }
+                .frame(width: 220, height: 220) // Fixed container to prevent layout jumps
             }
-            .frame(width: 220, height: 220) // Fixed container to prevent layout jumps
+            .buttonStyle(.plain)
+            .disabled(isInitializing)
             
             // Status Text
             VStack(spacing: 8) {
@@ -105,6 +114,10 @@ struct VoiceInputView: View {
                         .foregroundColor(.red)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
+                } else if isInitializing {
+                    Text("Đang khởi tạo...")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
                 } else {
                     Text("Nhấn vào mic để nói")
                         .font(.headline)
@@ -216,15 +229,16 @@ struct VoiceInputView: View {
         let authorized = await speechService.requestAuthorization()
         if authorized {
             permissionError = nil
-            speechService.startListening()
-            isPulsing = true
-            HapticManager.interaction()
             
-            speechService.onSilenceTimeout = {
-                if speechService.isListening {
+            speechService.onSilenceTimeout = { [weak speechService] in
+                if speechService?.isListening == true {
                     stopAndParse()
                 }
             }
+            
+            speechService.startListening()
+            isPulsing = true
+            HapticManager.interaction()
         } else {
             permissionError = "Vui lòng cấp quyền Microphone và Speech Recognition trong Cài đặt."
         }
