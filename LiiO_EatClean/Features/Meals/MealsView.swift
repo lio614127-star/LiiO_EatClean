@@ -9,6 +9,7 @@ struct MealsView: View {
     @State private var activeAddMealType: MealSheetItem?
     @State private var activeDetailMealType: MealSheetItem?
     @State private var showMealPlanSheet = false
+    @State private var mealPlanViewModel = MealPlanViewModel()
     
     var body: some View {
         NavigationStack {
@@ -104,6 +105,7 @@ struct MealsView: View {
                 Task { await viewModel.loadTodayMeals() }
             }) {
                 MealPlanSheet(
+                    viewModel: mealPlanViewModel,
                     isPresented: $showMealPlanSheet,
                     targetCalories: viewModel.dailyTarget
                 )

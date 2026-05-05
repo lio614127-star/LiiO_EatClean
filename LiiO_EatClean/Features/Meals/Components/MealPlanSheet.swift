@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct MealPlanSheet: View {
-    @State private var viewModel = MealPlanViewModel()
+    @Bindable var viewModel: MealPlanViewModel
     @Binding var isPresented: Bool
     let targetCalories: Double
     
@@ -152,7 +152,9 @@ struct MealPlanSheet: View {
             }
         }
         .task {
-            await viewModel.generateDayPlan(targetCalories: targetCalories)
+            if viewModel.planItems.isEmpty {
+                await viewModel.generateDayPlan(targetCalories: targetCalories)
+            }
         }
         // Auto-dismiss when all meals logged (D-08: ~1s delay + haptic)
         .onChange(of: viewModel.allMealsLogged) { _, allLogged in
