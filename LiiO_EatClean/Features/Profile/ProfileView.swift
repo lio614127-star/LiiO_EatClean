@@ -116,7 +116,7 @@ struct ProfileView: View {
                 } header: {
                     Text("Nhắc nhở")
                 } footer: {
-                    Text("Nhắc nhở uống nước và ghi lại bữa ăn tự động trong ngày.")
+                    Text("Nhắc nhở uống nước, ghi bữa ăn, và tổng kết dinh dưỡng cuối ngày (20:00).")
                         .font(.caption2)
                 }
                 
