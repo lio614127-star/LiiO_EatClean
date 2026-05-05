@@ -63,10 +63,10 @@ class InsightDetector {
             var lowProtein7DaysCount = 0
             for comp in last7DaysComps {
                 let dayMeals = mealsByDay[comp] ?? []
-                let protein = dayMeals.flatMap { $0.mealFoods }.map { $0.proteinSnapshot * $0.quantity }.reduce(0, +)
+                let protein = dayMeals.flatMap { $0.mealFoods }.filter { $0.isEaten }.map { $0.proteinSnapshot }.reduce(0, +)
                 
                 // Only count days where there is SOME data (don't count empty days as low protein if they haven't logged anything)
-                let cals = dayMeals.flatMap { $0.mealFoods }.map { $0.caloriesSnapshot * $0.quantity }.reduce(0, +)
+                let cals = dayMeals.flatMap { $0.mealFoods }.filter { $0.isEaten }.map { $0.caloriesSnapshot }.reduce(0, +)
                 
                 if cals > 0 && protein < 30 {
                     lowProtein7DaysCount += 1
@@ -102,7 +102,7 @@ class InsightDetector {
             var consecutiveOverrun = 0
             for comp in last3DaysComps {
                 let dayMeals = mealsByDay[comp] ?? []
-                let calories = dayMeals.flatMap { $0.mealFoods }.map { $0.caloriesSnapshot * $0.quantity }.reduce(0, +)
+                let calories = dayMeals.flatMap { $0.mealFoods }.filter { $0.isEaten }.map { $0.caloriesSnapshot }.reduce(0, +)
                 if calories > targetCalories {
                     consecutiveOverrun += 1
                 }

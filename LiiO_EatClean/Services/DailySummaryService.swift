@@ -50,16 +50,23 @@ class DailySummaryService {
             var fat: Double = 0
             var mealBreakdown: [String: Double] = [:]
             
+            let validMealTypes = ["bữa sáng", "bữa trưa", "bữa tối", "ăn vặt"]
+            
             for meal in meals {
+                // Match HomeViewModel: filter by valid meal types
+                guard validMealTypes.contains(meal.mealType.lowercased()) else { continue }
+                
                 var mealCals: Double = 0
                 for food in meal.mealFoods {
-                    let qty = food.quantity
-                    let c = food.caloriesSnapshot * qty
-                    mealCals += c
-                    totalCalories += c
-                    protein += food.proteinSnapshot * qty
-                    carbs += food.carbsSnapshot * qty
-                    fat += food.fatSnapshot * qty
+                    // Match HomeViewModel: only count eaten foods
+                    guard food.isEaten else { continue }
+                    
+                    // caloriesSnapshot already includes quantity — do NOT multiply by qty again
+                    mealCals += food.caloriesSnapshot
+                    totalCalories += food.caloriesSnapshot
+                    protein += food.proteinSnapshot
+                    carbs += food.carbsSnapshot
+                    fat += food.fatSnapshot
                 }
                 mealBreakdown[meal.mealType, default: 0] += mealCals
             }
