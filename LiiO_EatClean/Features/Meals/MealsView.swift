@@ -8,6 +8,7 @@ struct MealsView: View {
     @State private var viewModel = MealsViewModel()
     @State private var activeAddMealType: MealSheetItem?
     @State private var activeDetailMealType: MealSheetItem?
+    @State private var showMealPlanSheet = false
     
     var body: some View {
         NavigationStack {
@@ -28,6 +29,31 @@ struct MealsView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.top)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        
+                        // Meal Plan Button (D-03: entry point)
+                        Button {
+                            showMealPlanSheet = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "sparkles")
+                                Text("Lên kế hoạch hôm nay")
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.green, Color.green.opacity(0.8)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(12)
+                        }
+                        .buttonStyle(.plain)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         
@@ -73,6 +99,14 @@ struct MealsView: View {
                     }
                 )
                 .id(item.id + "-\(viewModel.todayMeals.flatMap { $0.mealFoods }.count)")
+            }
+            .fullScreenCover(isPresented: $showMealPlanSheet, onDismiss: {
+                Task { await viewModel.loadTodayMeals() }
+            }) {
+                MealPlanSheet(
+                    isPresented: $showMealPlanSheet,
+                    targetCalories: viewModel.dailyTarget
+                )
             }
         }
         .task {
