@@ -16,6 +16,10 @@ class HomeViewModel {
     var showMilestonePopup = false
     var milestoneValue = 0
     
+    // Proactive AI
+    var dailySummary: DailySummary?
+    private let summaryService = DailySummaryService()
+    
     private let mealRepository: MealRepositoryProtocol
     private let userRepository: UserRepositoryProtocol
     private let streakService: StreakService
@@ -57,6 +61,10 @@ class HomeViewModel {
             if !previousIsOverTarget && isOverTarget {
                 HapticManager.warning()
             }
+            
+            // Generate Proactive AI Daily Summary
+            await summaryService.generateSummary()
+            dailySummary = summaryService.currentSummary
             
         } catch {
             print("Error loading dashboard data: \(error)")

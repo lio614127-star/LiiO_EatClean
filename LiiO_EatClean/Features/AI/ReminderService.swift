@@ -111,4 +111,38 @@ class ReminderService {
             try? await notificationCenter.add(request)
         }
     }
+    
+    func scheduleDailySummaryReminder(hour: Int = 20, minute: Int = 0) async {
+        // Remove old daily summary reminders
+        let pending = await notificationCenter.pendingNotificationRequests()
+        let summaryIDs = pending.filter { $0.identifier.hasPrefix("daily_summary_") }.map { $0.identifier }
+        notificationCenter.removePendingNotificationRequests(withIdentifiers: summaryIDs)
+        
+        let granted = await requestPermission()
+        guard granted else { return }
+        
+        let messages = [
+            "Hôm nay bạn ăn uống thế nào? Xem tóm tắt ngày nhé! 📊",
+            "Đã đến giờ review hôm nay rồi! Mở app xem Daily Summary 🎯",
+            "Cùng điểm lại bữa ăn hôm nay nhé! 💪"
+        ]
+        
+        let content = UNMutableNotificationContent()
+        content.title = "LiiO EatClean"
+        content.body = messages.randomElement() ?? messages[0]
+        content.sound = .default
+        
+        var dateComponents = DateComponents()
+        dateComponents.hour = hour
+        dateComponents.minute = minute
+        
+        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+        let request = UNNotificationRequest(
+            identifier: "daily_summary_\(hour)",
+            content: content,
+            trigger: trigger
+        )
+        
+        try? await notificationCenter.add(request)
+    }
 }

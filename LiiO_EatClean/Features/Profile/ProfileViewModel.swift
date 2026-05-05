@@ -174,6 +174,7 @@ class ProfileViewModel {
                 intervalHours: reminderIntervalHours
             )
             await ReminderService.shared.scheduleMealReminders()
+            await ReminderService.shared.scheduleDailySummaryReminder()
         } else {
             await ReminderService.shared.cancelAllWaterReminders()
         }

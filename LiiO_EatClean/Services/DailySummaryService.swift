@@ -1,0 +1,138 @@
+import Foundation
+import SwiftUI
+
+struct DailySummary {
+    let date: Date
+    let totalCalories: Double
+    let targetCalories: Double
+    let protein: Double
+    let carbs: Double
+    let fat: Double
+    let mealBreakdown: [String: Double]
+    let insights: [DailyInsight]
+    let aiComment: String
+    let aiSuggestion: String
+    let isGoalMet: Bool
+}
+
+@Observable
+class DailySummaryService {
+    var currentSummary: DailySummary?
+    var isLoading = false
+    
+    private let mealRepository: MealRepositoryProtocol
+    private let userRepository: UserRepositoryProtocol
+    private let insightDetector: InsightDetector
+    private let aiService: AIService
+    
+    init(mealRepository: MealRepositoryProtocol = MealRepository(),
+         userRepository: UserRepositoryProtocol = UserRepository(),
+         insightDetector: InsightDetector = InsightDetector(),
+         aiService: AIService = AIService.shared) {
+        self.mealRepository = mealRepository
+        self.userRepository = userRepository
+        self.insightDetector = insightDetector
+        self.aiService = aiService
+    }
+    
+    func generateSummary(for date: Date = Date()) async {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let meals = try await mealRepository.fetchMeals(by: date)
+            let user = try await userRepository.fetchUser()
+            let targetCalories = user?.dailyCalorieTarget ?? 2000
+            
+            var totalCalories: Double = 0
+            var protein: Double = 0
+            var carbs: Double = 0
+            var fat: Double = 0
+            var mealBreakdown: [String: Double] = [:]
+            
+            for meal in meals {
+                var mealCals: Double = 0
+                for food in meal.mealFoods {
+                    let qty = food.quantity
+                    let c = food.caloriesSnapshot * qty
+                    mealCals += c
+                    totalCalories += c
+                    protein += food.proteinSnapshot * qty
+                    carbs += food.carbsSnapshot * qty
+                    fat += food.fatSnapshot * qty
+                }
+                mealBreakdown[meal.mealType, default: 0] += mealCals
+            }
+            
+            let isGoalMet = totalCalories <= targetCalories
+            
+            // Only generate insights if we actually logged something
+            let insights = meals.isEmpty ? [] : await insightDetector.detectInsights()
+            
+            // Format data for AI
+            var dataBlock = "[Dữ liệu Hôm nay]\n"
+            dataBlock += "- Calories: \(Int(totalCalories)) / \(Int(targetCalories)) kcal\n"
+            dataBlock += "- Protein: \(Int(protein))g | Carbs: \(Int(carbs))g | Fat: \(Int(fat))g\n"
+            for (type, cals) in mealBreakdown {
+                dataBlock += "- \(type): \(Int(cals)) kcal\n"
+            }
+            
+            if !insights.isEmpty {
+                dataBlock += "\n[Insights (Cảnh báo)]\n"
+                for i in insights {
+                    dataBlock += "- \(i.message)\n"
+                }
+            }
+            
+            let contextBuilder = ContextBuilder(userRepository: userRepository, mealRepository: mealRepository)
+            let systemPrompt = try await contextBuilder.buildSystemPrompt(for: "", strategy: .dailySummary)
+            
+            // Call AI
+            let fullPrompt = systemPrompt + "\n\n" + dataBlock
+            var aiComment = "Bạn đang đi đúng hướng, hãy tiếp tục duy trì nhé! 💪"
+            var aiSuggestion = "Uống đủ nước và cố gắng ăn nhiều rau xanh hơn vào ngày mai."
+            
+            if !meals.isEmpty {
+                let aiResponse = try await aiService.generateText(prompt: fullPrompt)
+                // Parse JSON block out of markdown response if it exists
+                let jsonString = extractJSON(from: aiResponse)
+                
+                if let data = jsonString.data(using: String.Encoding.utf8),
+                   let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if let comment = dict["comment"] as? String { aiComment = comment }
+                    if let suggestion = dict["suggestion"] as? String { aiSuggestion = suggestion }
+                }
+            } else {
+                aiComment = "Hôm nay bạn chưa ghi nhận bữa ăn nào. Hãy bắt đầu bằng cách thêm bữa sáng nhé!"
+                aiSuggestion = "Đừng bỏ bữa, đặc biệt là bữa sáng rất quan trọng."
+            }
+            
+            let summary = DailySummary(
+                date: date,
+                totalCalories: totalCalories,
+                targetCalories: targetCalories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
+                mealBreakdown: mealBreakdown,
+                insights: insights,
+                aiComment: aiComment,
+                aiSuggestion: aiSuggestion,
+                isGoalMet: isGoalMet
+            )
+            
+            self.currentSummary = summary
+            
+        } catch {
+            print("DailySummaryService Error: \(error)")
+        }
+    }
+    
+    private func extractJSON(from response: String) -> String {
+        if let startRange = response.range(of: "```json"),
+           let endRange = response.range(of: "```", range: startRange.upperBound..<response.endIndex) {
+            return String(response[startRange.upperBound..<endRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return response
+    }
+}

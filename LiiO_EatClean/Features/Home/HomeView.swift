@@ -43,6 +43,13 @@ struct HomeView: View {
                                     .transition(.asymmetric(insertion: .slide.combined(with: .opacity), removal: .opacity))
                             }
                             
+                            // Proactive AI Daily Summary
+                            if viewModel.dailySummary != nil || !viewModel.todayMeals.isEmpty {
+                                DailySummaryCardView(summary: viewModel.dailySummary)
+                                    .padding(.horizontal, 24)
+                                    .transition(.asymmetric(insertion: .slide.combined(with: .opacity), removal: .opacity))
+                            }
+                            
                             // Water Card (Daily Control Center)
                             WaterCardView(
                                 consumed: viewModel.waterConsumed,

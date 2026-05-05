@@ -6,6 +6,7 @@ enum ContextStrategy {
     case mealSuggestion          // Remaining cals + meal type + prefs + health conditions + avoid rules
     case healthAdvice            // Full health conditions + dietary notes + detailed explanations
     case progressAnalysis        // 7-day history + weight trend + goal progress
+    case dailySummary            // End of day summary with insights
 }
 
 // MARK: - Context Builder (Strategy Pattern)
@@ -60,6 +61,13 @@ class ContextBuilder {
             )
         case .progressAnalysis:
             return try await buildProgressContext(
+                goalType: goalType,
+                targetCalories: targetCalories,
+                memory: memory
+            )
+        case .dailySummary:
+            // Will need daily data passed in, but we can structure the prompt here
+            return buildDailySummaryContext(
                 goalType: goalType,
                 targetCalories: targetCalories,
                 memory: memory
@@ -248,6 +256,36 @@ class ContextBuilder {
         2. Nhận xét tích cực, động viên.
         3. Đề xuất cụ thể nếu cần điều chỉnh.
         """
+        
+        return prompt
+    }
+    
+    // MARK: - Strategy: Daily Summary
+    
+    private func buildDailySummaryContext(
+        goalType: String,
+        targetCalories: Double,
+        memory: UserProfileMemory
+    ) -> String {
+        var prompt = """
+        Bạn là chuyên gia dinh dưỡng cá nhân. Nhiệm vụ của bạn là tổng kết ngày hôm nay của người dùng.
+        
+        [Quy tắc Phản hồi]
+        1. Đọc dữ liệu được cung cấp (calories, macros, insights).
+        2. Viết NHẬN XÉT: 2-3 câu ngắn gọn, thân thiện. Nếu đạt mục tiêu calories thì tích cực/khen ngợi. Nếu không đạt thì nhẹ nhàng, không phán xét.
+        3. Viết GỢI Ý: 1 câu hành động cụ thể cho ngày mai dựa trên insights hoặc sự thiếu hụt macro.
+        4. CHỈ trả về JSON chuẩn, không giải thích thêm.
+        
+        Định dạng JSON:
+        ```json
+        {
+          "comment": "Nhận xét tổng quan của bạn...",
+          "suggestion": "Gợi ý cụ thể cho ngày mai..."
+        }
+        ```
+        """
+        
+        prompt += buildMemoryBlock(memory)
         
         return prompt
     }
