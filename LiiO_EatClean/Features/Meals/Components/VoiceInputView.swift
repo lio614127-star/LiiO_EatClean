@@ -79,11 +79,11 @@ struct VoiceInputView: View {
                         .opacity(isPulsing ? 0.0 : 0.5)
                         .animation(isPulsing ? .easeOut(duration: 1.5).repeatForever(autoreverses: false).delay(0.3) : .default, value: isPulsing)
                     
-                    Image(systemName: speechService.isListening ? "stop.fill" : "mic.fill")
+                    Image(systemName: "mic.fill")
                         .font(.system(size: 40))
                         .foregroundColor(.white)
                         .frame(width: 120, height: 120)
-                        .background(speechService.isListening ? Color.red : Color.green)
+                        .background(Color.green)
                         .clipShape(Circle())
                 }
                 .frame(width: 220, height: 220) // Fixed container to prevent layout jumps
@@ -126,15 +126,6 @@ struct VoiceInputView: View {
             }
             
             Spacer()
-            
-            if speechService.isListening {
-                Button("Dừng và phân tích") {
-                    stopAndParse()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .padding(.bottom, 24)
-            }
         }
     }
     
