@@ -10,6 +10,12 @@ struct AddMealView: View {
     @State private var selectedFood: FoodItemModel?
     @State private var showingCartDetails = false
     
+    // Voice Input State
+    @State private var showVoiceInput = false
+    
+    // Barcode Scan State
+    @State private var showBarcodeScanner = false
+    
     let mealTypes = ["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"]
     
     init(selectedMealType: String = "Bữa sáng") {
@@ -82,6 +88,20 @@ struct AddMealView: View {
             } message: {
                 Text("Vui lòng thêm Gemini hoặc OpenAI API Key trong mục Hồ sơ để dùng tính năng AI.")
             }
+            .sheet(isPresented: $showVoiceInput) {
+                VoiceInputView(isPresented: $showVoiceInput) { foods in
+                    // Automatically add the voice parsed foods to the cart
+                    for food in foods {
+                        viewModel.addSuggestedFood(food)
+                    }
+                }
+            }
+            .sheet(isPresented: $showBarcodeScanner) {
+                BarcodeScanView(isPresented: $showBarcodeScanner) { food, qty in
+                    // Adjust quantity and add
+                    viewModel.addToCart(food: food, quantity: qty)
+                }
+            }
         }
         .task {
             await viewModel.loadRemainingCalories()
@@ -99,21 +119,43 @@ struct AddMealView: View {
             
             Spacer()
             
-            Button(action: {
-                Task { await viewModel.requestAISuggestions() }
-            }) {
-                Label(viewModel.isLoadingAI ? "Đang hỏi AI..." : "✨ Hỏi AI", systemImage: viewModel.isLoadingAI ? "" : "")
-                    .font(.subheadline.bold())
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        LinearGradient(colors: [.green, Color(red: 0.1, green: 0.7, blue: 0.5)],
-                                       startPoint: .leading, endPoint: .trailing)
-                    )
-                    .clipShape(Capsule())
+            HStack(spacing: 8) {
+                Button(action: { showBarcodeScanner = true }) {
+                    Image(systemName: "barcode.viewfinder")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.orange)
+                        .clipShape(Capsule())
+                }
+                
+                Button(action: { showVoiceInput = true }) {
+                    Image(systemName: "mic.fill")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.blue)
+                        .clipShape(Capsule())
+                }
+                
+                Button(action: {
+                    Task { await viewModel.requestAISuggestions() }
+                }) {
+                    Label(viewModel.isLoadingAI ? "Đang hỏi AI..." : "✨ Hỏi AI", systemImage: viewModel.isLoadingAI ? "" : "")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            LinearGradient(colors: [.green, Color(red: 0.1, green: 0.7, blue: 0.5)],
+                                           startPoint: .leading, endPoint: .trailing)
+                        )
+                        .clipShape(Capsule())
+                }
+                .disabled(viewModel.isLoadingAI)
             }
-            .disabled(viewModel.isLoadingAI)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

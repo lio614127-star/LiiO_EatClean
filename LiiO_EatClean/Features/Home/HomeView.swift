@@ -9,6 +9,10 @@ struct HomeView: View {
     // Meal Detail Sheet
     @State private var activeDetailMealType: MealSheetItem?
     
+    // Voice Input State
+    @State private var showVoiceInput = false
+    @State private var voiceParsedFoods: [AISuggestedFood] = []
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -96,6 +100,14 @@ struct HomeView: View {
                     MilestonePopupView(milestone: viewModel.milestoneValue, isPresented: $viewModel.showMilestonePopup)
                 }
             }
+            .sheet(isPresented: $showVoiceInput) {
+                VoiceInputView(isPresented: $showVoiceInput) { foods in
+                    // When voice confirmed, open AddMealView with pre-filled items
+                    self.voiceParsedFoods = foods
+                    // Default to Breakfast or current time appropriate meal
+                    showAddMealSheet(for: "Bữa sáng") // TODO: could pass foods to AddMealView if we customize it
+                }
+            }
         }
         .task {
             print("🚀 HomeView: Loading dashboard data...")
@@ -104,20 +116,34 @@ struct HomeView: View {
     }
     
     private var headerSection: some View {
-        VStack(alignment: .center, spacing: 4) {
-            Text("Xin chào, \(viewModel.user?.name.isEmpty == false ? viewModel.user!.name : "bạn")!")
-                .font(.title2.bold())
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Xin chào, \(viewModel.user?.name.isEmpty == false ? viewModel.user!.name : "bạn")!")
+                    .font(.title2.bold())
+                
+                if viewModel.isOverTarget {
+                    Text("Đã vượt \(Int(viewModel.totalCalories - viewModel.dailyTarget)) kcal hôm nay")
+                        .font(.subheadline)
+                        .foregroundColor(.orange)
+                } else {
+                    Text("Còn \(Int(viewModel.remainingCalories)) kcal hôm nay")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
             
-            if viewModel.isOverTarget {
-                Text("Đã vượt \(Int(viewModel.totalCalories - viewModel.dailyTarget)) kcal hôm nay")
-                    .font(.subheadline)
-                    .foregroundColor(.orange)
-            } else {
-                Text("Còn \(Int(viewModel.remainingCalories)) kcal hôm nay")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+            Spacer()
+            
+            Button(action: { showVoiceInput = true }) {
+                Image(systemName: "mic.fill")
+                    .font(.title3)
+                    .foregroundColor(.white)
+                    .frame(width: 40, height: 40)
+                    .background(Color.green)
+                    .clipShape(Circle())
             }
         }
+        .padding(.horizontal, 24)
     }
     
     private var macroBarsSection: some View {

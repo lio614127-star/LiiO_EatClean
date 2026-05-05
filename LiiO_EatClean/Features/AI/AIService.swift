@@ -32,7 +32,7 @@ struct AISuggestedFood: Codable, Identifiable, Equatable {
     let protein: Double
     let carbs: Double
     let fat: Double
-    let servingSize: Double
+    var servingSize: Double
     var isEaten: Bool? = nil
     var mealType: String? = nil
     
