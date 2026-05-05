@@ -124,6 +124,7 @@ struct VoiceInputView: View {
                         .foregroundColor(.secondary)
                 }
             }
+            .frame(height: 100, alignment: .top) // Fixed height prevents layout jumps
             
             Spacer()
         }
