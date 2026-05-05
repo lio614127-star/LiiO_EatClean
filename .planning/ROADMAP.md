@@ -25,8 +25,8 @@
 
 ### 🚧 v1.1 Trải Nghiệm Nhanh & AI Chủ Động (In Progress)
 
-- [ ] Phase 11: Gamification & UI Polish (Streak, Haptic, Micro-interactions)
-- [ ] Phase 12: Advanced Data Inputs (Voice Input & Barcode Scan)
+- [x] Phase 11: Gamification & UI Polish (Streak, Haptic, Micro-interactions)
+- [x] Phase 12: Advanced Data Inputs (Voice Input & Barcode Scan)
 - [ ] Phase 13: Proactive AI (Daily Summary & Memory Insights)
 - [ ] Phase 14: AI Meal Planning Engine
 
@@ -44,7 +44,7 @@
 | 8. Water Tracking + Smart Reminders + Polish | v1.0 | Complete | 2026-04-29 |
 | 9. AI Nutritionist Chatbox | v1.0 | Complete | 2026-05-01 |
 | 10. AI-Powered Meals Tab | v1.0 | Complete | 2026-05-04 |
-| 11. Gamification & UI Polish | v1.1 | Not started | - |
-| 12. Advanced Data Inputs | v1.1 | Not started | - |
+| 11. Gamification & UI Polish | v1.1 | Complete | 2026-05-04 |
+| 12. Advanced Data Inputs | v1.1 | Complete | 2026-05-05 |
 | 13. Proactive AI | v1.1 | Not started | - |
 | 14. AI Meal Planning Engine | v1.1 | Not started | - |
