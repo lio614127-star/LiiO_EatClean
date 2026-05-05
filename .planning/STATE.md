@@ -95,6 +95,7 @@ Last activity: 2026-05-05 — Phase 12 UAT complete, all tests passed
 | 2026-05-04 | Phase 11 executed | `.planning/phases/11-gamification-ui-polish/11-SUMMARY.md` |
 | 2026-05-05 | Phase 12 executed | `.planning/phases/12-advanced-data-inputs/12-SUMMARY.md` |
 | 2026-05-05 | Phase 12 UAT verified | 9/9 passed. Fixed action bar layout + mic pulsing animation on device. |
+| 2026-05-05 | Debugging | Fixed physical device Voice Input race conditions (flaky `isAvailable`). Refined UI: removed manual stop buttons and stabilized ZStack/VStack layout to match the seamless, clean look from the Simulator. |
 
 ---
-*Last updated: 2026-05-05 after Phase 12 UAT*
+*Last updated: 2026-05-05 after Phase 12 debugging*
