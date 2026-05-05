@@ -20,7 +20,8 @@ awaiting: user response
 
 ### 1. Daily Summary Card Visible on Home
 expected: Mở app → Home. Dưới Streak card thấy "📊 Hôm nay: X / Y kcal" với icon trạng thái
-result: [pending]
+result: pass
+note: Card hiện đúng vị trí. Bug calo bị nhân 4x đã fix (snapshot đã bao gồm quantity, không cần nhân lại)
 
 ### 2. Compact State (No Insights)
 expected: Khi không có insight (ví dụ mới log ít data), card ở trạng thái gọn 1 dòng. Tap vào card → expand ra thấy macros (P/C/F), AI comment, AI suggestion

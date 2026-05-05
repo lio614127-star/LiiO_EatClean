@@ -62,14 +62,25 @@ class HomeViewModel {
                 HapticManager.warning()
             }
             
-            // Generate Proactive AI Daily Summary
-            await summaryService.generateSummary()
-            dailySummary = summaryService.currentSummary
-            
         } catch {
             print("Error loading dashboard data: \(error)")
         }
         isLoading = false
+        
+        // Generate AI Summary in background — NOT blocking dashboard UI
+        await loadDailySummaryIfNeeded()
+    }
+    
+    private var lastSummaryMealCount: Int = -1
+    
+    private func loadDailySummaryIfNeeded() async {
+        // Only regenerate if meal data changed (avoid re-calling AI on every tab switch)
+        let currentMealCount = todayMeals.flatMap { $0.mealFoods }.filter { $0.isEaten }.count
+        guard currentMealCount != lastSummaryMealCount else { return }
+        lastSummaryMealCount = currentMealCount
+        
+        await summaryService.generateSummary()
+        dailySummary = summaryService.currentSummary
     }
     
     func addWater(amount: Double) async {
