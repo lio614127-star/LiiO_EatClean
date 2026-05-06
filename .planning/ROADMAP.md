@@ -3,6 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP Calorie Tracker** — Phases 1-10 (shipped 2026-05-04)
+- ✅ **v1.1 Trải Nghiệm Nhanh & AI Chủ Động** — Phases 11-14 (shipped 2026-05-06)
 
 ## Phases
 
@@ -23,12 +24,20 @@
 *See `.planning/milestones/v1.0-ROADMAP.md` for full details.*
 </details>
 
-### 🚧 v1.1 Trải Nghiệm Nhanh & AI Chủ Động (In Progress)
+<details>
+<summary>✅ v1.1 Trải Nghiệm Nhanh & AI Chủ Động (Phases 11-14) — SHIPPED 2026-05-06</summary>
 
 - [x] Phase 11: Gamification & UI Polish (Streak, Haptic, Micro-interactions)
 - [x] Phase 12: Advanced Data Inputs (Voice Input & Barcode Scan)
 - [x] Phase 13: Proactive AI (Daily Summary & Memory Insights)
 - [x] Phase 14: AI Meal Planning Engine
+
+*See `.planning/milestones/v1.1-ROADMAP.md` for full details.*
+</details>
+
+### 🚧 v[Next] (Planning)
+
+- (Các phase của milestone tiếp theo sẽ được xác định ở phiên sau)
 
 ## Progress
 
@@ -47,4 +56,4 @@
 | 11. Gamification & UI Polish | v1.1 | Complete | 2026-05-04 |
 | 12. Advanced Data Inputs | v1.1 | Complete | 2026-05-05 |
 | 13. Proactive AI | v1.1 | Complete | 2026-05-05 |
-| 14. AI Meal Planning Engine | v1.1 | Complete | 2026-05-05 |
+| 14. AI Meal Planning Engine | v1.1 | Complete | 2026-05-06 |

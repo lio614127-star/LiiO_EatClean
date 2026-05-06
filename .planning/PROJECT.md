@@ -8,18 +8,12 @@ LiiO EatClean là app iOS theo dõi calories và bữa ăn hàng ngày, giúp ng
 
 User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — nhanh, đẹp, chính xác.
 
-## Current Milestone: v1.1 Trải Nghiệm Nhanh & AI Chủ Động
+## Current Milestone: Planning Next Milestone
 
-**Goal:** Nâng cao tốc độ log bữa ăn qua đa phương thức (Voice, Barcode) và biến AI thành huấn luyện viên cá nhân chủ động (Tóm tắt ngày, Lên thực đơn, Memory insight) kết hợp với hệ thống Gamification để giữ chân người dùng.
+**Goal:** Chờ khởi tạo milestone tiếp theo (có thể tập trung vào Social/Community hoặc nâng cấp UI/UX, Sync iCloud).
 
 **Target features:**
-- Daily AI Summary
-- Streak & Gamification
-- Voice Input (Log bằng giọng nói)
-- AI Meal Planning
-- Barcode Scan (Basic)
-- Advanced Memory Insight
-- UI Polish & Micro-interactions
+- (Sẽ định nghĩa trong phiên làm việc kế tiếp)
 
 ## Requirements
 
@@ -36,15 +30,15 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 - ✓ AI Nutritionist Chatbox — v1.0
 - ✓ AI-Powered Meals Tab (Smart Suggestions, Context Memory, Log Ngay) — v1.0
 
-### Active
+- ✓ Voice Input: Cho phép người dùng nói để log nhanh đồ ăn — v1.1
+- ✓ Barcode Scan: Quét mã vạch sản phẩm để tra cứu nhanh calories — v1.1
+- ✓ Daily AI Summary: Tóm tắt hành vi ăn uống cuối ngày và đưa ra lời khuyên — v1.1
+- ✓ AI Meal Planning: Sinh thực đơn theo ngày/tuần dựa trên memory và calo mục tiêu — v1.1
+- ✓ Streak Tracking: Đếm và hiển thị chuỗi ngày hoàn thành log bữa ăn/mục tiêu calo — v1.1
+- ✓ Advanced Memory Insight: Nhận diện pattern chưa tốt (ví dụ: thiếu protein, ăn khuya) — v1.1
+- ✓ UI Polish: Thêm haptic feedback, micro-animations khi tương tác — v1.1
 
-- [ ] Voice Input: Cho phép người dùng nói để log nhanh đồ ăn
-- [ ] Barcode Scan: Quét mã vạch sản phẩm để tra cứu nhanh calories (CalorieNinjas/OpenFoodFacts)
-- [ ] Daily AI Summary: Tóm tắt hành vi ăn uống cuối ngày và đưa ra lời khuyên
-- [ ] AI Meal Planning: Sinh thực đơn theo ngày/tuần dựa trên memory và calo mục tiêu
-- [ ] Streak Tracking: Đếm và hiển thị chuỗi ngày hoàn thành log bữa ăn/mục tiêu calo
-- [ ] Advanced Memory Insight: Nhận diện pattern chưa tốt (ví dụ: thiếu protein, ăn khuya)
-- [ ] UI Polish: Thêm haptic feedback, micro-animations khi tương tác
+### Active
 - [ ] HealthKit integration (sync weight, calories) — *Pending backlog*
 - [ ] Macro tracking (protein, carbs, fat breakdown chi tiết hơn) — *Pending backlog*
 
@@ -60,7 +54,7 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 
 **Target user:** Người Việt Nam muốn giảm cân, theo dõi calories hàng ngày. App cá nhân (LiiO).
 
-**Current State (v1.0 MVP Shipped):** App đang có đầy đủ tính năng cốt lõi cho việc tracking calories. AI System đã phát triển từ chatbot cơ bản thành một hệ thống thông minh (Learning System) có thể tự trích xuất sở thích, dị ứng của user vào Memory và dùng đó làm context injection cho các Tab gợi ý món ăn. Các bug liên quan đến logic đồ thị, navigation và sheet reload đã được khắc phục. UI/UX đạt chuẩn Apple design guidelines. 
+**Current State (v1.1 Shipped):** Hoàn thành v1.1, nâng cấp mạnh mẽ tốc độ log bữa ăn (Voice, Barcode) và tính chủ động của AI (Daily Summary, Meal Planning). Các tương tác UI đã được mượt mà hóa với haptic và micro-animations.
 
 ## Constraints
 
@@ -88,4 +82,4 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-04 after v1.0 MVP milestone completion*
+*Last updated: 2026-05-06 after v1.1 milestone completion*
