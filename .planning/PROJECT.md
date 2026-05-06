@@ -8,12 +8,20 @@ LiiO EatClean là app iOS theo dõi calories và bữa ăn hàng ngày, giúp ng
 
 User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — nhanh, đẹp, chính xác.
 
-## Current Milestone: Planning Next Milestone
+## Current Milestone: v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện
 
-**Goal:** Chờ khởi tạo milestone tiếp theo (có thể tập trung vào Social/Community hoặc nâng cấp UI/UX, Sync iCloud).
+**Goal:** Chuyển đổi LiiO EatClean thành trợ lý dinh dưỡng hiểu người dùng ở mức độ cá nhân hoá sâu nhất (bệnh lý, sở thích, tính cách), hoạt động mượt mà (song song API, offline mode) và giao tiếp linh hoạt (Voice Chat).
 
 **Target features:**
-- (Sẽ định nghĩa trong phiên làm việc kế tiếp)
+- AI Memory Hub (Quản lý toàn bộ thông tin cá nhân)
+- API Key Pool + Auto Swap + Parallel Calls
+- Voice Chat cho AI Coach
+- Health-Aware AI (Ràng buộc bệnh lý khắt khe)
+- Insight Detection Engine (Mở rộng)
+- Offline Mode cho Core Features
+- Custom Food Builder
+- Context Compression Engine
+- AI Personality Settings
 
 ## Requirements
 
@@ -39,6 +47,16 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 - ✓ UI Polish: Thêm haptic feedback, micro-animations khi tương tác — v1.1
 
 ### Active
+
+- [ ] AI Memory Hub: Màn hình quản lý toàn bộ Profile, Calories, Health, Preferences, Notes (chuyển icon từ Meals sang AI Coach).
+- [ ] API Infrastructure Upgrade: Quản lý nhiều API keys, auto swap, gọi API song song để giảm latency.
+- [ ] Voice Chat: Giao tiếp với AI Coach bằng giọng nói (Speech-to-text).
+- [ ] Health-Aware AI: Ràng buộc tuyệt đối không đề xuất món ăn cấm/kỵ theo bệnh lý người dùng.
+- [ ] Insight Expansion: Mở rộng các logic nhận diện hành vi (lặp món, lệch macro dài ngày).
+- [ ] Offline Mode: Log bữa ăn không cần mạng, đồng bộ sau.
+- [ ] Custom Food Builder: Cho phép người dùng tự định nghĩa món ăn và lưu local.
+- [ ] Context Compression: Nén nội dung memory và lịch sử chat để giảm token usage.
+- [ ] AI Personality: Tuỳ chỉnh văn phong AI (nghiêm túc, thân thiện, chill).
 - [ ] HealthKit integration (sync weight, calories) — *Pending backlog*
 - [ ] Macro tracking (protein, carbs, fat breakdown chi tiết hơn) — *Pending backlog*
 

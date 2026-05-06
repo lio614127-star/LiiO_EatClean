@@ -5,26 +5,28 @@
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây
-**Current focus:** Milestone 1 Completion & Final Polish
+**Current focus:** Milestone v1.2 Planning
 
 ## Current Milestone
 
-**Milestone: v1.1 Trải Nghiệm Nhanh & AI Chủ Động**
+**Milestone: v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện**
 
-- Daily AI Summary
-- Streak & Gamification
-- Voice Input
-- AI Meal Planning
-- Barcode Scan
-- Advanced Memory Insight
-- UI Polish & Micro-interactions
+- AI Memory Hub
+- API Key Pool + Auto Swap + Parallel Calls
+- Voice Chat
+- Health-Aware AI
+- Insight Detection Engine (Mở rộng)
+- Offline Mode
+- Custom Food Builder
+- Context Compression Engine
+- AI Personality Settings
 
 ## Current Position
 
-Phase: 14
-Plan: 14A, 14B, 14C
-Status: Executed (Ready for UAT)
-Last activity: 2026-05-05 — Phase 14 executed, AI Meal Planning Engine implemented
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-06 — Milestone v1.2 started
 
 ## Memory
 
@@ -105,7 +107,7 @@ Last activity: 2026-05-05 — Phase 14 executed, AI Meal Planning Engine impleme
 | 2026-05-05 | Phase 14 context gathered | `.planning/phases/14-ai-meal-planning/14-CONTEXT.md` |
 | 2026-05-05 | Phase 14 planned | 3 plans (14A, 14B, 14C) in 2 waves. |
 | 2026-05-05 | Phase 14 executed | `.planning/phases/14-ai-meal-planning/14-SUMMARY.md` |
+| 2026-05-05 | Phase 14 UAT verified | 8/8 passed. Fixed AI JSON parse and URLSession timeouts for weekly plan. |
 
 ---
-*Last updated: 2026-05-05 after Phase 14 executed*
-
+*Last updated: 2026-05-05 after Phase 14 UAT verified*
