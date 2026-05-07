@@ -98,7 +98,7 @@ class UserRepository: UserRepositoryProtocol {
     func fetchAPIKeys() async throws -> [APIKeyModel] {
         try await context.perform {
             let request: NSFetchRequest<APIKey> = APIKey.fetchRequest()
-            request.sortDescriptors = [NSSortDescriptor(keyPath: \APIKey.provider, ascending: true)]
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \APIKey.priority, ascending: false)]
             let results = try self.context.fetch(request)
             return results.map { key in
                 APIKeyModel(
@@ -106,7 +106,10 @@ class UserRepository: UserRepositoryProtocol {
                     provider: key.provider ?? "",
                     key: key.key ?? "",
                     isActive: key.isActive,
-                    lastUsed: key.lastUsed
+                    lastUsed: key.lastUsed,
+                    healthScore: Int(key.healthScore),
+                    priority: Int(key.priority),
+                    cooldownUntil: key.cooldownUntil
                 )
             }
         }
@@ -130,6 +133,9 @@ class UserRepository: UserRepositoryProtocol {
             coreDataKey.key = apiKey.key
             coreDataKey.isActive = apiKey.isActive
             coreDataKey.lastUsed = apiKey.lastUsed
+            coreDataKey.healthScore = Int16(apiKey.healthScore)
+            coreDataKey.priority = Int16(apiKey.priority)
+            coreDataKey.cooldownUntil = apiKey.cooldownUntil
             
             try self.context.save()
         }

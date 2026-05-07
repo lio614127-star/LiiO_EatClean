@@ -122,93 +122,24 @@ struct ProfileView: View {
                 
                 // MARK: - API Keys
                 Section {
-                    // Gemini Key
-                    if viewModel.hasGeminiKey {
+                    Button(action: {
+                        viewModel.showingKeyManager = true
+                    }) {
                         HStack {
-                            Image(systemName: "checkmark.seal.fill")
-                                .foregroundColor(.green)
-                            VStack(alignment: .leading) {
-                                Text("Google Gemini")
-                                    .font(.subheadline.bold())
-                                Text(viewModel.maskedKey(for: "gemini"))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
+                            Label("Quản lý API Keys", systemImage: "key.fill")
                             Spacer()
-                            Button(role: .destructive) {
-                                Task { await viewModel.deleteKey(provider: "gemini") }
-                            } label: {
-                                Image(systemName: "trash")
-                                    .foregroundColor(.red)
-                            }
+                            Text("\(viewModel.apiKeysCount) keys")
+                                .foregroundColor(.secondary)
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
                         }
-                    } else {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label("Google Gemini", systemImage: "sparkles")
-                                .font(.subheadline.bold())
-                            HStack {
-                                TextField("Nhập Gemini API Key...", text: $viewModel.geminiKeyInput)
-                                    .font(.caption)
-                                    .textInputAutocapitalization(.never)
-                                    .autocorrectionDisabled()
-                                    .textContentType(.oneTimeCode)
-                                    .keyboardType(.asciiCapable)
-                                Button("Lưu") {
-                                    Task { await viewModel.saveGeminiKey() }
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .tint(.green)
-                                .controlSize(.small)
-                            }
-                        }
-                        .padding(.vertical, 4)
                     }
-                    
-                    // OpenAI Key
-                    if viewModel.hasOpenAIKey {
-                        HStack {
-                            Image(systemName: "checkmark.seal.fill")
-                                .foregroundColor(.green)
-                            VStack(alignment: .leading) {
-                                Text("OpenAI (Backup)")
-                                    .font(.subheadline.bold())
-                                Text(viewModel.maskedKey(for: "openai"))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            Button(role: .destructive) {
-                                Task { await viewModel.deleteKey(provider: "openai") }
-                            } label: {
-                                Image(systemName: "trash")
-                                    .foregroundColor(.red)
-                            }
-                        }
-                    } else {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label("OpenAI (Backup)", systemImage: "cpu")
-                                .font(.subheadline.bold())
-                            HStack {
-                                TextField("Nhập OpenAI API Key...", text: $viewModel.openAIKeyInput)
-                                    .font(.caption)
-                                    .textInputAutocapitalization(.never)
-                                    .autocorrectionDisabled()
-                                    .textContentType(.oneTimeCode)
-                                    .keyboardType(.asciiCapable)
-                                Button("Lưu") {
-                                    Task { await viewModel.saveOpenAIKey() }
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .tint(.blue)
-                                .controlSize(.small)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
+                    .foregroundColor(.primary)
                 } header: {
                     Text("AI API Keys")
                 } footer: {
-                    Text("Key được lưu mã hóa cục bộ trên thiết bị. Gemini được ưu tiên, OpenAI là backup tự động.")
+                    Text("Cấu hình nhiều API keys để hệ thống tự động fallback khi gặp lỗi.")
                         .font(.caption2)
                 }
                 
@@ -262,6 +193,9 @@ struct ProfileView: View {
             } message: {
                 Text("Bạn có chắc chắn muốn xóa sạch toàn bộ lịch sử? Hành động này không thể hoàn tác.")
             }
+        }
+        .fullScreenCover(isPresented: $viewModel.showingKeyManager) {
+            APIKeyManagerView()
         }
         .task {
             await viewModel.loadData()

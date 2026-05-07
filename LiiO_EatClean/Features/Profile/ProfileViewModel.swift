@@ -4,6 +4,8 @@ import Foundation
 class ProfileViewModel {
     var user: UserModel?
     var apiKeys: [APIKeyModel] = []
+    var showingKeyManager = false
+    var apiKeysCount: Int { apiKeys.count }
     
     // Editable fields (bound to Form)
     var name: String = ""

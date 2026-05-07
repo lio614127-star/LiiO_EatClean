@@ -82,73 +82,100 @@ struct AISuggestedFood: Codable, Identifiable, Equatable {
     }
 }
 
+// MARK: - MealPlanDay Structure for Distributed Fetch
+struct MealPlanDay {
+    let dayIndex: Int
+    let meals: [AISuggestedFood]
+}
+
 // MARK: - AIService
 class AIService {
     static let shared = AIService()
     
     private let userRepository: UserRepositoryProtocol
+    private let poolManager: APIKeyPoolManager
     
     init(userRepository: UserRepositoryProtocol = UserRepository()) {
         self.userRepository = userRepository
+        self.poolManager = APIKeyPoolManager(repository: userRepository)
+    }
+    
+    private func executeWithRetry<T>(operation: (APIKeyModel) async throws -> T) async throws -> T {
+        try await poolManager.loadKeys()
+        
+        var lastError: Error = AIError.missingKey
+        
+        for _ in 0..<3 { // Max 3 retries
+            guard let key = await poolManager.getBestKey() else {
+                throw AIError.missingKey
+            }
+            
+            do {
+                let result = try await operation(key)
+                try await poolManager.reportSuccess(keyID: key.id)
+                return result
+            } catch {
+                lastError = error
+                
+                var statusCode = -1
+                if let aiError = error as? AIError {
+                    switch aiError {
+                    case .invalidKey: statusCode = 401
+                    case .quotaExceeded: statusCode = 429
+                    default: statusCode = -1001
+                    }
+                } else if let nsError = error as NSError?, nsError.code == NSURLErrorTimedOut {
+                    statusCode = -1001
+                }
+                
+                try await poolManager.reportError(keyID: key.id, statusCode: statusCode)
+            }
+        }
+        
+        throw lastError
     }
     
     func suggestMeals(remainingCalories: Double, mealType: String, userGoal: String = "Duy trì cân nặng") async throws -> [AISuggestedFood] {
-        let keys = try await userRepository.fetchAPIKeys()
-        
-        // Try Gemini first, then OpenAI
-        let geminiKey = keys.first(where: { $0.provider == "gemini" && $0.isActive })
-        let openAIKey = keys.first(where: { $0.provider == "openai" && $0.isActive })
-        
-        guard geminiKey != nil || openAIKey != nil else {
-            throw AIError.missingKey
-        }
-        
-        var lastError: Error = AIError.quotaExceeded
-        
-        // Try Gemini first
-        if let gemKey = geminiKey {
-            do {
-                return try await callGemini(apiKey: gemKey.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
-            } catch {
-                lastError = error
-                // Only fall through if we have OpenAI as backup
+        return try await executeWithRetry { key in
+            if key.provider == "gemini" {
+                return try await self.callGemini(apiKey: key.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
+            } else {
+                return try await self.callOpenAI(apiKey: key.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
             }
         }
-        
-        // Fallback to OpenAI
-        if let oaiKey = openAIKey {
-            do {
-                return try await callOpenAI(apiKey: oaiKey.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
-            } catch {
-                lastError = error
+    }
+    
+    // MARK: - Distributed Workload
+    func generateDistributedMealPlan(days: Int, dailyCalories: Double) async throws -> [MealPlanDay] {
+        return try await withThrowingTaskGroup(of: MealPlanDay.self) { group in
+            // Chunk into days, each day gets its own request to the pool manager
+            for i in 1...days {
+                group.addTask {
+                    let meals = try await self.suggestMeals(remainingCalories: dailyCalories, mealType: "Cả ngày", userGoal: "Lên thực đơn")
+                    return MealPlanDay(dayIndex: i, meals: meals)
+                }
             }
+            
+            var allDays: [MealPlanDay] = []
+            for try await dayResult in group {
+                allDays.append(dayResult)
+            }
+            return allDays.sorted { $0.dayIndex < $1.dayIndex }
         }
-        
-        // If we reach here, both failed or only one was tried and failed
-        throw lastError
     }
     
     // MARK: - Raw Generation API
     func generateText(prompt: String) async throws -> String {
-        let keys = try await userRepository.fetchAPIKeys()
-        let geminiKey = keys.first(where: { $0.provider == "gemini" && $0.isActive })
-        let openAIKey = keys.first(where: { $0.provider == "openai" && $0.isActive })
-        
-        guard geminiKey != nil || openAIKey != nil else {
-            throw AIError.missingKey
-        }
-        
-        var lastError: Error = AIError.quotaExceeded
-        
-        if let gemKey = geminiKey {
-            do {
-                let cleanKey = gemKey.key.trimmingCharacters(in: .whitespacesAndNewlines)
+        return try await executeWithRetry { key in
+            let cleanKey = key.key.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            if key.provider == "gemini" {
                 let url = URL(string: "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=\(cleanKey)")!
                 let requestBody: [String: Any] = [
                     "contents": [["parts": [["text": prompt]]]],
                     "generationConfig": ["temperature": 0.3]
                 ]
-                let data = try await performRequest(url: url, body: requestBody)
+                let data = try await self.performRequest(url: url, body: requestBody)
                 guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let candidates = json["candidates"] as? [[String: Any]],
                       let first = candidates.first,
@@ -158,21 +185,14 @@ class AIService {
                     throw AIError.invalidResponse
                 }
                 return text
-            } catch {
-                lastError = error
-            }
-        }
-        
-        if let oaiKey = openAIKey {
-            do {
-                let cleanKey = oaiKey.key.trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
                 let url = URL(string: "https://api.openai.com/v1/chat/completions")!
                 let requestBody: [String: Any] = [
                     "model": "gpt-4o-mini",
                     "messages": [["role": "user", "content": prompt]],
                     "temperature": 0.3
                 ]
-                let data = try await performRequest(url: url, body: requestBody, extraHeaders: ["Authorization": "Bearer \(cleanKey)"])
+                let data = try await self.performRequest(url: url, body: requestBody, extraHeaders: ["Authorization": "Bearer \(cleanKey)"])
                 guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let choices = json["choices"] as? [[String: Any]],
                       let first = choices.first,
@@ -181,46 +201,21 @@ class AIService {
                     throw AIError.invalidResponse
                 }
                 return text
-            } catch {
-                lastError = error
             }
         }
-        
-        throw lastError
     }
+    
     // MARK: - Chat API
     func sendChatMessage(history: [ChatMessage], systemPrompt: String) async throws -> ChatMessage {
-        let keys = try await userRepository.fetchAPIKeys()
-        
-        let geminiKey = keys.first(where: { $0.provider == "gemini" && $0.isActive })
-        let openAIKey = keys.first(where: { $0.provider == "openai" && $0.isActive })
-        
-        guard geminiKey != nil || openAIKey != nil else {
-            throw AIError.missingKey
-        }
-        
-        var lastError: Error = AIError.quotaExceeded
-        
-        if let gemKey = geminiKey {
-            do {
-                return try await callGeminiChat(apiKey: gemKey.key, history: history, systemPrompt: systemPrompt)
-            } catch {
-                lastError = error
+        return try await executeWithRetry { key in
+            if key.provider == "gemini" {
+                return try await self.callGeminiChat(apiKey: key.key, history: history, systemPrompt: systemPrompt)
+            } else {
+                return try await self.callOpenAIChat(apiKey: key.key, history: history, systemPrompt: systemPrompt)
             }
         }
-        
-        if let oaiKey = openAIKey {
-            do {
-                return try await callOpenAIChat(apiKey: oaiKey.key, history: history, systemPrompt: systemPrompt)
-            } catch {
-                lastError = error
-            }
-        }
-        
-        throw lastError
     }
 
-    
     // MARK: - Gemini API
     private func callGemini(apiKey: String, remainingCalories: Double, mealType: String, userGoal: String) async throws -> [AISuggestedFood] {
         let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)

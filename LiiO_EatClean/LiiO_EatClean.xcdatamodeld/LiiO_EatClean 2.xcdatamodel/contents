@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21815" systemVersion="22A380" minimumToolsVersion="Xcode 9.0" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
     <entity name="APIKey" representedClassName="APIKey" codeGenerationType="class" syncable="YES">
+        <attribute name="cooldownUntil" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="healthScore" optional="YES" attributeType="Integer 16" defaultValueString="100" usesScalarValueType="YES"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="isActive" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="key" optional="YES" attributeType="String"/>
         <attribute name="lastUsed" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="priority" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="provider" optional="YES" attributeType="String"/>
     </entity>
     <entity name="DailyLog" representedClassName="DailyLog" codeGenerationType="class" syncable="YES">

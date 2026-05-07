@@ -136,12 +136,10 @@ class ContextBuilder {
         """
         
         // PRIORITY 1: Avoid foods (CRITICAL — health safety)
-        let allAvoid = memory.allAvoidFoods
+        let allAvoid = memory.avoidFoods
         if !allAvoid.isEmpty {
             prompt += "\n\n[⛔ CẤM — KHÔNG ĐƯỢC gợi ý các món sau]\n"
-            for condition in memory.healthConditions where !condition.avoidFoods.isEmpty {
-                prompt += "- Bệnh \(condition.name): tránh \(condition.avoidFoods.joined(separator: ", "))\n"
-            }
+            prompt += "- Tránh: \(allAvoid.joined(separator: ", "))\n"
         }
         
         // PRIORITY 2: Calorie constraint
@@ -205,7 +203,7 @@ class ContextBuilder {
         
         // Base context: Memory injection (always if available)
         if memory.hasContent {
-            let allAvoid = memory.allAvoidFoods
+            let allAvoid = memory.avoidFoods
             if !allAvoid.isEmpty {
                 prompt += "\n⛔ CẤM — KHÔNG ĐƯỢC gợi ý: \(allAvoid.joined(separator: ", "))"
             }
@@ -285,9 +283,7 @@ class ContextBuilder {
             prompt += "\n\n[Bệnh lý & Kiêng cữ — CHI TIẾT]\n"
             for condition in memory.healthConditions {
                 prompt += "- \(condition.name):\n"
-                if !condition.avoidFoods.isEmpty {
-                    prompt += "  Tránh: \(condition.avoidFoods.joined(separator: ", "))\n"
-                }
+                // AvoidFoods are now handled globally
                 if !condition.dietaryNotes.isEmpty {
                     prompt += "  Lưu ý: \(condition.dietaryNotes)\n"
                 }
@@ -475,5 +471,36 @@ class ContextBuilder {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
         return formatter
+    }
+    
+    // MARK: - Context Compression Engine
+    let maxTokens = 6000
+    
+    private func estimateTokens(for text: String) -> Int {
+        // Rough heuristic: 4 characters per token
+        return text.count / 4
+    }
+    
+    func compressHistory(messages: [ChatMessage]) -> [ChatMessage] {
+        // Keep the last 10 messages intact (Sliding Window)
+        guard messages.count > 10 else { return messages }
+        
+        let recentMessages = Array(messages.suffix(10))
+        let olderMessages = Array(messages.dropLast(10))
+        
+        let olderText = olderMessages.map { "\($0.isUser ? "User" : "AI"): \($0.content)" }.joined(separator: "\n")
+        let summaryPrompt = "[Lịch sử chat cũ đã được nén]:\n" + olderText
+        
+        var compressedMessages = [ChatMessage]()
+        if estimateTokens(for: olderText) > maxTokens {
+            // Truncate drastically if it exceeds budget
+            let truncated = String(olderText.suffix(maxTokens * 4))
+            compressedMessages.append(ChatMessage(content: "[Lịch sử chat cũ đã được nén]:\n" + truncated, isUser: false))
+        } else {
+            compressedMessages.append(ChatMessage(content: summaryPrompt, isUser: false))
+        }
+        
+        compressedMessages.append(contentsOf: recentMessages)
+        return compressedMessages
     }
 }
