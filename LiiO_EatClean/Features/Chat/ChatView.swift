@@ -4,6 +4,7 @@ struct ChatView: View {
     @State private var viewModel = ChatViewModel()
     @State private var inputText = ""
     @FocusState private var isInputFocused: Bool
+    @State private var showMemoryHub = false
     
     var body: some View {
         NavigationStack {
@@ -89,7 +90,7 @@ struct ChatView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        // Action for settings/memory if needed in the future
+                        showMemoryHub = true
                     }) {
                         Image(systemName: "brain.head.profile")
                             .foregroundColor(.green)
@@ -109,6 +110,9 @@ struct ChatView: View {
                 }
             )
             .presentationDetents([.medium, .large])
+        }
+        .fullScreenCover(isPresented: $showMemoryHub) {
+            MemoryHubView()
         }
     }
     

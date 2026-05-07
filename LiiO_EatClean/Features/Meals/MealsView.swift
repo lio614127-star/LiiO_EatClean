@@ -10,6 +10,7 @@ struct MealsView: View {
     @State private var activeDetailMealType: MealSheetItem?
     @State private var showMealPlanSheet = false
     @State private var mealPlanViewModel = MealPlanViewModel()
+    @State private var showMemoryHub = false
     
     var body: some View {
         NavigationStack {
@@ -65,7 +66,9 @@ struct MealsView: View {
                         
                         // Memory & AI Section
                         VStack(spacing: 16) {
-                            MemorySummaryCard()
+                            AIMemoryBadgeView(hasMemory: AIMemoryRepository.shared.currentMemory.hasContent) {
+                                showMemoryHub = true
+                            }
                             
                             AISuggestionSectionView(
                                 remainingCalories: viewModel.remainingCalories,
@@ -109,6 +112,9 @@ struct MealsView: View {
                     isPresented: $showMealPlanSheet,
                     targetCalories: viewModel.dailyTarget
                 )
+            }
+            .fullScreenCover(isPresented: $showMemoryHub) {
+                MemoryHubView()
             }
         }
         .task {

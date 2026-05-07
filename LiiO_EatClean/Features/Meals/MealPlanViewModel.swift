@@ -211,6 +211,7 @@ class MealPlanViewModel {
         await MainActor.run {
             self.isLoadingWeekly = true
             self.weeklyPlan = []
+            self.errorMessage = nil
         }
         
         do {
@@ -260,13 +261,19 @@ class MealPlanViewModel {
             let message = try await aiService.sendChatMessage(history: [], systemPrompt: prompt)
             
             await MainActor.run {
-                if let text = message.content {
+                let text = message.text
+                if !text.isEmpty {
                     self.weeklyPlan = Self.parseWeeklyPlan(text, target: targetCalories)
+                }
+                if self.weeklyPlan.isEmpty {
+                    self.errorMessage = "Lỗi Parse JSON. Raw text: \(text.prefix(300))"
                 }
                 self.isLoadingWeekly = false
             }
         } catch {
+            print("generateWeekPlan error: \(error)")
             await MainActor.run {
+                self.errorMessage = error.localizedDescription
                 self.isLoadingWeekly = false
             }
         }

@@ -141,7 +141,15 @@ struct MemoryHubView: View {
                     }
                 }
                 
-                // Placeholder for PersonalityPickerCard
+                // Personality Picker
+                PersonalityPickerCard(
+                    currentTone: $viewModel.currentMemory.personalityTone,
+                    onToneSelected: { newTone in
+                        Task {
+                            try? await viewModel.memoryRepository.updatePersonalityTone(newTone)
+                        }
+                    }
+                )
             }
             .padding()
         }
