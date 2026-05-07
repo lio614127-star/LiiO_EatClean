@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21815" systemVersion="22A380" minimumToolsVersion="Xcode 9.0" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="AIInsight" representedClassName="AIInsight" codeGenerationType="class" syncable="YES">
+        <attribute name="content" optional="YES" attributeType="String"/>
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="memory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AIMemory" inverseName="insights" inverseEntity="AIMemory"/>
+    </entity>
+    <entity name="AIMemory" representedClassName="AIMemory" codeGenerationType="class" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="personalityTone" optional="YES" attributeType="String" defaultValueString="friendly"/>
+        <relationship name="avoidFoods" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="AvoidFood" inverseName="memory" inverseEntity="AvoidFood"/>
+        <relationship name="dietaryNotes" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="DietaryNote" inverseName="memory" inverseEntity="DietaryNote"/>
+        <relationship name="foodPreferences" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="FoodPreference" inverseName="memory" inverseEntity="FoodPreference"/>
+        <relationship name="healthConditions" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="HealthCondition" inverseName="memory" inverseEntity="HealthCondition"/>
+        <relationship name="insights" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="AIInsight" inverseName="memory" inverseEntity="AIInsight"/>
+    </entity>
     <entity name="APIKey" representedClassName="APIKey" codeGenerationType="class" syncable="YES">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="isActive" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
@@ -64,10 +79,38 @@
         <attribute name="weight" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="User" inverseName="weightEntries" inverseEntity="User"/>
     </entity>
+    <entity name="AvoidFood" representedClassName="AvoidFood" codeGenerationType="class" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <relationship name="memory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AIMemory" inverseName="avoidFoods" inverseEntity="AIMemory"/>
+    </entity>
+    <entity name="DietaryNote" representedClassName="DietaryNote" codeGenerationType="class" syncable="YES">
+        <attribute name="content" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="memory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AIMemory" inverseName="dietaryNotes" inverseEntity="AIMemory"/>
+    </entity>
+    <entity name="FoodPreference" representedClassName="FoodPreference" codeGenerationType="class" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+        <relationship name="memory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AIMemory" inverseName="foodPreferences" inverseEntity="AIMemory"/>
+    </entity>
+    <entity name="HealthCondition" representedClassName="HealthCondition" codeGenerationType="class" syncable="YES">
+        <attribute name="dietaryNotes" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <relationship name="memory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AIMemory" inverseName="healthConditions" inverseEntity="AIMemory"/>
+    </entity>
     <elements>
+        <element name="AIInsight" positionX="-18" positionY="18" width="128" height="104"/>
+        <element name="AIMemory" positionX="-18" positionY="18" width="128" height="134"/>
         <element name="APIKey" positionX="-18" positionY="18" width="128" height="119"/>
         <element name="DailyLog" positionX="-18" positionY="18" width="128" height="119"/>
+        <element name="AvoidFood" positionX="-18" positionY="18" width="128" height="74"/>
+        <element name="DietaryNote" positionX="-18" positionY="18" width="128" height="74"/>
         <element name="FoodItem" positionX="-18" positionY="18" width="128" height="239"/>
+        <element name="FoodPreference" positionX="-18" positionY="18" width="128" height="89"/>
+        <element name="HealthCondition" positionX="-18" positionY="18" width="128" height="89"/>
         <element name="Meal" positionX="-18" positionY="18" width="128" height="104"/>
         <element name="MealFood" positionX="-18" positionY="18" width="128" height="164"/>
         <element name="User" positionX="-18" positionY="18" width="128" height="179"/>

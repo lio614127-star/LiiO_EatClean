@@ -26,9 +26,18 @@ struct WeeklyPlanView: View {
                             .foregroundColor(.secondary)
                         Text("Chưa có kế hoạch tuần")
                             .font(.headline)
-                        Text("Nhấn nút bên dưới để tạo")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                        
+                        if let error = viewModel.errorMessage {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        } else {
+                            Text("Nhấn nút bên dưới để tạo")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
                         
                         Button {
                             Task { await viewModel.generateWeekPlan(targetCalories: targetCalories) }
@@ -160,12 +169,13 @@ struct WeeklyDayDetailView: View {
                     ForEach(MealPlanViewModel.mealTypes, id: \.self) { mealType in
                         let foods = dayPlan.items.filter { ($0.mealType ?? "Ăn vặt") == mealType }
                         if !foods.isEmpty {
-                            MealPlanCard(
-                                mealType: mealType,
-                                foods: foods,
-                                isLogged: false,
-                                onLog: {} // No-op for weekly preview
-                            )
+                                MealPlanCard(
+                                    mealType: mealType,
+                                    foods: foods,
+                                    isLogged: false,
+                                    isViewOnly: true,
+                                    onLog: {} // No-op for weekly preview
+                                )
                         }
                     }
                 }

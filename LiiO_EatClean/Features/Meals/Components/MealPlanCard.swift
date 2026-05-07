@@ -4,6 +4,7 @@ struct MealPlanCard: View {
     let mealType: String
     let foods: [AISuggestedFood]
     let isLogged: Bool
+    var isViewOnly: Bool = false
     let onLog: () -> Void
     
     private var icon: String {
@@ -57,8 +58,8 @@ struct MealPlanCard: View {
                 .padding(.vertical, 4)
             }
             
-            // CTA: "Log bữa này" — hidden when already logged
-            if !isLogged {
+            // CTA: "Log bữa này" — hidden when already logged or in view-only mode
+            if !isViewOnly && !isLogged {
                 Button(action: onLog) {
                     Text("Log bữa này")
                         .font(.subheadline.bold())

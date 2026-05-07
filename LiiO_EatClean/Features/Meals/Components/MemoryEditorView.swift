@@ -17,11 +17,6 @@ struct MemoryEditorView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(condition.name)
                                 .font(.headline)
-                            if !condition.avoidFoods.isEmpty {
-                                Text("Kiêng: \(condition.avoidFoods.joined(separator: ", "))")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                            }
                             if !condition.dietaryNotes.isEmpty {
                                 Text(condition.dietaryNotes)
                                     .font(.caption)

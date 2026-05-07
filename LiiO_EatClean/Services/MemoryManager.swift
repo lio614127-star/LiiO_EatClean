@@ -31,7 +31,7 @@ class MemoryManager: MemoryManagerProtocol {
     
     // MARK: - Health Conditions
     
-    func addHealthCondition(_ condition: HealthCondition) {
+    func addHealthCondition(_ condition: HealthConditionModel) {
         var memory = fetchMemory()
         // Avoid duplicates by name
         guard !memory.healthConditions.contains(where: { $0.name.lowercased() == condition.name.lowercased() }) else { return }
@@ -96,9 +96,8 @@ class MemoryManager: MemoryManagerProtocol {
     func applyMemoryUpdate(_ update: MemoryUpdate) {
         switch update.type {
         case .addCondition:
-            let condition = HealthCondition(
+            let condition = HealthConditionModel(
                 name: update.value,
-                avoidFoods: update.avoid ?? [],
                 dietaryNotes: update.dietaryNotes ?? ""
             )
             addHealthCondition(condition)
