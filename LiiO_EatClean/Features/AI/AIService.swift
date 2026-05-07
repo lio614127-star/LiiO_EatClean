@@ -167,7 +167,7 @@ class AIService {
     // MARK: - Validation
     func testGeminiKey(_ key: String) async throws -> Bool {
         let cleanKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        let url = URL(string: "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=\(cleanKey)")!
+        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(cleanKey)")!
         let requestBody: [String: Any] = [
             "contents": [["parts": [["text": "hi"]]]],
             "generationConfig": ["maxOutputTokens": 5]
@@ -194,7 +194,7 @@ class AIService {
             let cleanKey = key.key.trimmingCharacters(in: .whitespacesAndNewlines)
             
             if key.provider == "gemini" {
-                let url = URL(string: "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=\(cleanKey)")!
+                let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(cleanKey)")!
                 let requestBody: [String: Any] = [
                     "contents": [["parts": [["text": prompt]]]],
                     "generationConfig": ["temperature": 0.3]
@@ -243,7 +243,7 @@ class AIService {
     // MARK: - Gemini API
     private func callGemini(apiKey: String, remainingCalories: Double, mealType: String, userGoal: String) async throws -> [AISuggestedFood] {
         let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        let url = URL(string: "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=\(cleanKey)")!
+        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(cleanKey)")!
         
         let prompt = buildPrompt(remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
         
@@ -304,7 +304,7 @@ class AIService {
     // MARK: - Chat API Implementations
     private func callGeminiChat(apiKey: String, history: [ChatMessage], systemPrompt: String) async throws -> ChatMessage {
         let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        let url = URL(string: "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=\(cleanKey)")!
+        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(cleanKey)")!
         
         // Convert history
         var contents: [[String: Any]] = []
