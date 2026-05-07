@@ -14,14 +14,14 @@ enum ContextStrategy {
 class ContextBuilder {
     private let userRepository: UserRepositoryProtocol
     private let mealRepository: MealRepositoryProtocol
-    private let memoryManager: MemoryManagerProtocol
+    private let memoryRepository: AIMemoryRepositoryProtocol
     
     init(userRepository: UserRepositoryProtocol = UserRepository(),
          mealRepository: MealRepositoryProtocol = MealRepository(),
-         memoryManager: MemoryManagerProtocol = MemoryManager.shared) {
+         memoryRepository: AIMemoryRepositoryProtocol = AIMemoryRepository.shared) {
         self.userRepository = userRepository
         self.mealRepository = mealRepository
-        self.memoryManager = memoryManager
+        self.memoryRepository = memoryRepository
     }
     
     // MARK: - Main Entry Point (Strategy-based)
@@ -33,7 +33,7 @@ class ContextBuilder {
         mealType: String? = nil
     ) async throws -> String {
         let user = try await userRepository.fetchUser()
-        let memory = memoryManager.fetchMemory()
+        let memory = try await memoryRepository.fetchMemory()
         
         let targetCalories = user?.dailyCalorieTarget ?? 2000
         let goalType = user?.goalType ?? "Duy trì cân nặng"
@@ -183,6 +183,7 @@ class ContextBuilder {
         """
         
         return prompt
+    }
     
     // MARK: - Strategy: Meal Plan (Full Day — Adaptive Context)
     
@@ -377,9 +378,11 @@ class ContextBuilder {
     // MARK: - Shared Building Blocks
     
     private func buildMemoryBlock(_ memory: UserProfileMemory) -> String {
-        guard memory.hasContent else { return "" }
+        var block = "\n\n[Tính cách AI]\n\(memory.personalityTone.promptInstruction)\n\n"
         
-        var block = "\n\n[Ghi nhớ về Người dùng]\n"
+        guard memory.hasContent else { return block }
+        
+        block += "[Ghi nhớ về Người dùng]\n"
         if !memory.likes.isEmpty {
             block += "- Thích: \(memory.likes.joined(separator: ", "))\n"
         }
