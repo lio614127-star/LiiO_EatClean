@@ -345,7 +345,7 @@ class AIService {
             "model": "gpt-4o-mini",
             "messages": messages,
             "temperature": 0.7,
-            "max_tokens": 1024
+            "max_tokens": 4096
         ]
         
         let data = try await performRequest(url: url, body: requestBody, extraHeaders: ["Authorization": "Bearer \(cleanKey)"])
@@ -386,7 +386,7 @@ class AIService {
             request.setValue(value, forHTTPHeaderField: key)
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        request.timeoutInterval = 30
+        request.timeoutInterval = 90
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -450,19 +450,21 @@ class AIService {
         
         if let match = results?.last { // Find the last JSON block
             let jsonString = nsString.substring(with: match.range(at: 1))
-            // Remove the block from the text
-            cleanText = nsString.replacingCharacters(in: match.range, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
             
             struct ActionWrapper: Codable {
                 let action: String
-                let items: [AISuggestedFood]
+                let items: [AISuggestedFood]?
             }
             
             if let data = jsonString.data(using: .utf8),
                let wrapper = try? JSONDecoder().decode(ActionWrapper.self, from: data) {
-                if wrapper.action == "suggest_meal" {
+                if wrapper.action == "suggest_meal" || wrapper.action == "meal_plan" {
                     foods = wrapper.items
+                    // Only remove the block from the text if it's a known chat/daily action
+                    cleanText = nsString.replacingCharacters(in: match.range, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
                 }
+                // For "weekly_plan", we intentionally leave the JSON in cleanText
+                // so MealPlanViewModel can parse it manually.
             }
         }
         
