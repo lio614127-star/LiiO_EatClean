@@ -37,14 +37,14 @@
 
 ### 🚧 v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện (Planning)
 
-- [ ] Phase 15: AI Memory Hub & Personality (MEMH, PERS)
+- [x] Phase 15: AI Memory Hub & Personality (MEMH, PERS)
   - Wave 1
     - 01: CoreData Schema & AIMemoryRepository
-  - Wave 2 *(blocked on Wave 1)*
+  - Wave 2
     - 02: Data Migration & ContextBuilder Update
-  - Wave 3 *(blocked on Wave 2)*
+  - Wave 3
     - 03: Memory Hub UI & Guided Setup
-  - Wave 4 *(blocked on Wave 3)*
+  - Wave 4
     - 04: Personality UX & Navigation Entry Points
 - [ ] Phase 16: API Infrastructure & Context Compression (APIK, COMP)
 - [ ] Phase 17: Voice Chat (VCHT)
@@ -69,7 +69,7 @@
 | 12. Advanced Data Inputs | v1.1 | Complete | 2026-05-05 |
 | 13. Proactive AI | v1.1 | Complete | 2026-05-05 |
 | 14. AI Meal Planning Engine | v1.1 | Complete | 2026-05-06 |
-| 15. AI Memory Hub & Personality | v1.2 | Not started | - |
+| 15. AI Memory Hub & Personality | v1.2 | Complete | 2026-05-07 |
 | 16. API Infrastructure & Context Compression | v1.2 | Not started | - |
 | 17. Voice Chat | v1.2 | Not started | - |
 | 18. Advanced Insights & Health-Aware AI | v1.2 | Not started | - |
