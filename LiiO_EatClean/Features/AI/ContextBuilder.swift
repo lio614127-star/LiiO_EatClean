@@ -488,16 +488,16 @@ class ContextBuilder {
         let recentMessages = Array(messages.suffix(10))
         let olderMessages = Array(messages.dropLast(10))
         
-        let olderText = olderMessages.map { "\($0.isUser ? "User" : "AI"): \($0.content)" }.joined(separator: "\n")
+        let olderText = olderMessages.map { "\($0.isUser ? "User" : "AI"): \($0.text)" }.joined(separator: "\n")
         let summaryPrompt = "[Lịch sử chat cũ đã được nén]:\n" + olderText
         
         var compressedMessages = [ChatMessage]()
         if estimateTokens(for: olderText) > maxTokens {
             // Truncate drastically if it exceeds budget
             let truncated = String(olderText.suffix(maxTokens * 4))
-            compressedMessages.append(ChatMessage(content: "[Lịch sử chat cũ đã được nén]:\n" + truncated, isUser: false))
+            compressedMessages.append(ChatMessage(role: .assistant, text: "[Lịch sử chat cũ đã được nén]:\n" + truncated, suggestedFoods: nil))
         } else {
-            compressedMessages.append(ChatMessage(content: summaryPrompt, isUser: false))
+            compressedMessages.append(ChatMessage(role: .assistant, text: summaryPrompt, suggestedFoods: nil))
         }
         
         compressedMessages.append(contentsOf: recentMessages)
