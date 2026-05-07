@@ -38,6 +38,14 @@
 ### 🚧 v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện (Planning)
 
 - [ ] Phase 15: AI Memory Hub & Personality (MEMH, PERS)
+  - Wave 1
+    - 01: CoreData Schema & AIMemoryRepository
+  - Wave 2 *(blocked on Wave 1)*
+    - 02: Data Migration & ContextBuilder Update
+  - Wave 3 *(blocked on Wave 2)*
+    - 03: Memory Hub UI & Guided Setup
+  - Wave 4 *(blocked on Wave 3)*
+    - 04: Personality UX & Navigation Entry Points
 - [ ] Phase 16: API Infrastructure & Context Compression (APIK, COMP)
 - [ ] Phase 17: Voice Chat (VCHT)
 - [ ] Phase 18: Advanced Insights & Health-Aware AI (HLTH, INSE)
