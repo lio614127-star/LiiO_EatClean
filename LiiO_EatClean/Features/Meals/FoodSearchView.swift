@@ -86,7 +86,7 @@ struct FoodSearchView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { viewModel.showCustomFoodBuilder = true }) {
                     Image(systemName: "plus.circle.fill")
-                        .foregroundColor(Color(hex: "4CAF50"))
+                        .foregroundColor(.green)
                 }
             }
         }
@@ -148,7 +148,7 @@ struct FoodSearchView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
-                    .background(Color(hex: "4CAF50"))
+                    .background(Color.green)
                     .cornerRadius(12)
             }
         }
@@ -164,7 +164,7 @@ struct FoodSearchView: View {
             Spacer()
             Button("Hoàn tác") { Task { await viewModel.undoDelete() } }
                 .font(.subheadline.bold())
-                .foregroundColor(Color(hex: "4CAF50"))
+                .foregroundColor(.green)
         }
         .padding()
         .background(.ultraThinMaterial)
@@ -250,7 +250,7 @@ struct FoodSearchView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color(hex: "4CAF50"))
+                        .background(Color.green)
                         .cornerRadius(4)
                 }
                 
@@ -272,7 +272,7 @@ struct FoodSearchView: View {
             }
             .padding(.vertical, 4)
         }
-        .listRowBackground(Color(hex: "4CAF50").opacity(0.05))
+        .listRowBackground(Color.green.opacity(0.05))
     }
 }
 
