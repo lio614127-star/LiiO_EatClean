@@ -42,7 +42,7 @@ struct CustomFoodBuilderSheet: View {
                 
                 Section {
                     Toggle("Tự động tính Calories từ Macros", isOn: $useAutoCalc)
-                        .tint(Color(hex: "4CAF50"))
+                        .tint(.green)
                     
                     if useAutoCalc {
                         HStack {
@@ -85,7 +85,7 @@ struct CustomFoodBuilderSheet: View {
                             .frame(maxWidth: .infinity)
                     }
                     .disabled(!isValid || isSaving)
-                    .tint(Color(hex: "4CAF50"))
+                    .tint(.green)
                     
                     if existingFood == nil {
                         Button(action: saveAndAdd) {
@@ -93,7 +93,7 @@ struct CustomFoodBuilderSheet: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .disabled(!isValid || isSaving)
-                        .tint(Color(hex: "4CAF50"))
+                        .tint(.green)
                     }
                 }
             }
