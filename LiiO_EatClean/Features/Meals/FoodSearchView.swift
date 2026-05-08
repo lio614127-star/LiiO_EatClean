@@ -5,58 +5,178 @@ struct FoodSearchView: View {
     var onFoodSelected: (FoodItemModel) -> Void
     
     var body: some View {
-        List {
-            if viewModel.searchText.isEmpty {
-                // Suggestions Section
-                if !viewModel.suggestions.isEmpty {
-                    Section(header: Text("Gợi ý")) {
-                        ForEach(viewModel.suggestions) { food in
-                            foodRow(for: food)
+        ZStack(alignment: .bottom) {
+            List {
+                if viewModel.searchText.isEmpty {
+                    // When idle: show custom foods + suggestions
+                    if !viewModel.customResults.isEmpty {
+                        customFoodsSection
+                    }
+                    if !viewModel.suggestions.isEmpty {
+                        Section(header: Text("Gợi ý")) {
+                            ForEach(viewModel.suggestions) { food in
+                                foodRow(for: food)
+                            }
                         }
                     }
-                }
-            } else {
-                // Search Results
-                
-                // Local Results
-                if !viewModel.localResults.isEmpty {
-                    Section(header: Text("Dữ liệu offline")) {
-                        ForEach(viewModel.localResults) { food in
-                            foodRow(for: food)
+                } else {
+                    // ⭐ Section 1: Custom foods
+                    if !viewModel.customResults.isEmpty {
+                        customFoodsSection
+                    }
+                    
+                    // 🕘 Section 2: Recent
+                    if !viewModel.recentResults.isEmpty {
+                        Section(header: Text("🕘 Gần đây")) {
+                            ForEach(viewModel.recentResults) { food in
+                                foodRow(for: food)
+                            }
                         }
                     }
-                } else if !viewModel.isSearchingAPI && viewModel.apiResults.isEmpty {
-                    Text("Không tìm thấy món nào")
-                        .foregroundColor(.secondary)
-                        .padding()
-                }
-                
-                // API Loading State
-                if viewModel.isSearchingAPI {
-                    Section {
-                        HStack {
-                            Spacer()
-                            ProgressView("Đang tìm kiếm online...")
-                                .padding()
-                            Spacer()
+                    
+                    // 📦 Section 3: Local offline
+                    if !viewModel.localResults.isEmpty {
+                        Section(header: Text("📦 Dữ liệu offline")) {
+                            ForEach(viewModel.localResults) { food in
+                                foodRow(for: food)
+                            }
                         }
                     }
-                }
-                
-                // API Results
-                if !viewModel.apiResults.isEmpty {
-                    Section(header: Text("Từ CalorieNinjas")) {
-                        ForEach(viewModel.apiResults) { food in
-                            foodRow(for: food)
+                    
+                    // Empty state with CTA
+                    if viewModel.customResults.isEmpty && viewModel.localResults.isEmpty && 
+                       viewModel.recentResults.isEmpty && !viewModel.isSearchingAPI && viewModel.apiResults.isEmpty {
+                        emptyStateWithCTA
+                    }
+                    
+                    // API Loading State
+                    if viewModel.isSearchingAPI {
+                        Section {
+                            HStack {
+                                Spacer()
+                                ProgressView("Đang tìm kiếm online...")
+                                    .padding()
+                                Spacer()
+                            }
+                        }
+                    }
+                    
+                    // 🌐 Section 4: API
+                    if !viewModel.apiResults.isEmpty {
+                        Section(header: Text("🌐 CalorieNinjas")) {
+                            ForEach(viewModel.apiResults) { food in
+                                foodRow(for: food)
+                            }
                         }
                     }
                 }
             }
+            .listStyle(InsetGroupedListStyle())
+            
+            // Undo toast
+            if viewModel.showUndoToast {
+                undoToastView
+            }
         }
-        .listStyle(InsetGroupedListStyle())
         .searchable(text: $viewModel.searchText, prompt: "Nhập tên món ăn...")
         .task {
             await viewModel.loadSuggestions()
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { viewModel.showCustomFoodBuilder = true }) {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundColor(Color(hex: "4CAF50"))
+                }
+            }
+        }
+        .sheet(isPresented: $viewModel.showCustomFoodBuilder) {
+            CustomFoodBuilderSheet(
+                onSave: { food in Task { await viewModel.selectFood(food) } },
+                onSaveAndAdd: { food in onFoodSelected(food) }
+            )
+        }
+        .sheet(item: $viewModel.editingFood) { food in
+            CustomFoodBuilderSheet(
+                existingFood: food,
+                onSave: { updatedFood in Task { await viewModel.selectFood(updatedFood) } },
+                onSaveAndAdd: { updatedFood in onFoodSelected(updatedFood) }
+            )
+        }
+    }
+    
+    private var customFoodsSection: some View {
+        Section(header: HStack {
+            Image(systemName: "star.fill").foregroundColor(.yellow).font(.caption2)
+            Text("Món của bạn").font(.subheadline.bold())
+        }) {
+            ForEach(viewModel.customResults) { food in
+                customFoodRow(for: food)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) { 
+                            Task { await viewModel.deleteCustomFood(food) } 
+                        } label: {
+                            Label("Xóa", systemImage: "trash")
+                        }
+                        Button { 
+                            viewModel.editingFood = food 
+                        } label: {
+                            Label("Sửa", systemImage: "pencil")
+                        }.tint(.blue)
+                    }
+                    .contextMenu {
+                        Button { viewModel.editingFood = food } label: { Label("Chỉnh sửa", systemImage: "pencil") }
+                        Button { Task { await viewModel.duplicateFood(food) } } label: { Label("Nhân bản", systemImage: "doc.on.doc") }
+                        Divider()
+                        Button(role: .destructive) { Task { await viewModel.deleteCustomFood(food) } } label: { Label("Xóa", systemImage: "trash") }
+                    }
+            }
+        }
+    }
+    
+    private var emptyStateWithCTA: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "fork.knife.circle")
+                .font(.system(size: 48))
+                .foregroundColor(.secondary.opacity(0.5))
+            Text("Không tìm thấy \"\(viewModel.searchText)\"")
+                .font(.headline)
+                .foregroundColor(.secondary)
+            Button(action: { viewModel.showCustomFoodBuilder = true }) {
+                Label("✨ Tạo món mới", systemImage: "plus.circle.fill")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(Color(hex: "4CAF50"))
+                    .cornerRadius(12)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .listRowBackground(Color.clear)
+    }
+    
+    private var undoToastView: some View {
+        HStack {
+            Text("🗑 Đã xóa món")
+                .font(.subheadline)
+            Spacer()
+            Button("Hoàn tác") { Task { await viewModel.undoDelete() } }
+                .font(.subheadline.bold())
+                .foregroundColor(Color(hex: "4CAF50"))
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+        .cornerRadius(12)
+        .shadow(radius: 4)
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                withAnimation { viewModel.showUndoToast = false }
+            }
         }
     }
     
@@ -81,8 +201,6 @@ struct FoodSearchView: View {
                         }
                     }
                     
-                    // Always show "1 phần" in suggestions to keep it clean, 
-                    // as the ViewModel has normalized the calories to 1 unit.
                     Text("1 phần")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -106,6 +224,55 @@ struct FoodSearchView: View {
             }
             .padding(.vertical, 4)
         }
+    }
+    
+    private func customFoodRow(for food: FoodItemModel) -> some View {
+        Button(action: {
+            Task {
+                await viewModel.selectFood(food)
+            }
+            onFoodSelected(food)
+        }) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Image(systemName: "star.fill")
+                            .foregroundColor(.yellow)
+                            .font(.caption)
+                        Text(food.name)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                    }
+                    
+                    Text("Custom")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color(hex: "4CAF50"))
+                        .cornerRadius(4)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("\(Int(food.calories)) kcal")
+                        .font(.subheadline)
+                        .bold()
+                        .foregroundColor(.primary)
+                    
+                    HStack(spacing: 8) {
+                        Text("P: \(Int(food.protein))g").foregroundColor(.blue)
+                        Text("C: \(Int(food.carbs))g").foregroundColor(.orange)
+                        Text("F: \(Int(food.fat))g").foregroundColor(.pink)
+                    }
+                    .font(.caption2)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .listRowBackground(Color(hex: "4CAF50").opacity(0.05))
     }
 }
 
