@@ -217,7 +217,7 @@ class FoodSearchViewModel {
             if !searchText.isEmpty {
                 await performSearch(query: searchText)
             } else {
-                customResults = try await foodRepository.fetchCustomFoods().map { normalizeToSinglePortion($0) }
+                customResults = (try? await foodRepository.fetchCustomFoods())?.map { normalizeToSinglePortion($0) } ?? []
             }
         }
     }
@@ -228,7 +228,7 @@ class FoodSearchViewModel {
             if !searchText.isEmpty {
                 await performSearch(query: searchText)
             } else {
-                customResults = try await foodRepository.fetchCustomFoods().map { normalizeToSinglePortion($0) }
+                customResults = (try? await foodRepository.fetchCustomFoods())?.map { normalizeToSinglePortion($0) } ?? []
             }
         }
     }
