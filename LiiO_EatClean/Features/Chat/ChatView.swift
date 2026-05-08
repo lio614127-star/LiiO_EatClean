@@ -1,10 +1,15 @@
 import SwiftUI
+import AVFoundation
 
 struct ChatView: View {
     @State private var viewModel = ChatViewModel()
     @State private var inputText = ""
     @FocusState private var isInputFocused: Bool
     @State private var showMemoryHub = false
+    
+    @State private var speechService = SpeechRecognitionService()
+    @State private var showVoiceSheet = false
+    @State private var hasMicPermission: Bool? = nil
     
     var body: some View {
         NavigationStack {
@@ -63,14 +68,21 @@ struct ChatView: View {
                             .disabled(viewModel.isStreaming)
                         
                         Button(action: {
-                            sendMessage()
+                            if inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Task {
+                                    await handleMicTap()
+                                }
+                            } else {
+                                sendMessage()
+                            }
                         }) {
-                            Image(systemName: "arrow.up.circle.fill")
+                            Image(systemName: inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "mic.fill" : "arrow.up.circle.fill")
                                 .resizable()
                                 .frame(width: 32, height: 32)
-                                .foregroundColor(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .gray : .green)
+                                .foregroundColor(.green)
+                                .contentTransition(.symbolEffect(.replace))
                         }
-                        .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isStreaming)
+                        .disabled(viewModel.isStreaming)
                         .padding(.bottom, 4)
                     }
                     .padding(.horizontal)
@@ -107,12 +119,66 @@ struct ChatView: View {
         .fullScreenCover(isPresented: $showMemoryHub) {
             MemoryHubView()
         }
+        .onAppear {
+            speechService.onSilenceTimeout = {
+                speechService.stopListening()
+                if !speechService.transcript.isEmpty {
+                    inputText = speechService.transcript
+                }
+                showVoiceSheet = false
+                
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if showVoiceSheet {
+                VoiceRecordingSheet(
+                    speechService: speechService,
+                    onDismiss: {
+                        speechService.stopListening()
+                        if !speechService.transcript.isEmpty {
+                            inputText = speechService.transcript
+                        }
+                        showVoiceSheet = false
+                    },
+                    onConfirm: { text in
+                        inputText = text
+                        showVoiceSheet = false
+                    }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showVoiceSheet)
+                .padding(.bottom, 80)
+            }
+        }
     }
     
     private func sendMessage() {
         guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         viewModel.sendMessage(inputText)
         inputText = ""
+    }
+    
+    private func handleMicTap() async {
+        if hasMicPermission == nil {
+            let granted = await speechService.requestAuthorization()
+            hasMicPermission = granted
+            
+            let micGranted = await AVAudioApplication.requestRecordPermission()
+            hasMicPermission = granted && micGranted
+        }
+        
+        guard hasMicPermission == true else {
+            viewModel.errorMessage = "Vui lòng cấp quyền micro và nhận diện giọng nói trong Cài đặt."
+            return
+        }
+        
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        
+        speechService.startListening()
+        showVoiceSheet = true
     }
 }
 
