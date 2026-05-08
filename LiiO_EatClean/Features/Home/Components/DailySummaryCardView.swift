@@ -60,22 +60,7 @@ struct DailySummaryCardView: View {
                         if !summary.insights.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
                                 ForEach(summary.insights) { insight in
-                                    HStack(alignment: .top, spacing: 8) {
-                                        Image(systemName: icon(for: insight.severity))
-                                            .foregroundColor(color(for: insight.severity))
-                                            .font(.caption)
-                                            .padding(.top, 2)
-                                        
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(insight.message)
-                                                .font(.subheadline)
-                                                .fontWeight(.medium)
-                                            
-                                            Text(insight.suggestion)
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
+                                    DailyInsightRow(insight: insight)
                                 }
                             }
                             .padding(.top, 4)
@@ -144,17 +129,6 @@ struct DailySummaryCardView: View {
         }
     }
     
-    private func icon(for severity: DailyInsight.InsightSeverity) -> String {
-        return severity == .high ? "exclamationmark.triangle.fill" : "exclamationmark.circle.fill"
-    }
-    
-    private func color(for severity: DailyInsight.InsightSeverity) -> Color {
-        switch severity {
-        case .high: return .red
-        case .medium: return .orange
-        case .low: return .green
-        }
-    }
 }
 
 struct MacroMiniBar: View {
@@ -185,6 +159,41 @@ struct MacroMiniBar: View {
             Text("\(Int(value))g")
                 .font(.caption2)
                 .foregroundColor(.secondary)
+        }
+    }
+}
+
+struct DailyInsightRow: View {
+    let insight: DailyInsight
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .foregroundColor(color)
+                .font(.caption)
+                .padding(.top, 2)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(insight.message)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Text(insight.suggestion)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    private var icon: String {
+        return insight.severity == .high ? "exclamationmark.triangle.fill" : "exclamationmark.circle.fill"
+    }
+    
+    private var color: Color {
+        switch insight.severity {
+        case .high: return .red
+        case .medium: return .orange
+        case .low: return .green
         }
     }
 }
