@@ -8,6 +8,7 @@ class MealSuggestionViewModel {
     var hasFetched = false
     var errorMessage: String?
     var showLogSuccess = false
+    var healthSafetyApplied = false
     
     private let aiService = AIService.shared
     private let contextBuilder = ContextBuilder()
@@ -51,9 +52,48 @@ class MealSuggestionViewModel {
             
             let message = try await aiService.sendChatMessage(history: [], systemPrompt: prompt, feature: "Gợi ý bữa ăn")
             
+            var processedFoods: [AISuggestedFood] = []
+            
+            if let foods = message.suggestedFoods, !foods.isEmpty {
+                processedFoods = foods
+                let memory = try await AIMemoryRepository.shared.fetchMemory()
+                
+                // Convert to dict for validator
+                let dictItems = processedFoods.map { ["name": $0.name] }
+                let violations = FoodSafetyValidator.shared.validateFoodItems(dictItems, against: memory)
+                
+                if !violations.isEmpty {
+                    await MainActor.run { self.healthSafetyApplied = true }
+                    
+                    // Process violations from last to first so indices don't shift when removing
+                    for violation in violations.reversed() {
+                        let originalItem = processedFoods[violation.index]
+                        processedFoods.remove(at: violation.index)
+                        
+                        let avoidFoodsStr = FoodSafetyValidator.shared.getAllAvoidFoods(for: memory).joined(separator: ", ")
+                        let reaskPrompt = """
+                        Thay thế món '\(originalItem.name)' bằng một món khác phù hợp.
+                        Yêu cầu:
+                        - Khoảng \(Int(originalItem.calories)) kcal
+                        - KHÔNG ĐƯỢC CHỨA: \(avoidFoodsStr)
+                        - Phong cách: Việt Nam
+                        Trả về JSON duy nhất: {"action":"suggest_meal","items":[{"name":"...","calories":...,"protein":...,"carbs":...,"fat":...,"servingSize":1.0,"mealType":"\(originalItem.mealType ?? "")"}]}
+                        """
+                        
+                        if let newFoods = try? await aiService.quickReaskForFood(prompt: reaskPrompt), let newFood = newFoods.first {
+                            // Validate the new food as well (max 1 retry)
+                            let newViolations = FoodSafetyValidator.shared.validateFood(name: newFood.name, against: memory)
+                            if newViolations.isEmpty {
+                                processedFoods.insert(newFood, at: violation.index)
+                            }
+                        }
+                    }
+                }
+            }
+            
             await MainActor.run {
-                if let foods = message.suggestedFoods, !foods.isEmpty {
-                    self.suggestions = foods
+                if !processedFoods.isEmpty {
+                    self.suggestions = processedFoods
                     self.hasFetched = true
                 } else {
                     self.errorMessage = "AI không thể đưa ra gợi ý lúc này."

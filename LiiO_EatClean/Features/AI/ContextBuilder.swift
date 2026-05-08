@@ -129,6 +129,8 @@ class ContextBuilder {
         
         // Add Memory Context
         prompt += buildMemoryBlock(memory)
+        prompt += buildAbsoluteRestrictionBlock(memory)
+        prompt += buildRecommendedFoodsBlock(memory)
         
         // Intent-based Context Injection (Hybrid Approach)
         let lowerMsg = userMessage.lowercased()
@@ -161,11 +163,8 @@ class ContextBuilder {
         """
         
         // PRIORITY 1: Avoid foods (CRITICAL — health safety)
-        let allAvoid = memory.avoidFoods
-        if !allAvoid.isEmpty {
-            prompt += "\n\n[⛔ CẤM — KHÔNG ĐƯỢC gợi ý các món sau]\n"
-            prompt += "- Tránh: \(allAvoid.joined(separator: ", "))\n"
-        }
+        prompt += buildAbsoluteRestrictionBlock(memory)
+        prompt += buildRecommendedFoodsBlock(memory)
         
         // PRIORITY 2: Calorie constraint
         prompt += "\n\n[Giới hạn Calories]\n"
@@ -235,10 +234,9 @@ class ContextBuilder {
         
         // Base context: Memory injection (always if available)
         if memory.hasContent {
-            let allAvoid = memory.avoidFoods
-            if !allAvoid.isEmpty {
-                prompt += "\n⛔ CẤM — KHÔNG ĐƯỢC gợi ý: \(allAvoid.joined(separator: ", "))"
-            }
+            prompt += buildAbsoluteRestrictionBlock(memory)
+            prompt += buildRecommendedFoodsBlock(memory)
+            
             if !memory.dislikes.isEmpty {
                 prompt += "\nKhông thích: \(memory.dislikes.joined(separator: ", "))"
             }
@@ -331,6 +329,8 @@ class ContextBuilder {
         }
         
         prompt += buildMemoryBlock(memory)
+        prompt += buildAbsoluteRestrictionBlock(memory)
+        prompt += buildRecommendedFoodsBlock(memory)
         
         prompt += """
         
@@ -361,6 +361,7 @@ class ContextBuilder {
         // Always inject 7-day data for progress analysis
         prompt += try await build7DayBlock()
         prompt += buildMemoryBlock(memory)
+        prompt += buildAbsoluteRestrictionBlock(memory)
         
         prompt += """
         
@@ -399,11 +400,40 @@ class ContextBuilder {
         """
         
         prompt += buildMemoryBlock(memory)
+        prompt += buildAbsoluteRestrictionBlock(memory)
         
         return prompt
     }
     
     // MARK: - Shared Building Blocks
+    
+    private func buildAbsoluteRestrictionBlock(_ memory: UserProfileMemory) -> String {
+        let validator = FoodSafetyValidator.shared
+        let allAvoid = validator.getAllAvoidFoods(for: memory)
+        
+        guard !allAvoid.isEmpty else { return "" }
+        
+        var block = "\n\n[⛔ ABSOLUTE RESTRICTION — TUYỆT ĐỐI CẤM]\n"
+        block += "NEVER suggest, recommend, or mention these foods:\n"
+        for food in allAvoid {
+            block += "- \(food)\n"
+        }
+        block += "\nViolating this restriction is FORBIDDEN. If unsure, DO NOT suggest the food.\n"
+        
+        return block
+    }
+    
+    private func buildRecommendedFoodsBlock(_ memory: UserProfileMemory) -> String {
+        let validator = FoodSafetyValidator.shared
+        let recommended = validator.getRecommendedFoods(for: memory)
+        
+        guard !recommended.isEmpty else { return "" }
+        
+        var block = "\n\n[✅ Ưu tiên gợi ý — Thực phẩm tốt cho sức khoẻ người dùng]\n"
+        block += "- \(recommended.joined(separator: ", "))\n"
+        
+        return block
+    }
     
     private func buildMemoryBlock(_ memory: UserProfileMemory) -> String {
         var block = "\n\n[Tính cách AI]\n\(memory.personalityTone.promptInstruction)\n\n"
@@ -418,7 +448,8 @@ class ContextBuilder {
             block += "- Không thích: \(memory.dislikes.joined(separator: ", "))\n"
         }
         if !memory.healthConditions.isEmpty {
-            block += "- Bệnh lý: \(memory.healthConditions.map(\.name).joined(separator: ", "))\n"
+            let conds = memory.healthConditions.map { "\($0.name): \($0.dietaryNotes)" }.joined(separator: "; ")
+            block += "- Bệnh lý: \(conds)\n"
         }
         if !memory.dietaryNotes.isEmpty {
             block += "- Lưu ý: \(memory.dietaryNotes.joined(separator: ", "))\n"

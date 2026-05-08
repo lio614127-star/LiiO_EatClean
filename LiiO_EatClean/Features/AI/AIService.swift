@@ -442,6 +442,16 @@ class AIService {
     }
     
     // MARK: - Raw Generation API
+    func quickReask(prompt: String) async throws -> String {
+        return try await generateText(prompt: prompt, requestType: .chat, feature: "Re-ask An Toàn", isInternal: true)
+    }
+    
+    func quickReaskForFood(prompt: String) async throws -> [AISuggestedFood] {
+        let text = try await generateText(prompt: prompt, requestType: .chat, feature: "Re-ask An Toàn", isInternal: true)
+        let msg = parseChatResponse(text)
+        return msg.suggestedFoods ?? []
+    }
+    
     func generateText(prompt: String, requestType: AIRequestType = .chat, feature: String = "AI Generation", forcedKey: APIKeyModel? = nil, subTasks: [String] = [], isInternal: Bool = false) async throws -> String {
         return try await executeWithRetry(task: requestType, feature: feature, forcedKey: forcedKey, subTasks: subTasks, isInternal: isInternal) { key, config in
             let cleanKey = key.key.trimmingCharacters(in: .whitespacesAndNewlines)

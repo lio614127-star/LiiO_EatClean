@@ -7,6 +7,7 @@ class ChatViewModel {
     var messages: [ChatMessage] = []
     var isTyping = false
     var errorMessage: String?
+    var healthSafetyApplied = false
     
     private let aiService = AIService.shared
     private let contextBuilder = ContextBuilder()
@@ -83,6 +84,31 @@ class ChatViewModel {
                         }
                     }
                 }
+                
+                // LAYER 2 + 3: Free-text safety scan and re-ask
+                if let index = self.messages.firstIndex(where: { $0.id == assistantID }) {
+                    let finalText = self.messages[index].text
+                    if let memory = try? await AIMemoryRepository.shared.fetchMemory() {
+                        let detected = FoodSafetyValidator.shared.scanFreeText(finalText, against: memory)
+                        if !detected.isEmpty {
+                            await MainActor.run { self.healthSafetyApplied = true }
+                            
+                            let conditionsStr = memory.healthConditions.map { $0.name }.joined(separator: ", ")
+                            let detectedStr = detected.joined(separator: ", ")
+                            let reaskPrompt = """
+                            Viết lại câu sau nhưng thay '\(detectedStr)' bằng thực phẩm an toàn cho người \(conditionsStr):
+                            \(finalText)
+                            """
+                            
+                            if let newText = try? await aiService.quickReask(prompt: reaskPrompt) {
+                                await MainActor.run {
+                                    self.messages[index].text = newText
+                                }
+                            }
+                        }
+                    }
+                }
+                
             } catch {
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription

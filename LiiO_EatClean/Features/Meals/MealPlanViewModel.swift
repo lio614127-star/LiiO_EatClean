@@ -9,6 +9,7 @@ class MealPlanViewModel {
     var errorMessage: String?
     var loggedMealTypes: Set<String> = []
     var showLogSuccess = false
+    var healthSafetyApplied = false
     
     // Weekly plan state
     var weeklyPlan: [WeeklyDayPlan] = []
@@ -70,10 +71,42 @@ class MealPlanViewModel {
             }
             
             // Final pass: Normalize all for final validation
-            let allFoods = rawFoods.map { food in
+            var allFoods = rawFoods.map { food in
                 var f = food
                 f.mealType = Self.normalizeMealType(f.mealType ?? "Ăn vặt")
                 return f
+            }
+            
+            // LAYER 2 + 3: Health Safety Validation
+            let memory = try await AIMemoryRepository.shared.fetchMemory()
+            let dictItems = allFoods.map { ["name": $0.name] }
+            let violations = FoodSafetyValidator.shared.validateFoodItems(dictItems, against: memory)
+            
+            if !violations.isEmpty {
+                await MainActor.run { self.healthSafetyApplied = true }
+                for violation in violations.reversed() {
+                    let originalItem = allFoods[violation.index]
+                    allFoods.remove(at: violation.index)
+                    
+                    let avoidFoodsStr = FoodSafetyValidator.shared.getAllAvoidFoods(for: memory).joined(separator: ", ")
+                    let reaskPrompt = """
+                    Thay thế món '\(originalItem.name)' bằng một món khác phù hợp.
+                    Yêu cầu:
+                    - Khoảng \(Int(originalItem.calories)) kcal
+                    - KHÔNG ĐƯỢC CHỨA: \(avoidFoodsStr)
+                    - Phong cách: Việt Nam
+                    Trả về JSON duy nhất: {"action":"meal_plan","items":[{"name":"...","calories":...,"protein":...,"carbs":...,"fat":...,"servingSize":1.0,"mealType":"\(originalItem.mealType ?? "")"}]}
+                    """
+                    
+                    if let newFoods = try? await aiService.quickReaskForFood(prompt: reaskPrompt), let newFood = newFoods.first {
+                        let newViolations = FoodSafetyValidator.shared.validateFood(name: newFood.name, against: memory)
+                        if newViolations.isEmpty {
+                            var nf = newFood
+                            nf.mealType = Self.normalizeMealType(nf.mealType ?? originalItem.mealType ?? "Ăn vặt")
+                            allFoods.insert(nf, at: violation.index)
+                        }
+                    }
+                }
             }
             
             await MainActor.run {
