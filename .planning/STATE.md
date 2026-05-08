@@ -24,8 +24,8 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 ## Current Position
 
 Phase: 18
-Status: Verifying
-Last activity: 2026-05-08 — Executed Phase 18 (Advanced Insights & Health-Aware AI)
+Status: Complete
+Last activity: 2026-05-08 — Phase 18 UAT verified (8/8 passed, 2 skipped)
 
 ## Memory
 
@@ -124,6 +124,7 @@ Last activity: 2026-05-08 — Executed Phase 18 (Advanced Insights & Health-Awar
 | 2026-05-08 | Phase 18 discussed | 3-layer health safety (prompt + validation + re-ask), hybrid food mapping, repeated meals + macro imbalance insights, separate insight cards UI. |
 | 2026-05-08 | Phase 18 planned | 5 tasks created in 4 waves |
 | 2026-05-08 | Phase 18 executed | `.planning/phases/18-advanced-insights-health-aware-ai/` |
+| 2026-05-08 | Phase 18 UAT verified | 8/8 passed, 2 skipped. Fixed duplicate insights display, consolidated into DailySummaryCard per user preference. |
 
 ---
-*Last updated: 2026-05-08 after Phase 18 execution*
+*Last updated: 2026-05-08 after Phase 18 UAT verification*
