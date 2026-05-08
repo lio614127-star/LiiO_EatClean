@@ -26,6 +26,7 @@
         <attribute name="calories" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="carbs" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="fat" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="isCustom" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="lastUsed" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
@@ -33,6 +34,7 @@
         <attribute name="protein" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="servingSize" optional="YES" attributeType="Double" defaultValueString="100.0" usesScalarValueType="YES"/>
         <attribute name="source" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="mealFoods" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="MealFood" inverseName="foodItem" inverseEntity="MealFood"/>
     </entity>
     <entity name="Meal" representedClassName="Meal" codeGenerationType="class" syncable="YES">
@@ -116,6 +118,13 @@
         <attribute name="name" optional="YES" attributeType="String"/>
         <relationship name="memory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AIMemory" inverseName="healthConditions" inverseEntity="AIMemory"/>
     </entity>
+    <entity name="PendingChatMessage" representedClassName="PendingChatMessage" codeGenerationType="class" syncable="YES">
+        <attribute name="conversationID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="status" optional="YES" attributeType="String" defaultValueString="pending"/>
+        <attribute name="text" optional="YES" attributeType="String"/>
+    </entity>
     <elements>
         <element name="AIInsight" positionX="-18" positionY="18" width="128" height="104"/>
         <element name="AIMemory" positionX="-18" positionY="18" width="128" height="134"/>
@@ -130,6 +139,8 @@
         <element name="MealFood" positionX="-18" positionY="18" width="128" height="164"/>
         <element name="User" positionX="-18" positionY="18" width="128" height="179"/>
         <element name="WeightEntry" positionX="-18" positionY="18" width="128" height="89"/>
+        <element name="WeightEntry" positionX="-18" positionY="18" width="128" height="89"/>
         <element name="StreakRecord" positionX="-18" positionY="18" width="128" height="134"/>
+        <element name="PendingChatMessage" positionX="-18" positionY="18" width="128" height="119"/>
     </elements>
 </model>

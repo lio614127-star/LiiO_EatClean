@@ -12,8 +12,10 @@ struct FoodItemModel: Identifiable, Codable, Equatable {
     var apiId: String?
     var isCustom: Bool
     var lastUsed: Date?
+    var createdAt: Date?
+    var updatedAt: Date?
     
-    init(id: UUID = UUID(), name: String = "", calories: Double = 0.0, protein: Double = 0.0, carbs: Double = 0.0, fat: Double = 0.0, servingSize: Double = 100.0, source: String = "", apiId: String? = nil, isCustom: Bool = false, lastUsed: Date? = nil) {
+    init(id: UUID = UUID(), name: String = "", calories: Double = 0.0, protein: Double = 0.0, carbs: Double = 0.0, fat: Double = 0.0, servingSize: Double = 100.0, source: String = "", apiId: String? = nil, isCustom: Bool = false, lastUsed: Date? = nil, createdAt: Date? = nil, updatedAt: Date? = nil) {
         self.id = id
         self.name = name
         self.calories = calories
@@ -25,6 +27,8 @@ struct FoodItemModel: Identifiable, Codable, Equatable {
         self.apiId = apiId
         self.isCustom = isCustom
         self.lastUsed = lastUsed
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }
 

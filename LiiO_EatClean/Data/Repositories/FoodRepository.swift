@@ -52,6 +52,7 @@ class FoodRepository: FoodRepositoryProtocol {
             } else {
                 entity = FoodItem(context: self.context)
                 entity.id = food.id
+                entity.createdAt = Date()
             }
             
             entity.name = food.name
@@ -64,6 +65,7 @@ class FoodRepository: FoodRepositoryProtocol {
             entity.apiId = food.apiId
             entity.isCustom = food.isCustom
             entity.lastUsed = food.lastUsed
+            entity.updatedAt = Date()
             try self.context.save()
         }
     }
@@ -134,7 +136,9 @@ class FoodRepository: FoodRepositoryProtocol {
                 source: food.source ?? "",
                 apiId: food.apiId,
                 isCustom: food.isCustom,
-                lastUsed: food.lastUsed
+                lastUsed: food.lastUsed,
+                createdAt: food.createdAt,
+                updatedAt: food.updatedAt
             )
         }
     }

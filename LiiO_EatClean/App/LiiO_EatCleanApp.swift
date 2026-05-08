@@ -3,6 +3,7 @@ import CoreData
 @main
 struct LiiO_EatCleanApp: App {
     let persistenceController = PersistenceController.shared
+    @State private var networkMonitor = NetworkMonitor.shared
 
     init() {
         print("🚀 App: Initializing...")
@@ -23,6 +24,7 @@ struct LiiO_EatCleanApp: App {
         WindowGroup {
             SplashView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .environment(networkMonitor)
         }
     }
     
