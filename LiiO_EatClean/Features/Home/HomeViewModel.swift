@@ -34,7 +34,9 @@ class HomeViewModel {
     }
     
     func loadDashboard() async {
-        isLoading = true
+        if todayMeals.isEmpty && user == nil {
+            isLoading = true
+        }
         do {
             user = try await userRepository.fetchUser()
             todayMeals = try await mealRepository.fetchMeals(by: Date())
@@ -189,5 +191,15 @@ class HomeViewModel {
     
     func meals(for type: String) -> [MealModel] {
         todayMeals.filter { $0.mealType.lowercased() == type.lowercased() }
+    }
+    
+    func toggleMealFoodStatus(id: UUID) async {
+        let currentStatus = todayMeals.flatMap { $0.mealFoods }.first(where: { $0.id == id })?.isEaten ?? false
+        do {
+            try await mealRepository.updateMealFoodStatus(id: id, isEaten: !currentStatus)
+            await loadDashboard()
+        } catch {
+            print("Failed to toggle meal food status: \(error)")
+        }
     }
 }

@@ -70,7 +70,7 @@ struct HomeView: View {
                             
                             // Meal Cards
                             mealsSection
-                                .animation(.easeInOut(duration: 0.3), value: viewModel.todayMeals.count)
+                                .animation(.easeInOut(duration: 0.3), value: viewModel.todayMeals)
                             
                             // Add Meal Button (Fallback)
                             addMealButton
@@ -170,7 +170,8 @@ struct HomeView: View {
                 meals: viewModel.meals(for: "Bữa sáng"),
                 onAddTapped: { showAddMealSheet(for: "Bữa sáng") },
                 onRowTapped: { showMealDetailSheet(for: "Bữa sáng") },
-                onDelete: deleteMealFood
+                onDelete: deleteMealFood,
+                onToggleEaten: { id in Task { await viewModel.toggleMealFoodStatus(id: id) } }
             )
             
             MealCardView(
@@ -179,7 +180,8 @@ struct HomeView: View {
                 meals: viewModel.meals(for: "Bữa trưa"),
                 onAddTapped: { showAddMealSheet(for: "Bữa trưa") },
                 onRowTapped: { showMealDetailSheet(for: "Bữa trưa") },
-                onDelete: deleteMealFood
+                onDelete: deleteMealFood,
+                onToggleEaten: { id in Task { await viewModel.toggleMealFoodStatus(id: id) } }
             )
             
             MealCardView(
@@ -188,7 +190,8 @@ struct HomeView: View {
                 meals: viewModel.meals(for: "Bữa tối"),
                 onAddTapped: { showAddMealSheet(for: "Bữa tối") },
                 onRowTapped: { showMealDetailSheet(for: "Bữa tối") },
-                onDelete: deleteMealFood
+                onDelete: deleteMealFood,
+                onToggleEaten: { id in Task { await viewModel.toggleMealFoodStatus(id: id) } }
             )
             
             MealCardView(
@@ -197,7 +200,8 @@ struct HomeView: View {
                 meals: viewModel.meals(for: "Ăn vặt"),
                 onAddTapped: { showAddMealSheet(for: "Ăn vặt") },
                 onRowTapped: { showMealDetailSheet(for: "Ăn vặt") },
-                onDelete: deleteMealFood
+                onDelete: deleteMealFood,
+                onToggleEaten: { id in Task { await viewModel.toggleMealFoodStatus(id: id) } }
             )
         }
         .padding(.horizontal, 24)

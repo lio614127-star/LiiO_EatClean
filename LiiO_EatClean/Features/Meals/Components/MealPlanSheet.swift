@@ -103,30 +103,6 @@ struct MealPlanSheet: View {
                             .buttonStyle(.plain)
                             .padding(.top, 8)
                         }
-                        
-                        // Weekly plan button
-                        if !viewModel.planItems.isEmpty {
-                            Button {
-                                if isOffline {
-                                    showOfflineToast = true
-                                    return
-                                }
-                                showWeeklyPlan = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "calendar")
-                                    Text("Lên kế hoạch tuần")
-                                        .fontWeight(.medium)
-                                }
-                                .foregroundColor(.green)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(Color.green.opacity(0.1))
-                                .cornerRadius(12)
-                            }
-                            .buttonStyle(.plain)
-                            .opacity(isOffline ? 0.45 : 1.0)
-                        }
                     }
                 }
                 .padding()

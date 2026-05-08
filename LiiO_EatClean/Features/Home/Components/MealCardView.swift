@@ -7,6 +7,7 @@ struct MealCardView: View {
     var onAddTapped: (() -> Void)? = nil
     var onRowTapped: (() -> Void)? = nil
     var onDelete: ((UUID) -> Void)? = nil
+    var onToggleEaten: ((UUID) -> Void)? = nil
     
     // Calculate total calories for this meal type
     private var totalCalories: Double {
@@ -56,12 +57,23 @@ struct MealCardView: View {
                     
                     Spacer()
                 }
+                .frame(minHeight: 32)
                 .padding(.top, 4)
             } else {
                 // Food list (Full list with inline delete instead of preview)
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(allFoods, id: \.id) { mealFood in
-                        HStack {
+                        HStack(spacing: 12) {
+                            Button(action: {
+                                HapticManager.success()
+                                onToggleEaten?(mealFood.id)
+                            }) {
+                                Image(systemName: mealFood.isEaten ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(mealFood.isEaten ? .green : .secondary)
+                                    .font(.system(size: 18))
+                            }
+                            .buttonStyle(.plain)
+                            
                             Text(mealFood.foodItem?.name ?? "Món ăn")
                                 .font(.subheadline)
                                 .foregroundColor(.primary)

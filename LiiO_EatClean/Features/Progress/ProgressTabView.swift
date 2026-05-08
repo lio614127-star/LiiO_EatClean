@@ -29,16 +29,20 @@ struct ProgressTabView: View {
                             if viewModel.selectedTab == .calories {
                                 CalorieChartView(
                                     data: viewModel.calorieData,
+                                    weeklyData: viewModel.weeklyData,
                                     dailyTarget: viewModel.dailyTarget,
                                     timeRange: viewModel.selectedTimeRange
                                 )
                                 .padding(.horizontal)
+                                .animation(.easeInOut(duration: 0.35), value: viewModel.selectedTimeRange)
                             } else {
                                 WeightChartView(
                                     data: viewModel.weightData,
+                                    weeklyData: viewModel.weeklyData,
                                     timeRange: viewModel.selectedTimeRange
                                 )
                                 .padding(.horizontal)
+                                .animation(.easeInOut(duration: 0.35), value: viewModel.selectedTimeRange)
                             }
                         }
                         
@@ -64,27 +68,30 @@ struct ProgressTabView: View {
                     await viewModel.loadData()
                 }
                 
-                // Floating Action Button
-                VStack {
-                    Spacer()
-                    HStack {
+                // Floating Action Button (Only on Weight tab, raised slightly higher)
+                if viewModel.selectedTab == .weight {
+                    VStack {
                         Spacer()
-                        Button(action: {
-                            // Try to pre-fill with latest weight
-                            if let last = viewModel.weightData.last {
-                                weightInput = String(format: "%.1f", last.weight)
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                // Try to pre-fill with latest weight
+                                if let last = viewModel.weightData.last {
+                                    weightInput = String(format: "%.1f", last.weight)
+                                }
+                                isShowingLogWeight = true
+                            }) {
+                                Image(systemName: "plus")
+                                    .font(.title.bold())
+                                    .foregroundColor(.white)
+                                    .frame(width: 60, height: 60)
+                                    .background(Color.green)
+                                    .clipShape(Circle())
+                                    .shadow(color: Color.green.opacity(0.4), radius: 8, x: 0, y: 4)
                             }
-                            isShowingLogWeight = true
-                        }) {
-                            Image(systemName: "plus")
-                                .font(.title.bold())
-                                .foregroundColor(.white)
-                                .frame(width: 60, height: 60)
-                                .background(Color.green)
-                                .clipShape(Circle())
-                                .shadow(color: Color.green.opacity(0.4), radius: 8, x: 0, y: 4)
+                            .padding(.trailing, 24)
+                            .padding(.bottom, 64)
                         }
-                        .padding(24)
                     }
                 }
             }

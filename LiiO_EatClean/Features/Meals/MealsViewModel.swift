@@ -42,6 +42,16 @@ class MealsViewModel {
         }
     }
     
+    func toggleMealFoodStatus(id: UUID) async {
+        let currentStatus = todayMeals.flatMap { $0.mealFoods }.first(where: { $0.id == id })?.isEaten ?? false
+        do {
+            try await mealRepository.updateMealFoodStatus(id: id, isEaten: !currentStatus)
+            await loadTodayMeals()
+        } catch {
+            print("Failed to toggle meal food status: \(error)")
+        }
+    }
+    
     // Group meals by type
     func meals(for type: String) -> [MealModel] {
         todayMeals.filter { $0.mealType.lowercased() == type.lowercased() }

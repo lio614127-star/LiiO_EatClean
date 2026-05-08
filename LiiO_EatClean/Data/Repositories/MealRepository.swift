@@ -45,11 +45,11 @@ class MealRepository: MealRepositoryProtocol {
                     if let foodsSet = foods as? Set<MealFood> {
                         mealFoods = foodsSet.map { mf in
                             self.mapMealFood(mf, date: date)
-                        }
+                        }.sorted(by: { $0.id.uuidString < $1.id.uuidString })
                     } else if let foodsOrderedSet = foods as? NSOrderedSet {
                         mealFoods = foodsOrderedSet.array.compactMap { $0 as? MealFood }.map { mf in
                             self.mapMealFood(mf, date: date)
-                        }
+                        }.sorted(by: { $0.id.uuidString < $1.id.uuidString })
                     }
                 }
                 
@@ -76,11 +76,11 @@ class MealRepository: MealRepositoryProtocol {
                     if let foodsSet = foods as? Set<MealFood> {
                         mealFoods = foodsSet.map { mf in
                             self.mapMealFood(mf, date: startDate)
-                        }
+                        }.sorted(by: { $0.id.uuidString < $1.id.uuidString })
                     } else if let foodsOrderedSet = foods as? NSOrderedSet {
                         mealFoods = foodsOrderedSet.array.compactMap { $0 as? MealFood }.map { mf in
                             self.mapMealFood(mf, date: startDate)
-                        }
+                        }.sorted(by: { $0.id.uuidString < $1.id.uuidString })
                     }
                 }
                 

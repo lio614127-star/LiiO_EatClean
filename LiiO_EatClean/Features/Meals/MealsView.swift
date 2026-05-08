@@ -9,6 +9,7 @@ struct MealsView: View {
     @State private var activeAddMealType: MealSheetItem?
     @State private var activeDetailMealType: MealSheetItem?
     @State private var showMealPlanSheet = false
+    @State private var showWeeklyPlanSheet = false
     @State private var mealPlanViewModel = MealPlanViewModel()
     @State private var showMemoryHub = false
     
@@ -34,29 +35,41 @@ struct MealsView: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         
-                        // Meal Plan Button (D-03: entry point)
-                        Button {
-                            guard !showMealPlanSheet else { return }
-                            showMealPlanSheet = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "sparkles")
-                                Text("Lên kế hoạch hôm nay")
-                                    .fontWeight(.semibold)
+                        // Dual Meal Plan Buttons (D-03: entry point split)
+                        HStack(spacing: 12) {
+                            Button {
+                                guard !showMealPlanSheet else { return }
+                                showMealPlanSheet = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "sparkles")
+                                    Text("Kế hoạch ngày")
+                                        .fontWeight(.semibold)
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.green)
+                                .cornerRadius(12)
                             }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(
-                                LinearGradient(
-                                    colors: [Color.green, Color.green.opacity(0.8)],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .cornerRadius(12)
+                            .buttonStyle(.plain)
+                            
+                            Button {
+                                showWeeklyPlanSheet = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "calendar")
+                                    Text("Kế hoạch tuần")
+                                        .fontWeight(.semibold)
+                                }
+                                .foregroundColor(.green)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.green.opacity(0.12))
+                                .cornerRadius(12)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         
@@ -99,6 +112,15 @@ struct MealsView: View {
                     targetCalories: viewModel.dailyTarget
                 )
             }
+            .fullScreenCover(isPresented: $showWeeklyPlanSheet, onDismiss: {
+                mealPlanViewModel.reset()
+                Task { await viewModel.loadTodayMeals() }
+            }) {
+                WeeklyPlanView(
+                    viewModel: mealPlanViewModel,
+                    targetCalories: viewModel.dailyTarget
+                )
+            }
             .fullScreenCover(isPresented: $showMemoryHub) {
                 MemoryHubView()
             }
@@ -111,10 +133,10 @@ struct MealsView: View {
     @ViewBuilder
     private func mealSection(for type: String) -> some View {
         let meals = viewModel.meals(for: type)
-        let foods = meals.flatMap { $0.mealFoods }.filter { $0.isEaten }
-        let totalCals = foods.reduce(0) { $0 + $1.caloriesSnapshot }
+        let foods = meals.flatMap { $0.mealFoods }
+        let totalCals = foods.filter { $0.isEaten }.reduce(0) { $0 + $1.caloriesSnapshot }
         
-        Section {
+        return Section {
             if foods.isEmpty {
                 Text("Chưa có bữa ăn — nhấn + để thêm")
                     .font(.subheadline)
@@ -123,18 +145,28 @@ struct MealsView: View {
                     .padding(.vertical, 8)
             } else {
                 ForEach(foods) { food in
-                    MealItemRow(mealFood: food)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            activeDetailMealType = MealSheetItem(id: type)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                Task { await viewModel.deleteMealFood(id: food.id) }
-                            } label: {
-                                Label("Xóa", systemImage: "trash")
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            HapticManager.success()
+                            Task {
+                                await viewModel.toggleMealFoodStatus(id: food.id)
                             }
+                        }) {
+                            Image(systemName: food.isEaten ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(food.isEaten ? .green : .secondary)
+                                .font(.system(size: 20))
                         }
+                        .buttonStyle(.plain)
+                        
+                        MealItemRow(mealFood: food)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            Task { await viewModel.deleteMealFood(id: food.id) }
+                        } label: {
+                            Label("Xóa", systemImage: "trash")
+                        }
+                    }
                 }
             }
         } header: {

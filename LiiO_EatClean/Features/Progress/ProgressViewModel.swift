@@ -7,8 +7,9 @@ enum ProgressTab: String, CaseIterable {
 }
 
 enum TimeRange: String, CaseIterable {
-    case week = "Tuần"
-    case month = "Tháng"
+    case week = "7N"
+    case month = "30N"
+    case quarter = "3T"
 }
 
 struct CalorieDailyTotal: Identifiable {
@@ -30,6 +31,7 @@ class ProgressViewModel {
     var dailyTarget: Double = 2000.0
     var calorieData: [CalorieDailyTotal] = []
     var weightData: [WeightEntryModel] = []
+    var weeklyData: [WeeklyAggregate] = []
     var isLoading = false
     
     private let mealRepository: MealRepositoryProtocol
@@ -50,7 +52,12 @@ class ProgressViewModel {
             // Calculate start and end date
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: Date())
-            let daysToSubtract = selectedTimeRange == .week ? 6 : 29
+            let daysToSubtract: Int
+            switch selectedTimeRange {
+            case .week: daysToSubtract = 6
+            case .month: daysToSubtract = 29
+            case .quarter: daysToSubtract = 89 // 90 days total for 12+ weeks
+            }
             guard let startDate = calendar.date(byAdding: .day, value: -daysToSubtract, to: today) else { return }
             
             let endOfDay = calendar.date(byAdding: .day, value: 1, to: today)!
@@ -86,6 +93,44 @@ class ProgressViewModel {
             let allWeights = try await userRepository.fetchWeightEntries()
             // Filter weights by date range
             weightData = allWeights.filter { $0.date >= startDate && $0.date < endOfDay }
+            
+            // Calculate Weekly Aggregates if quarter is selected
+            if selectedTimeRange == .quarter {
+                var newWeeklyData: [WeeklyAggregate] = []
+                var currentStart = startDate
+                var weekNum = 1
+                
+                while currentStart < endOfDay {
+                    let nextStart = calendar.date(byAdding: .day, value: 7, to: currentStart) ?? endOfDay
+                    let chunkEnd = Swift.min(nextStart, endOfDay)
+                    
+                    let mealsInWeek = meals.filter { $0.date >= currentStart && $0.date < chunkEnd }
+                    let weightsInWeek = allWeights.filter { $0.date >= currentStart && $0.date < chunkEnd }.sorted { $0.date < $1.date }
+                    
+                    // Sum up calories from meals in the week
+                    let totalCaloriesInWeek = mealsInWeek.reduce(0.0) { sum, meal in
+                        sum + meal.mealFoods.reduce(0) { $0 + $1.caloriesSnapshot }
+                    }
+                    
+                    // Find unique days with logged meals to avoid punishing if they just didn't use the app,
+                    // OR simple average by 7. We'll average by 7 to show daily average intake across the week.
+                    let avgCals = totalCaloriesInWeek / 7.0
+                    
+                    newWeeklyData.append(WeeklyAggregate(
+                        weekNumber: weekNum,
+                        averageCalories: avgCals,
+                        lastWeight: weightsInWeek.last?.weight,
+                        startDate: currentStart,
+                        endDate: chunkEnd
+                    ))
+                    
+                    currentStart = chunkEnd
+                    weekNum += 1
+                }
+                self.weeklyData = newWeeklyData
+            } else {
+                self.weeklyData = []
+            }
             
         } catch {
             print("Error loading progress data: \(error)")
