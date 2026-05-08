@@ -70,7 +70,7 @@ struct HomeView: View {
                                                         newDismissed.insert(insight.id)
                                                         dismissedInsightIDsRaw = newDismissed.map { $0.uuidString }.joined(separator: ",")
                                                     }
-                                                    HapticManager.light()
+                                                    HapticManager.interaction()
                                                 },
                                                 onTapAction: {
                                                     // Navigate to AI Coach
