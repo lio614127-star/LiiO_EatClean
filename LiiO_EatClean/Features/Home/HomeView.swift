@@ -3,10 +3,6 @@ import SwiftUI
 struct HomeView: View {
     @State private var viewModel = HomeViewModel()
     
-    @AppStorage("selectedTab") private var selectedTab = 0
-    @AppStorage("dismissedInsightIDs") private var dismissedInsightIDsRaw = ""
-    @AppStorage("lastDismissedDate") private var lastDismissedDateRaw = 0.0
-    
     // Add Meal Sheet State
     @State private var activeAddMealType: MealSheetItem?
     
@@ -52,39 +48,6 @@ struct HomeView: View {
                                 DailySummaryCardView(summary: viewModel.dailySummary)
                                     .padding(.horizontal, 24)
                                     .transition(.asymmetric(insertion: .slide.combined(with: .opacity), removal: .opacity))
-                            }
-                            
-                            // Insight Cards (below Daily Summary)
-                            if let insights = viewModel.insights, !insights.isEmpty {
-                                let dismissedIDs = Set(dismissedInsightIDsRaw.split(separator: ",").compactMap { UUID(uuidString: String($0)) })
-                                let visibleInsights = insights.filter { !dismissedIDs.contains($0.id) }
-                                
-                                if !visibleInsights.isEmpty {
-                                    VStack(spacing: 10) {
-                                        ForEach(visibleInsights) { insight in
-                                            InsightCardView(
-                                                insight: insight,
-                                                onDismiss: {
-                                                    withAnimation(.easeOut(duration: 0.3)) {
-                                                        var newDismissed = dismissedIDs
-                                                        newDismissed.insert(insight.id)
-                                                        dismissedInsightIDsRaw = newDismissed.map { $0.uuidString }.joined(separator: ",")
-                                                    }
-                                                    HapticManager.interaction()
-                                                },
-                                                onTapAction: {
-                                                    // Navigate to AI Coach
-                                                    selectedTab = 4
-                                                }
-                                            )
-                                            .transition(.asymmetric(
-                                                insertion: .move(edge: .top).combined(with: .opacity),
-                                                removal: .move(edge: .trailing).combined(with: .opacity)
-                                            ))
-                                        }
-                                    }
-                                    .padding(.horizontal, 24)
-                                }
                             }
                             
                             // Water Card (Daily Control Center)
@@ -155,17 +118,7 @@ struct HomeView: View {
         }
         .task {
             print("🚀 HomeView: Loading dashboard data...")
-            checkAndClearDismissedInsights()
             await viewModel.loadDashboard()
-        }
-    }
-    
-    private func checkAndClearDismissedInsights() {
-        let now = Date().timeIntervalSince1970
-        // Clear if older than 3 days (3 * 24 * 60 * 60 = 259200 seconds)
-        if now - lastDismissedDateRaw > 259200 {
-            dismissedInsightIDsRaw = ""
-            lastDismissedDateRaw = now
         }
     }
     

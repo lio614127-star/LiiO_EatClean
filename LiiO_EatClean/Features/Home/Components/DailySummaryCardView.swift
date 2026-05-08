@@ -56,6 +56,15 @@ struct DailySummaryCardView: View {
                             MacroMiniBar(title: "F", value: summary.fat, target: (summary.targetCalories * 0.3) / 9, color: .orange)
                         }
                         
+                        // Insights
+                        if !summary.insights.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                ForEach(summary.insights) { insight in
+                                    DailyInsightRow(insight: insight)
+                                }
+                            }
+                            .padding(.top, 4)
+                        }
                         
                         // AI Summary
                         VStack(alignment: .leading, spacing: 8) {
