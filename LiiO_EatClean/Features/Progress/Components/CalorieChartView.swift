@@ -14,8 +14,11 @@ struct CalorieChartView: View {
             Text("Lượng Calo nạp vào")
                 .font(.headline)
             
-            if data.isEmpty {
-                emptyState
+            let currentCount = timeRange == .quarter ? weeklyData.count : data.filter { $0.total > 0 }.count
+            let requiredCount = timeRange == .quarter ? 2 : 3
+            
+            if currentCount < requiredCount {
+                emptyState(currentCount: currentCount, requiredCount: requiredCount)
             } else {
                 let maxVal = timeRange == .quarter 
                     ? (weeklyData.map { $0.averageCalories }.max() ?? 0)
@@ -95,8 +98,8 @@ struct CalorieChartView: View {
                 }
                 .chartXAxis {
                     if timeRange == .quarter {
-                        AxisMarks(values: weeklyData.map { $0.startDate }) { value in
-                            if let date = value.as(Date.self), let week = weeklyData.first(where: { $0.startDate == date }) {
+                        AxisMarks(values: .stride(by: .weekOfYear, count: 1)) { value in
+                            if let date = value.as(Date.self), let week = weeklyData.first(where: { Calendar.current.isDate($0.startDate, equalTo: date, toGranularity: .weekOfYear) }) {
                                 AxisValueLabel {
                                     Text("W\(week.weekNumber)")
                                         .font(.system(size: 10))
@@ -105,7 +108,7 @@ struct CalorieChartView: View {
                             AxisGridLine()
                         }
                     } else if timeRange == .week {
-                        AxisMarks(values: data.map { $0.date }) { value in
+                        AxisMarks(values: .stride(by: .day, count: 1)) { value in
                             if let date = value.as(Date.self) {
                                 AxisValueLabel {
                                     let weekday = Calendar.current.component(.weekday, from: date)
@@ -118,7 +121,7 @@ struct CalorieChartView: View {
                         }
                     } else {
                         // Month mode: Smart skipping
-                        AxisMarks(values: data.map { $0.date }) { value in
+                        AxisMarks(values: .stride(by: .day, count: 1)) { value in
                             if let date = value.as(Date.self) {
                                 let day = Calendar.current.component(.day, from: date)
                                 if [1, 5, 10, 15, 20, 25, 30].contains(day) {
@@ -151,30 +154,22 @@ struct CalorieChartView: View {
         )
     }
     
-    private var emptyState: some View {
+    private func emptyState(currentCount: Int, requiredCount: Int) -> some View {
         VStack(spacing: 8) {
             Image(systemName: "chart.bar.xaxis")
                 .font(.largeTitle)
                 .foregroundColor(Color(.systemGray3))
             
-            let dataCount = timeRange == .quarter ? weeklyData.count : data.filter { $0.total > 0 }.count
-            if dataCount == 0 {
+            if currentCount == 0 {
                 Text("Chưa có dữ liệu")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             } else {
-                let required = timeRange == .quarter ? 2 : 3
-                if dataCount < required {
-                    Text("Cần thêm \(required - dataCount) \(timeRange == .quarter ? "tuần" : "ngày") dữ liệu để hiển thị xu hướng")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                } else {
-                    Text("Chưa có dữ liệu")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
+                Text("Cần thêm \(requiredCount - currentCount) \(timeRange == .quarter ? "tuần" : "ngày") dữ liệu để hiển thị xu hướng")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
             }
         }
         .frame(maxWidth: .infinity, minHeight: 250)
