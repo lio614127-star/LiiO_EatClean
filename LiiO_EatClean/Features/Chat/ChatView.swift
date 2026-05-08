@@ -79,21 +79,21 @@ struct ChatView: View {
                             Group {
                                 if inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                     Image(systemName: "mic.fill")
-                                        .font(.system(size: 15, weight: .medium))
+                                        .font(.system(size: 18, weight: .medium))
                                         .foregroundColor(.green)
-                                        .frame(width: 36, height: 36)
+                                        .frame(width: 40, height: 40)
                                 } else {
                                     Image(systemName: "arrow.up")
-                                        .font(.system(size: 15, weight: .bold))
+                                        .font(.system(size: 16, weight: .bold))
                                         .foregroundColor(.white)
-                                        .frame(width: 36, height: 36)
+                                        .frame(width: 34, height: 34)
                                         .background(Circle().fill(Color.green))
                                 }
                             }
                             .contentTransition(.symbolEffect(.replace))
                         }
                         .disabled(viewModel.isStreaming)
-                        .padding(.bottom, 2)
+                        .padding(.bottom, 3)
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 8)
