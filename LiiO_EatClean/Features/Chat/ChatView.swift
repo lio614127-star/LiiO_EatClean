@@ -61,9 +61,10 @@ struct ChatView: View {
                         TextField("Hỏi bác sĩ dinh dưỡng...", text: $inputText, axis: .vertical)
                             .lineLimit(1...5)
                             .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
+                            .padding(.vertical, 14)
+                            .frame(minHeight: 54)
                             .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(20)
+                            .cornerRadius(27)
                             .focused($isInputFocused)
                             .disabled(viewModel.isStreaming)
                         
@@ -79,23 +80,26 @@ struct ChatView: View {
                             Group {
                                 if inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                     Image(systemName: "mic.fill")
-                                        .font(.system(size: 18, weight: .medium))
+                                        .font(.system(size: 22, weight: .semibold))
                                         .foregroundColor(.green)
-                                        .frame(width: 40, height: 40)
+                                        .frame(width: 44, height: 44)
+                                        .background(Circle().fill(Color.green.opacity(0.12)))
                                 } else {
                                     Image(systemName: "arrow.up")
-                                        .font(.system(size: 16, weight: .bold))
+                                        .font(.system(size: 18, weight: .bold))
                                         .foregroundColor(.white)
-                                        .frame(width: 34, height: 34)
+                                        .frame(width: 40, height: 40)
                                         .background(Circle().fill(Color.green))
                                 }
                             }
                             .contentTransition(.symbolEffect(.replace))
                         }
+                        .buttonStyle(ChatActionButtonStyle(isMicMode: inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
                         .disabled(viewModel.isStreaming)
-                        .padding(.bottom, 3)
+                        .padding(.trailing, 6)
+                        .padding(.bottom, 5)
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                 }
                 .background(Color(UIColor.systemBackground))
@@ -205,5 +209,19 @@ struct StreamingCursor: View {
                     opacity = 0.0
                 }
             }
+    }
+}
+
+struct ChatActionButtonStyle: ButtonStyle {
+    let isMicMode: Bool
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            // Scale up to ~52pt when pressed (if it's mic mode, 44 -> 52 is ~1.18 scale)
+            .scaleEffect(configuration.isPressed ? (isMicMode ? 1.18 : 0.9) : 1.0)
+            // Add subtle glow when pressed
+            .shadow(color: (configuration.isPressed && isMicMode) ? Color.green.opacity(0.4) : Color.clear, radius: 8, x: 0, y: 0)
+            .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
+            .contentShape(Circle())
     }
 }
