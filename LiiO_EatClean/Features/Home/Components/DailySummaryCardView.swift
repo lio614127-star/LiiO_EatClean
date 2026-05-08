@@ -61,8 +61,8 @@ struct DailySummaryCardView: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 ForEach(summary.insights) { insight in
                                     HStack(alignment: .top, spacing: 8) {
-                                        Image(systemName: insight.severity == .high ? "exclamationmark.triangle.fill" : "exclamationmark.circle.fill")
-                                            .foregroundColor(insight.severity == .high ? .red : (insight.severity == .medium ? .orange : .green))
+                                        Image(systemName: icon(for: insight.severity))
+                                            .foregroundColor(color(for: insight.severity))
                                             .font(.caption)
                                             .padding(.top, 2)
                                         
@@ -141,6 +141,18 @@ struct DailySummaryCardView: View {
             if let sum = summary, !sum.insights.isEmpty {
                 isExpanded = true
             }
+        }
+    }
+    
+    private func icon(for severity: DailyInsight.InsightSeverity) -> String {
+        return severity == .high ? "exclamationmark.triangle.fill" : "exclamationmark.circle.fill"
+    }
+    
+    private func color(for severity: DailyInsight.InsightSeverity) -> Color {
+        switch severity {
+        case .high: return .red
+        case .medium: return .orange
+        case .low: return .green
         }
     }
 }
