@@ -92,15 +92,21 @@ struct FoodSearchView: View {
         }
         .sheet(isPresented: $viewModel.showCustomFoodBuilder) {
             CustomFoodBuilderSheet(
-                onSave: { food in Task { await viewModel.selectFood(food) } },
-                onSaveAndAdd: { food in onFoodSelected(food) }
+                onSave: { food in Task { await viewModel.saveCustomFoodAndRefresh(food) } },
+                onSaveAndAdd: { food in
+                    Task { await viewModel.saveCustomFoodAndRefresh(food) }
+                    onFoodSelected(food)
+                }
             )
         }
         .sheet(item: $viewModel.editingFood) { food in
             CustomFoodBuilderSheet(
                 existingFood: food,
-                onSave: { updatedFood in Task { await viewModel.selectFood(updatedFood) } },
-                onSaveAndAdd: { updatedFood in onFoodSelected(updatedFood) }
+                onSave: { updatedFood in Task { await viewModel.updateCustomFoodAndRefresh(updatedFood) } },
+                onSaveAndAdd: { updatedFood in
+                    Task { await viewModel.updateCustomFoodAndRefresh(updatedFood) }
+                    onFoodSelected(updatedFood)
+                }
             )
         }
     }

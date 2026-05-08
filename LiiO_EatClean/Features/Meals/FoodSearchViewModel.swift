@@ -199,6 +199,26 @@ class FoodSearchViewModel {
         }
     }
     
+    // Save new custom food to CoreData and refresh list
+    func saveCustomFoodAndRefresh(_ food: FoodItemModel) async {
+        do {
+            try await foodRepository.saveCustomFood(food)
+            customResults = try await foodRepository.fetchCustomFoods().map { normalizeToSinglePortion($0) }
+        } catch {
+            print("Failed to save custom food: \(error)")
+        }
+    }
+    
+    // Update existing custom food in CoreData and refresh list
+    func updateCustomFoodAndRefresh(_ food: FoodItemModel) async {
+        do {
+            try await foodRepository.updateCustomFood(food)
+            customResults = try await foodRepository.fetchCustomFoods().map { normalizeToSinglePortion($0) }
+        } catch {
+            print("Failed to update custom food: \(error)")
+        }
+    }
+    
     // MARK: - Custom Food Management
     
     func deleteCustomFood(_ food: FoodItemModel) async {
