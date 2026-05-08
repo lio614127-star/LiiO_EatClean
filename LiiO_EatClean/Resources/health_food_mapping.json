@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "conditions": {
+    "Tiểu đường": {
+      "recommended": ["rau xanh", "cá", "yến mạch", "ngũ cốc nguyên hạt", "đậu phụ", "các loại đậu"],
+      "avoid": ["nước ngọt", "kẹo", "bánh ngọt", "đường trắng", "siro", "mứt"],
+      "aliases": {
+        "đường": ["sugar", "syrup", "đường trắng", "đường nâu", "mật ong"],
+        "nước ngọt": ["soda", "coca", "pepsi", "nước có ga"],
+        "bánh ngọt": ["cake", "cookie", "donut", "bánh kem"]
+      },
+      "risk_tags": ["high_sugar", "high_gi"]
+    },
+    "Cao huyết áp": {
+      "recommended": ["chuối", "khoai lang", "rau chân vịt", "cá hồi", "yến mạch", "bơ"],
+      "avoid": ["muối", "đồ mặn", "mì gói", "dưa muối", "đồ hộp", "xúc xích"],
+      "aliases": {
+        "muối": ["salt", "sodium", "natri"],
+        "mì gói": ["instant noodle", "mì tôm", "mì ăn liền"],
+        "đồ hộp": ["canned food", "thịt hộp"]
+      },
+      "risk_tags": ["high_sodium"]
+    },
+    "Gout": {
+      "recommended": ["rau xanh", "trái cây", "sữa ít béo", "ngũ cốc nguyên hạt"],
+      "avoid": ["nội tạng", "hải sản", "bia", "rượu", "thịt đỏ"],
+      "aliases": {
+        "nội tạng": ["organ meat", "gan", "lòng", "tim", "cật"],
+        "hải sản": ["seafood", "tôm", "cua", "mực", "sò", "nghêu", "ốc", "shrimp", "crab", "shellfish", "prawn"],
+        "bia": ["beer", "rượu bia"]
+      },
+      "risk_tags": ["high_purine"]
+    },
+    "Dị ứng hải sản": {
+      "recommended": [],
+      "avoid": ["hải sản", "tôm", "cua", "mực", "sò", "nghêu", "ốc"],
+      "aliases": {
+        "hải sản": ["seafood", "shrimp", "crab", "shellfish", "prawn", "lobster", "clam", "oyster", "squid"],
+        "tôm": ["shrimp", "prawn", "tôm sú", "tôm thẻ"],
+        "cua": ["crab", "ghẹ"],
+        "mực": ["squid", "calamari"]
+      },
+      "risk_tags": ["allergen"]
+    },
+    "Cholesterol cao": {
+      "recommended": ["yến mạch", "cá", "rau xanh", "các loại hạt", "dầu ô liu"],
+      "avoid": ["lòng đỏ trứng số lượng lớn", "nội tạng", "mỡ động vật", "bơ thường", "đồ chiên"],
+      "aliases": {
+        "mỡ động vật": ["lard", "mỡ heo", "mỡ bò"],
+        "đồ chiên": ["fried food", "chiên giòn", "deep fried"]
+      },
+      "risk_tags": ["high_cholesterol", "high_saturated_fat"]
+    },
+    "Dị ứng sữa": {
+      "recommended": ["sữa đậu nành", "sữa hạnh nhân", "sữa yến mạch"],
+      "avoid": ["sữa bò", "phô mai", "bơ", "kem", "yogurt sữa bò"],
+      "aliases": {
+        "sữa": ["milk", "dairy", "sữa tươi", "sữa bò"],
+        "phô mai": ["cheese", "fromage"],
+        "bơ": ["butter"],
+        "kem": ["ice cream"],
+        "yogurt": ["sữa chua", "yaourt"]
+      },
+      "risk_tags": ["dairy_allergen"]
+    },
+    "Trào ngược dạ dày": {
+      "recommended": ["yến mạch", "chuối", "gừng", "rau xanh nấu chín", "cá hấp"],
+      "avoid": ["đồ cay", "cà phê", "chocolate", "đồ chiên", "nước có ga", "cam quýt"],
+      "aliases": {
+        "đồ cay": ["spicy food", "ớt", "tiêu"],
+        "cà phê": ["coffee", "espresso", "latte"],
+        "cam quýt": ["citrus", "cam", "chanh", "bưởi"]
+      },
+      "risk_tags": ["acidic", "irritant"]
+    }
+  }
+}
