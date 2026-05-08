@@ -61,8 +61,8 @@ struct DailySummaryCardView: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 ForEach(summary.insights) { insight in
                                     HStack(alignment: .top, spacing: 8) {
-                                        Image(systemName: insight.severity == .alert ? "exclamationmark.triangle.fill" : "exclamationmark.circle.fill")
-                                            .foregroundColor(insight.severity == .alert ? .red : .orange)
+                                        Image(systemName: insight.severity == .high ? "exclamationmark.triangle.fill" : "exclamationmark.circle.fill")
+                                            .foregroundColor(insight.severity == .high ? .red : (insight.severity == .medium ? .orange : .green))
                                             .font(.caption)
                                             .padding(.top, 2)
                                         
