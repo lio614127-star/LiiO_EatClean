@@ -19,6 +19,7 @@ struct AddMealView: View {
     // Offline State
     @State private var showOfflineToast = false
     @State private var offlineToastMessage = ""
+    @State private var toastID = 0
     private var isOffline: Bool { !NetworkMonitor.shared.isConnected }
     
     let mealTypes = ["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"]
@@ -117,11 +118,14 @@ struct AddMealView: View {
                         .background(Color.orange.opacity(0.9))
                         .cornerRadius(10)
                         .shadow(radius: 4)
-                        .padding(.bottom, 100)
+                        .padding(.bottom, 40)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                         .onAppear {
+                            let currentID = toastID
                             DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
-                                withAnimation { showOfflineToast = false }
+                                if toastID == currentID {
+                                    withAnimation { showOfflineToast = false }
+                                }
                             }
                         }
                 }
@@ -156,6 +160,7 @@ struct AddMealView: View {
                 Button(action: {
                     if isOffline {
                         offlineToastMessage = "📡 Nhập giọng nói cần kết nối mạng"
+                        toastID += 1
                         withAnimation { showOfflineToast = true }
                         return
                     }
@@ -174,6 +179,7 @@ struct AddMealView: View {
                 Button(action: {
                     if isOffline {
                         offlineToastMessage = "📡 Gợi ý AI cần kết nối mạng"
+                        toastID += 1
                         withAnimation { showOfflineToast = true }
                         return
                     }
