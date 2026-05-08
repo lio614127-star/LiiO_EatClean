@@ -120,6 +120,7 @@ Last activity: 2026-05-08 — Phase 17 UAT verified (6/6 passed)
 | 2026-05-08 | Phase 17 discussed | Gathered user context for Voice Chat implementation, focusing on premium UX and natural flow. |
 | 2026-05-08 | Phase 17 executed | `.planning/phases/17-voice-chat/17-SUMMARY.md` |
 | 2026-05-08 | Phase 17 UAT verified | 6/6 passed. Voice Chat feature fully functional: Mic/Send toggle, permission flow, recording sheet with waveform, real-time transcript, auto-stop on silence. |
+| 2026-05-08 | Quick Task: UI Polish | Applied Apple HIG sizing to Chat input bar: 54pt minHeight, 44x44 mic container, 22pt icon, and added hold-to-record glow animation. |
 
 ---
-*Last updated: 2026-05-08 after Phase 17 UAT verification*
+*Last updated: 2026-05-08 after Quick Task UI Polish*
