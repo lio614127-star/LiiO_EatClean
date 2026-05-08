@@ -49,6 +49,15 @@
 - [x] Phase 16: API Infrastructure & Context Compression (APIK, COMP)
 - [x] Phase 17: Voice Chat (VCHT)
 - [ ] Phase 18: Advanced Insights & Health-Aware AI (HLTH, INSE)
+  - Wave 1
+    - 01: Health Food Mapping & Food Safety Validator
+  - Wave 2
+    - 02: ContextBuilder Health Safety Upgrade
+    - 03: AI Output Validation & Minimal Re-ask
+  - Wave 3
+    - 04: InsightDetector Expansion (Repeated Meals & Macro Imbalance)
+  - Wave 4
+    - 05: Insight Cards UI & Health Safety Badge
 - [ ] Phase 19: Offline Mode & Custom Foods (OFFL, CFOD)
 
 ## Progress
