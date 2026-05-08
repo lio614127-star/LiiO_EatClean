@@ -123,6 +123,83 @@ class FoodRepository: FoodRepositoryProtocol {
         }
     }
     
+    // MARK: - Custom Foods
+    
+    func fetchCustomFoods() async throws -> [FoodItemModel] {
+        return try await context.perform {
+            let request: NSFetchRequest<FoodItem> = FoodItem.fetchRequest()
+            request.predicate = NSPredicate(format: "isCustom == true")
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \FoodItem.updatedAt, ascending: false)]
+            let results = try self.context.fetch(request)
+            return self.mapToModels(results)
+        }
+    }
+
+    func searchCustomFoods(query: String) async throws -> [FoodItemModel] {
+        guard !query.isEmpty else { return [] }
+        return try await context.perform {
+            let request: NSFetchRequest<FoodItem> = FoodItem.fetchRequest()
+            request.predicate = NSPredicate(format: "isCustom == true AND name CONTAINS[cd] %@", query)
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \FoodItem.updatedAt, ascending: false)]
+            let results = try self.context.fetch(request)
+            return self.mapToModels(results)
+        }
+    }
+
+    func saveCustomFood(_ food: FoodItemModel) async throws {
+        try await context.perform {
+            let entity = FoodItem(context: self.context)
+            entity.id = food.id
+            entity.name = food.name
+            entity.calories = food.calories
+            entity.protein = food.protein
+            entity.carbs = food.carbs
+            entity.fat = food.fat
+            entity.servingSize = food.servingSize > 0 ? food.servingSize : 1.0
+            entity.source = "custom"
+            entity.isCustom = true
+            entity.createdAt = Date()
+            entity.updatedAt = Date()
+            try self.context.save()
+        }
+    }
+
+    func updateCustomFood(_ food: FoodItemModel) async throws {
+        try await context.perform {
+            let request: NSFetchRequest<FoodItem> = FoodItem.fetchRequest()
+            request.predicate = NSPredicate(format: "id == %@", food.id as CVarArg)
+            if let entity = try self.context.fetch(request).first {
+                entity.name = food.name
+                entity.calories = food.calories
+                entity.protein = food.protein
+                entity.carbs = food.carbs
+                entity.fat = food.fat
+                entity.servingSize = food.servingSize
+                entity.updatedAt = Date()
+                try self.context.save()
+            }
+        }
+    }
+
+    func duplicateCustomFood(_ food: FoodItemModel) async throws -> FoodItemModel {
+        var duplicate = food
+        duplicate = FoodItemModel(
+            id: UUID(),
+            name: food.name + " (bản sao)",
+            calories: food.calories,
+            protein: food.protein,
+            carbs: food.carbs,
+            fat: food.fat,
+            servingSize: food.servingSize,
+            source: "custom",
+            isCustom: true,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+        try await saveCustomFood(duplicate)
+        return duplicate
+    }
+    
     private func mapToModels(_ entities: [FoodItem]) -> [FoodItemModel] {
         return entities.map { food in
             FoodItemModel(

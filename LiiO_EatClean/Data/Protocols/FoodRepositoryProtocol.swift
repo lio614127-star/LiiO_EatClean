@@ -9,4 +9,11 @@ protocol FoodRepositoryProtocol {
     func updateLastUsed(for id: UUID) async throws
     func deleteFood(by id: UUID) async throws
     func seedDatabaseIfNeeded() async throws
+    
+    // Custom Foods
+    func fetchCustomFoods() async throws -> [FoodItemModel]
+    func searchCustomFoods(query: String) async throws -> [FoodItemModel]
+    func saveCustomFood(_ food: FoodItemModel) async throws
+    func updateCustomFood(_ food: FoodItemModel) async throws
+    func duplicateCustomFood(_ food: FoodItemModel) async throws -> FoodItemModel
 }
