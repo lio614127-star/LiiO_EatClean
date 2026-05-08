@@ -58,7 +58,7 @@
     - 04: InsightDetector Expansion (Repeated Meals & Macro Imbalance)
   - Wave 4
     - 05: Insight Cards UI & Health Safety Badge
-- [ ] Phase 19: Offline Mode & Custom Foods (OFFL, CFOD)
+- [x] Phase 19: Offline Mode & Custom Foods (OFFL, CFOD)
   - **Wave 1** *(foundation — no dependencies)*
     - 01: NetworkMonitor & CoreData Schema Updates
   - **Wave 2** *(blocked on Wave 1 completion)*
@@ -91,4 +91,4 @@
 | 16. API Infrastructure & Context Compression | v1.2 | Verified | 2026-05-08 |
 | 17. Voice Chat | v1.2 | Verified | 2026-05-08 |
 | 18. Advanced Insights & Health-Aware AI | v1.2 | Verified | 2026-05-08 |
-| 19. Offline Mode & Custom Foods | v1.2 | Planned | - |
+| 19. Offline Mode & Custom Foods | v1.2 | Verified | 2026-05-08 |
