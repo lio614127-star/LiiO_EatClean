@@ -76,14 +76,24 @@ struct ChatView: View {
                                 sendMessage()
                             }
                         }) {
-                            Image(systemName: inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "mic.fill" : "arrow.up.circle.fill")
-                                .resizable()
-                                .frame(width: 32, height: 32)
-                                .foregroundColor(.green)
-                                .contentTransition(.symbolEffect(.replace))
+                            Group {
+                                if inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Image(systemName: "mic.fill")
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundColor(.green)
+                                        .frame(width: 36, height: 36)
+                                } else {
+                                    Image(systemName: "arrow.up")
+                                        .font(.system(size: 15, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .frame(width: 36, height: 36)
+                                        .background(Circle().fill(Color.green))
+                                }
+                            }
+                            .contentTransition(.symbolEffect(.replace))
                         }
                         .disabled(viewModel.isStreaming)
-                        .padding(.bottom, 4)
+                        .padding(.bottom, 2)
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 8)
