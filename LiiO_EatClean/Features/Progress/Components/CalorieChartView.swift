@@ -9,13 +9,28 @@ struct CalorieChartView: View {
     
     @State private var selectedDate: Date?
     
+    // Calculate X-axis domain based on timeRange
+    private var xAxisDomain: ClosedRange<Date> {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let daysToSubtract: Int
+        switch timeRange {
+        case .week: daysToSubtract = 6
+        case .month: daysToSubtract = 29
+        case .quarter: daysToSubtract = 89
+        }
+        let start = calendar.date(byAdding: .day, value: -daysToSubtract, to: today) ?? today
+        let end = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        return start...end
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Lượng Calo nạp vào")
                 .font(.headline)
             
             let currentCount = timeRange == .quarter ? weeklyData.count : data.filter { $0.total > 0 }.count
-            let requiredCount = timeRange == .quarter ? 2 : 3
+            let requiredCount = 1
             
             if currentCount < requiredCount {
                 emptyState(currentCount: currentCount, requiredCount: requiredCount)
@@ -70,16 +85,19 @@ struct CalorieChartView: View {
                     RuleMark(y: .value("Mục tiêu", dailyTarget))
                         .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5]))
                         .foregroundStyle(.red.opacity(0.5))
-                        .annotation(position: .top, alignment: .trailing) {
+                        .annotation(position: .overlay, alignment: .topTrailing) {
                             Text("Mục tiêu (\(Int(dailyTarget)))")
                                 .font(.caption2)
-                                .foregroundColor(.red.opacity(0.5))
+                                .foregroundColor(.red.opacity(0.8))
                                 .padding(.horizontal, 4)
-                                .background(Color(.systemBackground).opacity(0.8))
+                                .padding(.vertical, 2)
+                                .background(Color(.systemBackground).opacity(0.9))
                                 .cornerRadius(4)
+                                .offset(y: -15)
                         }
                 }
                 .chartYScale(domain: 0...max(3000, max(dailyTarget * 1.2, maxVal * 1.1)))
+                .chartXScale(domain: xAxisDomain)
                 .chartScrollableAxes(.horizontal)
                 .chartXVisibleDomain(length: timeRange == .week ? 7 * 86400 : (timeRange == .month ? 7 * 86400 : 4 * 604800))
                 .chartGesture { proxy in

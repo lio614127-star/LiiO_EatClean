@@ -43,7 +43,7 @@ struct WeightChartView: View {
                 .font(.headline)
             
             let currentCount = timeRange == .quarter ? weeklyData.filter { $0.lastWeight != nil }.count : data.count
-            let requiredCount = timeRange == .quarter ? 2 : 3
+            let requiredCount = 1
             
             if currentCount < requiredCount {
                 emptyState(currentCount: currentCount, requiredCount: requiredCount)

@@ -21,11 +21,7 @@ struct ProgressTabView: View {
                         .pickerStyle(.segmented)
                         .padding(.horizontal)
                         
-                        // Chart Content
-                        if viewModel.isLoading {
-                            SwiftUI.ProgressView()
-                                .frame(height: 250)
-                        } else {
+                        ZStack {
                             if viewModel.selectedTab == .calories {
                                 CalorieChartView(
                                     data: viewModel.calorieData,
@@ -44,7 +40,15 @@ struct ProgressTabView: View {
                                 .padding(.horizontal)
                                 .animation(.easeInOut(duration: 0.35), value: viewModel.selectedTimeRange)
                             }
+                            
+                            if viewModel.isLoading {
+                                SwiftUI.ProgressView()
+                                    .padding()
+                                    .background(Color(.systemBackground).opacity(0.8))
+                                    .cornerRadius(8)
+                            }
                         }
+                        .frame(minHeight: 250)
                         
                         // Time Range Toggle
                         Picker("Thời gian", selection: $viewModel.selectedTimeRange) {
@@ -101,8 +105,10 @@ struct ProgressTabView: View {
                     .presentationDetents([.height(250)])
             }
         }
-        .task {
-            await viewModel.loadData()
+        .onAppear {
+            Task {
+                await viewModel.loadData()
+            }
         }
     }
     
