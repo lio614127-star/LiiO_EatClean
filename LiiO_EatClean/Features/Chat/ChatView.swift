@@ -139,8 +139,8 @@ struct ChatView: View {
                             .contentTransition(.symbolEffect(.replace))
                         }
                         .buttonStyle(ChatActionButtonStyle(isMicMode: inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
-                        .disabled(viewModel.isStreaming || (isOffline && !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
-                        .opacity(isOffline ? 0.45 : 1.0)
+                        .disabled(viewModel.isStreaming)
+                        .opacity((isOffline && inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0.45 : 1.0)
                         .padding(.trailing, 6)
                         .padding(.bottom, 5)
                     }
