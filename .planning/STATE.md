@@ -24,8 +24,8 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 ## Current Position
 
 Phase: 17
-Status: Executed
-Last activity: 2026-05-08 — Phase 17 executed
+Status: Verified
+Last activity: 2026-05-08 — Phase 17 UAT verified (6/6 passed)
 
 ## Memory
 
@@ -119,6 +119,7 @@ Last activity: 2026-05-08 — Phase 17 executed
 | 2026-05-08 | Phase 16 UAT verified | 5/6 passed. Fixed raw JSON display, implemented real-time streaming JSON suppression, and collapsed redundant newlines for a cleaner chat UI. |
 | 2026-05-08 | Phase 17 discussed | Gathered user context for Voice Chat implementation, focusing on premium UX and natural flow. |
 | 2026-05-08 | Phase 17 executed | `.planning/phases/17-voice-chat/17-SUMMARY.md` |
+| 2026-05-08 | Phase 17 UAT verified | 6/6 passed. Voice Chat feature fully functional: Mic/Send toggle, permission flow, recording sheet with waveform, real-time transcript, auto-stop on silence. |
 
 ---
-*Last updated: 2026-05-08 after Phase 17 execution*
+*Last updated: 2026-05-08 after Phase 17 UAT verification*

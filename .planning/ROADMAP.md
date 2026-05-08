@@ -47,7 +47,7 @@
   - Wave 4
     - 04: Personality UX & Navigation Entry Points
 - [x] Phase 16: API Infrastructure & Context Compression (APIK, COMP)
-- [ ] Phase 17: Voice Chat (VCHT)
+- [x] Phase 17: Voice Chat (VCHT)
 - [ ] Phase 18: Advanced Insights & Health-Aware AI (HLTH, INSE)
 - [ ] Phase 19: Offline Mode & Custom Foods (OFFL, CFOD)
 
@@ -71,6 +71,6 @@
 | 14. AI Meal Planning Engine | v1.1 | Complete | 2026-05-06 |
 | 15. AI Memory Hub & Personality | v1.2 | Verified | 2026-05-07 |
 | 16. API Infrastructure & Context Compression | v1.2 | Verified | 2026-05-08 |
-| 17. Voice Chat | v1.2 | Not started | - |
+| 17. Voice Chat | v1.2 | Verified | 2026-05-08 |
 | 18. Advanced Insights & Health-Aware AI | v1.2 | Not started | - |
 | 19. Offline Mode & Custom Foods | v1.2 | Not started | - |
