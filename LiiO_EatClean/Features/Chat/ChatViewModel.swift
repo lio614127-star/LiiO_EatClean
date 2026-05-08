@@ -29,12 +29,22 @@ class ChatViewModel {
         guard !trimmed.isEmpty else { return }
         
         if !NetworkMonitor.shared.isConnected && !isRetry {
+            // Add user bubble immediately so user sees their message
+            let userMessage = ChatMessage(role: .user, text: trimmed, suggestedFoods: nil)
+            messages.append(userMessage)
             PendingChatQueue.shared.enqueue(text: trimmed, conversationID: UUID())
             return
         }
         
-        let userMessage = ChatMessage(role: .user, text: trimmed, suggestedFoods: nil)
-        messages.append(userMessage)
+        if isRetry {
+            // Pending bubble already shows this message — remove it now that we're sending
+            if let pid = pendingId {
+                PendingChatQueue.shared.remove(id: pid)
+            }
+        } else {
+            let userMessage = ChatMessage(role: .user, text: trimmed, suggestedFoods: nil)
+            messages.append(userMessage)
+        }
         
         errorMessage = nil
         currentModelInfo = nil
