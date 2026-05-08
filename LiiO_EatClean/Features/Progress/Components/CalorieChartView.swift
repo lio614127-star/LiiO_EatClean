@@ -100,20 +100,7 @@ struct CalorieChartView: View {
                 .chartXScale(domain: xAxisDomain)
                 .chartScrollableAxes(.horizontal)
                 .chartXVisibleDomain(length: timeRange == .week ? 7 * 86400 : (timeRange == .month ? 7 * 86400 : 4 * 604800))
-                .chartGesture { proxy in
-                    DragGesture(minimumDistance: 0)
-                        .onEnded { value in
-                            if let date: Date = proxy.value(atX: value.location.x) {
-                                if let snappedDate = data.first(where: { Calendar.current.isDate($0.date, inSameDayAs: date) })?.date {
-                                    if selectedDate == snappedDate {
-                                        selectedDate = nil
-                                    } else {
-                                        selectedDate = snappedDate
-                                    }
-                                }
-                            }
-                        }
-                }
+                .chartXSelection(value: $selectedDate)
                 .chartXAxis {
                     if timeRange == .quarter {
                         AxisMarks(values: .stride(by: .weekOfYear, count: 1)) { value in
