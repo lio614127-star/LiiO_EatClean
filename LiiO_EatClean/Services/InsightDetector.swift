@@ -12,11 +12,18 @@ struct DailyInsight: Identifiable {
         case skippedMeal = "skipped_meal"
         case calorieOverrun = "calorie_overrun"
         case lowWater = "low_water"
+        case repeatedMeals = "repeated_meals"
+        case macroImbalance = "macro_imbalance"
     }
     
-    enum InsightSeverity {
-        case warning  // 3-day pattern
-        case alert    // 7-day pattern
+    enum InsightSeverity: Int, Comparable {
+        case low = 0      // informational
+        case medium = 1   // attention needed
+        case high = 2     // critical
+        
+        static func < (lhs: InsightSeverity, rhs: InsightSeverity) -> Bool {
+            lhs.rawValue < rhs.rawValue
+        }
     }
 }
 
@@ -77,9 +84,9 @@ class InsightDetector {
             }
             
             if lowProtein7DaysCount >= 5 {
-                insights.append(DailyInsight(type: .lowProtein, message: "Bạn đang thiếu protein liên tục trong tuần qua.", suggestion: "Thêm trứng, ức gà hoặc đậu phụ vào các bữa ăn chính.", severity: .alert))
+                insights.append(DailyInsight(type: .lowProtein, message: "Bạn đang thiếu protein liên tục trong tuần qua.", suggestion: "Thêm trứng, ức gà hoặc đậu phụ vào các bữa ăn chính.", severity: .high))
             } else if lowProtein3DaysCount >= 3 {
-                insights.append(DailyInsight(type: .lowProtein, message: "3 ngày gần đây bạn nạp khá ít protein.", suggestion: "Cố gắng bổ sung thêm protein vào bữa sáng hoặc trưa nhé.", severity: .warning))
+                insights.append(DailyInsight(type: .lowProtein, message: "3 ngày gần đây bạn nạp khá ít protein.", suggestion: "Cố gắng bổ sung thêm protein vào bữa sáng hoặc trưa nhé.", severity: .medium))
             }
             
             // P3: Skipped Breakfast
@@ -95,7 +102,7 @@ class InsightDetector {
                 }
             }
             if skippedBreakfastCount >= 4 {
-                insights.append(DailyInsight(type: .skippedMeal, message: "Bạn đã bỏ bữa sáng \(skippedBreakfastCount) lần trong tuần này.", suggestion: "Nên ăn sáng nhẹ nhàng như yến mạch hoặc trái cây để có năng lượng.", severity: .alert))
+                insights.append(DailyInsight(type: .skippedMeal, message: "Bạn đã bỏ bữa sáng \(skippedBreakfastCount) lần trong tuần này.", suggestion: "Nên ăn sáng nhẹ nhàng như yến mạch hoặc trái cây để có năng lượng.", severity: .medium))
             }
             
             // P5: Calorie overrun (3 consecutive days)
@@ -108,7 +115,7 @@ class InsightDetector {
                 }
             }
             if consecutiveOverrun >= 3 {
-                insights.append(DailyInsight(type: .calorieOverrun, message: "3 ngày liên tiếp bạn nạp vượt mức calories mục tiêu.", suggestion: "Hãy thử giảm một nửa khẩu phần ăn vào bữa tối hoặc tránh ăn vặt.", severity: .warning))
+                insights.append(DailyInsight(type: .calorieOverrun, message: "3 ngày liên tiếp bạn nạp vượt mức calories mục tiêu.", suggestion: "Hãy thử giảm một nửa khẩu phần ăn vào bữa tối hoặc tránh ăn vặt.", severity: .medium))
             }
             
             // P6: Low water (< 50% target average over 7 days)
@@ -123,21 +130,114 @@ class InsightDetector {
             
             // Only trigger if they log water but it's too low
             if averageWater > 0 && averageWater < (waterTarget * 0.5) {
-                insights.append(DailyInsight(type: .lowWater, message: "Tuần này bạn uống khá ít nước (trung bình \(Int(averageWater))ml/ngày).", suggestion: "Hãy đặt một chai nước trên bàn làm việc để nhắc nhở bản thân.", severity: .alert))
+                insights.append(DailyInsight(type: .lowWater, message: "Tuần này bạn uống khá ít nước (trung bình \(Int(averageWater))ml/ngày).", suggestion: "Hãy đặt một chai nước trên bàn làm việc để nhắc nhở bản thân.", severity: .low))
             }
+            
+            // P7: Repeated meals (5-day window)
+            let last5DaysComps = Array(last7DaysComps.prefix(5))
+            insights.append(contentsOf: detectRepeatedMeals(mealsByDay: mealsByDay, last5DaysComps: last5DaysComps))
+            
+            // P8: Macro imbalance (3-day consecutive)
+            insights.append(contentsOf: detectMacroImbalance(mealsByDay: mealsByDay, last7DaysComps: last7DaysComps))
             
         } catch {
             print("InsightDetector Error: \(error)")
         }
         
-        // Sort: alerts first, then warnings
-        insights.sort {
-            if $0.severity == .alert && $1.severity == .warning { return true }
-            if $0.severity == .warning && $1.severity == .alert { return false }
-            return false
+        // Sort by severity descending
+        insights.sort { $0.severity > $1.severity }
+        
+        // Cap at 5 insights
+        return Array(insights.prefix(5))
+    }
+    
+    // MARK: - New Detection Logic
+    
+    private func detectRepeatedMeals(mealsByDay: [DateComponents: [MealModel]], last5DaysComps: [DateComponents]) -> [DailyInsight] {
+        var insights: [DailyInsight] = []
+        let stopWords = ["phần", "vừa", "mini", "đặc biệt", "sốt", "cay", "xào", "chiên", "nướng", "luộc", "hấp", "rang", "kho"]
+        
+        var nameCounts: [String: Int] = [:]
+        var originalNames: [String: String] = [:]
+        
+        for comp in last5DaysComps {
+            let dayMeals = mealsByDay[comp] ?? []
+            let eatenFoods = dayMeals.flatMap { $0.mealFoods }.filter { $0.isEaten }
+            
+            for food in eatenFoods {
+                let name = food.foodItem?.name ?? ""
+                var normalized = FoodSafetyValidator.shared.normalizeText(name)
+                
+                for word in stopWords {
+                    normalized = normalized.replacingOccurrences(of: word, with: "")
+                }
+                normalized = normalized.components(separatedBy: .whitespaces).filter { !$0.isEmpty }.joined(separator: " ")
+                
+                if !normalized.isEmpty {
+                    nameCounts[normalized, default: 0] += 1
+                    if originalNames[normalized] == nil {
+                        originalNames[normalized] = name
+                    }
+                }
+            }
         }
         
-        // Cap at 3 insights
-        return Array(insights.prefix(3))
+        for (normalized, count) in nameCounts where count >= 3 {
+            if let original = originalNames[normalized] {
+                insights.append(DailyInsight(
+                    type: .repeatedMeals,
+                    message: "Bạn đang ăn món \(original) khá thường xuyên tuần này. Thử đổi món để đa dạng dinh dưỡng nhé.",
+                    suggestion: "Thay \(original) bằng cá, bò, hoặc đậu phụ để cân bằng.",
+                    severity: .low
+                ))
+            }
+        }
+        
+        return Array(insights.prefix(2))
+    }
+    
+    private func detectMacroImbalance(mealsByDay: [DateComponents: [MealModel]], last7DaysComps: [DateComponents]) -> [DailyInsight] {
+        var insights: [DailyInsight] = []
+        
+        var fatOutDays = 0
+        var avgFatPct: Double = 0
+        
+        // Iterate from newest (today) to oldest (6 days ago)
+        for i in 0..<last7DaysComps.count {
+            let comp = last7DaysComps[i]
+            let dayMeals = mealsByDay[comp] ?? []
+            let foods = dayMeals.flatMap { $0.mealFoods }.filter { $0.isEaten }
+            
+            let protein = foods.map { $0.proteinSnapshot }.reduce(0, +)
+            let carbs = foods.map { $0.carbsSnapshot }.reduce(0, +)
+            let fat = foods.map { $0.fatSnapshot }.reduce(0, +)
+            let calories = foods.map { $0.caloriesSnapshot }.reduce(0, +)
+            
+            if calories > 0 {
+                let totalCals = max(protein * 4 + carbs * 4 + fat * 9, 1)
+                let fatPct = (fat * 9) / totalCals * 100
+                
+                if fatPct > 40 {
+                    fatOutDays += 1
+                    if i < 3 { avgFatPct += fatPct }
+                } else {
+                    break // Streak broken
+                }
+            } else {
+                break // No data breaks streak
+            }
+        }
+        
+        if fatOutDays >= 3 {
+            let severity: DailyInsight.InsightSeverity = fatOutDays >= 5 ? .high : .medium
+            insights.append(DailyInsight(
+                type: .macroImbalance,
+                message: "3 ngày gần đây lượng chất béo của bạn hơi cao (\(Int(avgFatPct / 3))%). Hãy thử giảm món chiên hoặc nước sốt béo nhé.",
+                suggestion: "Thay đồ chiên bằng hấp hoặc luộc, chọn thịt nạc thay thịt mỡ.",
+                severity: severity
+            ))
+        }
+        
+        return insights
     }
 }
