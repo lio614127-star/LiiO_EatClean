@@ -7,6 +7,7 @@ class SpeechRecognitionService {
     var transcript: String = ""
     var isListening: Bool = false
     var error: String? = nil
+    var audioLevel: Float = 0.0
     
     private var recognizer: SFSpeechRecognizer?
     private var recognitionTask: SFSpeechRecognitionTask?
@@ -63,6 +64,21 @@ class SpeechRecognitionService {
             
             inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
                 self?.request?.append(buffer)
+                
+                // Calculate audio power for waveform
+                guard let channelData = buffer.floatChannelData?[0] else { return }
+                let frames = buffer.frameLength
+                var sum: Float = 0
+                for i in 0..<Int(frames) {
+                    sum += channelData[i] * channelData[i]
+                }
+                let rms = sqrt(sum / Float(frames))
+                let avgPower = 20 * log10(max(rms, 0.000001))
+                // Normalize: -60dB..0dB → 0.0..1.0
+                let normalized = max(0, min(1, (avgPower + 60) / 60))
+                DispatchQueue.main.async {
+                    self?.audioLevel = normalized
+                }
             }
             
             audioEngine.prepare()
@@ -120,6 +136,7 @@ class SpeechRecognitionService {
         request?.endAudio()
         
         isListening = false
+        audioLevel = 0.0
     }
     
     private func setupAudioSession() throws {
@@ -131,7 +148,7 @@ class SpeechRecognitionService {
     private func resetSilenceTimer() {
         DispatchQueue.main.async { [weak self] in
             self?.silenceTimer?.invalidate()
-            self?.silenceTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+            self?.silenceTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { _ in
                 self?.onSilenceTimeout?()
             }
         }
