@@ -59,6 +59,15 @@
   - Wave 4
     - 05: Insight Cards UI & Health Safety Badge
 - [ ] Phase 19: Offline Mode & Custom Foods (OFFL, CFOD)
+  - **Wave 1** *(foundation — no dependencies)*
+    - 01: NetworkMonitor & CoreData Schema Updates
+  - **Wave 2** *(blocked on Wave 1 completion)*
+    - 02: Custom Food Builder Sheet & Repository
+  - **Wave 3** *(blocked on Wave 1+2 completion)*
+    - 03: FoodSearch Upgrade — 4-Section Priority & Custom Food Entry
+    - 04: Offline UI Degradation & Banner System
+  - **Wave 4** *(blocked on Wave 1+3+4 completion)*
+    - 05: Pending Chat Queue & Connection Recovery
 
 ## Progress
 
@@ -82,4 +91,4 @@
 | 16. API Infrastructure & Context Compression | v1.2 | Verified | 2026-05-08 |
 | 17. Voice Chat | v1.2 | Verified | 2026-05-08 |
 | 18. Advanced Insights & Health-Aware AI | v1.2 | Verified | 2026-05-08 |
-| 19. Offline Mode & Custom Foods | v1.2 | Not started | - |
+| 19. Offline Mode & Custom Foods | v1.2 | Planned | - |
