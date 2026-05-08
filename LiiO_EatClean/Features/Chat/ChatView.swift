@@ -11,7 +11,8 @@ struct ChatView: View {
     @State private var showVoiceSheet = false
     @State private var hasMicPermission: Bool? = nil
     
-    var body: some View {
+    // Offline State
+    private var isOffline: Bool { !NetworkMonitor.shared.isConnected }
         NavigationStack {
             VStack(spacing: 0) {
                 // Messages List
@@ -102,7 +103,8 @@ struct ChatView: View {
                             .contentTransition(.symbolEffect(.replace))
                         }
                         .buttonStyle(ChatActionButtonStyle(isMicMode: inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
-                        .disabled(viewModel.isStreaming)
+                        .disabled(viewModel.isStreaming || (isOffline && !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
+                        .opacity(isOffline ? 0.45 : 1.0)
                         .padding(.trailing, 6)
                         .padding(.bottom, 5)
                     }
@@ -182,6 +184,16 @@ struct ChatView: View {
     }
     
     private func handleMicTap() async {
+        if isOffline {
+            viewModel.errorMessage = "📡 Tính năng giọng nói cần kết nối mạng."
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                if viewModel.errorMessage == "📡 Tính năng giọng nói cần kết nối mạng." {
+                    viewModel.errorMessage = nil
+                }
+            }
+            return
+        }
+        
         if hasMicPermission == nil {
             let granted = await speechService.requestAuthorization()
             hasMicPermission = granted

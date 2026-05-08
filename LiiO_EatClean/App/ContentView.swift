@@ -2,43 +2,48 @@ import SwiftUI
 import CoreData
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @Environment(NetworkMonitor.self) private var networkMonitor
     
     @AppStorage("selectedTab") private var selectedTab = 0
     
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            TabView(selection: $selectedTab) {
-                HomeView()
-                    .tabItem {
-                        Label("Home", systemImage: "house.fill")
-                    }
-                    .tag(0)
+            VStack(spacing: 0) {
+                OfflineBannerView(isConnected: networkMonitor.isConnected)
                 
-                MealsView()
-                    .tabItem {
-                        Label("Meals", systemImage: "fork.knife")
-                    }
-                    .tag(1)
-                
-                ProgressTabView()
-                    .tabItem {
-                        Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
-                    }
-                    .tag(2)
-                
-                ProfileView()
-                    .tabItem {
-                        Label("Profile", systemImage: "person.fill")
-                    }
-                    .tag(3)
+                TabView(selection: $selectedTab) {
+                    HomeView()
+                        .tabItem {
+                            Label("Home", systemImage: "house.fill")
+                        }
+                        .tag(0)
                     
-                ChatView()
-                    .tabItem {
-                        Label("AI Coach", systemImage: "message.badge.filled.fill")
-                    }
-                    .tag(4)
+                    MealsView()
+                        .tabItem {
+                            Label("Meals", systemImage: "fork.knife")
+                        }
+                        .tag(1)
+                    
+                    ProgressTabView()
+                        .tabItem {
+                            Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
+                        }
+                        .tag(2)
+                    
+                    ProfileView()
+                        .tabItem {
+                            Label("Profile", systemImage: "person.fill")
+                        }
+                        .tag(3)
+                        
+                    ChatView()
+                        .tabItem {
+                            Label("AI Coach", systemImage: "message.badge.filled.fill")
+                        }
+                        .tag(4)
+                }
+                .tint(.green)
             }
-            .tint(.green)
             
             // Global AI Activity Overlay
             AIActivityOverlay()

@@ -16,6 +16,11 @@ struct AddMealView: View {
     // Barcode Scan State
     @State private var showBarcodeScanner = false
     
+    // Offline State
+    @State private var showOfflineToast = false
+    @State private var offlineToastMessage = ""
+    private var isOffline: Bool { !NetworkMonitor.shared.isConnected }
+    
     let mealTypes = ["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"]
     
     init(selectedMealType: String = "Bữa sáng") {
@@ -102,6 +107,25 @@ struct AddMealView: View {
                     viewModel.addToCart(food: food, quantity: qty)
                 }
             }
+            .overlay(alignment: .bottom) {
+                if showOfflineToast {
+                    Text(offlineToastMessage)
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color.orange.opacity(0.9))
+                        .cornerRadius(10)
+                        .shadow(radius: 4)
+                        .padding(.bottom, 100)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                                withAnimation { showOfflineToast = false }
+                            }
+                        }
+                }
+            }
         }
         .task {
             await viewModel.loadRemainingCalories()
@@ -129,7 +153,14 @@ struct AddMealView: View {
                         .clipShape(Circle())
                 }
                 
-                Button(action: { showVoiceInput = true }) {
+                Button(action: {
+                    if isOffline {
+                        offlineToastMessage = "📡 Nhập giọng nói cần kết nối mạng"
+                        withAnimation { showOfflineToast = true }
+                        return
+                    }
+                    showVoiceInput = true
+                }) {
                     Image(systemName: "mic.fill")
                         .font(.body)
                         .foregroundColor(.white)
@@ -137,8 +168,15 @@ struct AddMealView: View {
                         .background(Color.blue)
                         .clipShape(Circle())
                 }
+                .opacity(isOffline ? 0.45 : 1.0)
+                .saturation(isOffline ? 0.5 : 1.0)
                 
                 Button(action: {
+                    if isOffline {
+                        offlineToastMessage = "📡 Gợi ý AI cần kết nối mạng"
+                        withAnimation { showOfflineToast = true }
+                        return
+                    }
                     Task { await viewModel.requestAISuggestions() }
                 }) {
                     Text(viewModel.isLoadingAI ? "AI..." : "✨ Hỏi AI")
@@ -151,6 +189,8 @@ struct AddMealView: View {
                                            startPoint: .leading, endPoint: .trailing)
                         )
                         .clipShape(Capsule())
+                        .opacity(isOffline ? 0.45 : 1.0)
+                        .saturation(isOffline ? 0.5 : 1.0)
                 }
                 .disabled(viewModel.isLoadingAI)
             }

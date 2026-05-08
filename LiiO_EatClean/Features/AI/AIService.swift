@@ -7,6 +7,7 @@ enum AIError: LocalizedError {
     case networkError(String)
     case invalidResponse
     case quotaExceeded
+    case offline
     
     var errorDescription: String? {
         switch self {
@@ -20,6 +21,8 @@ enum AIError: LocalizedError {
             return "AI trả về dữ liệu không hợp lệ. Vui lòng thử lại."
         case .quotaExceeded:
             return "Hệ thống AI đang bận. Vui lòng thử lại sau."
+        case .offline:
+            return "Không có kết nối mạng. Vui lòng thử lại khi có internet."
         }
     }
 }
@@ -145,6 +148,10 @@ class AIService {
     }
     
     private func executeWithRetry<T>(task: AIRequestType, feature: String, forcedKey: APIKeyModel? = nil, subTasks: [String] = [], isInternal: Bool = false, operation: @escaping (APIKeyModel, AIModelConfig) async throws -> T) async throws -> T {
+        guard NetworkMonitor.shared.isConnected else {
+            throw AIError.offline
+        }
+        
         try await poolManager.loadKeys()
         
         var lastError: Error = AIError.missingKey
@@ -229,6 +236,11 @@ class AIService {
     private func executeWithRetryStream(task: AIRequestType, feature: String, forcedKey: APIKeyModel? = nil, subTasks: [String] = [], isInternal: Bool = false, operation: @escaping (APIKeyModel, AIModelConfig) -> AsyncThrowingStream<AIChatStreamResult, Error>) -> AsyncThrowingStream<AIChatStreamResult, Error> {
         return AsyncThrowingStream { continuation in
             Task {
+                guard NetworkMonitor.shared.isConnected else {
+                    continuation.finish(throwing: AIError.offline)
+                    return
+                }
+                
                 try await poolManager.loadKeys()
                 
                 var activityID: UUID? = nil

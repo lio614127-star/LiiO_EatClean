@@ -7,6 +7,8 @@ struct MealPlanSheet: View {
     
     @State private var showConfirmDialog = false
     @State private var showWeeklyPlan = false
+    @State private var showOfflineToast = false
+    private var isOffline: Bool { !NetworkMonitor.shared.isConnected }
     
     var body: some View {
         NavigationStack {
@@ -105,6 +107,10 @@ struct MealPlanSheet: View {
                         // Weekly plan button
                         if !viewModel.planItems.isEmpty {
                             Button {
+                                if isOffline {
+                                    showOfflineToast = true
+                                    return
+                                }
                                 showWeeklyPlan = true
                             } label: {
                                 HStack {
@@ -119,10 +125,30 @@ struct MealPlanSheet: View {
                                 .cornerRadius(12)
                             }
                             .buttonStyle(.plain)
+                            .opacity(isOffline ? 0.45 : 1.0)
                         }
                     }
                 }
                 .padding()
+            }
+            .overlay(alignment: .bottom) {
+                if showOfflineToast {
+                    Text("📡 Kế hoạch bữa ăn cần AI để phân tích dinh dưỡng")
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color.orange.opacity(0.9))
+                        .cornerRadius(10)
+                        .shadow(radius: 4)
+                        .padding(.bottom, 20)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                withAnimation { showOfflineToast = false }
+                            }
+                        }
+                }
             }
             .background(Color(.systemGroupedBackground))
             .navigationBarTitleDisplayMode(.inline)
@@ -140,11 +166,16 @@ struct MealPlanSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     if !viewModel.planItems.isEmpty {
                         Button {
+                            if isOffline {
+                                showOfflineToast = true
+                                return
+                            }
                             Task { await viewModel.generateDayPlan(targetCalories: targetCalories) }
                         } label: {
                             Image(systemName: "arrow.clockwise")
                                 .font(.subheadline)
                         }
+                        .opacity(isOffline ? 0.45 : 1.0)
                     }
                 }
             }
