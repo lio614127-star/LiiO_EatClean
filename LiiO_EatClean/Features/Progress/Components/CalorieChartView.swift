@@ -99,7 +99,7 @@ struct CalorieChartView: View {
                 .chartYScale(domain: 0...max(3000, max(dailyTarget * 1.2, maxVal * 1.1)))
                 .chartXScale(domain: xAxisDomain)
                 .chartScrollableAxes(.horizontal)
-                .chartXVisibleDomain(length: timeRange == .week ? 7 * 86400 : (timeRange == .month ? 7 * 86400 : 4 * 604800))
+                .chartXVisibleDomain(length: timeRange == .week ? 7 * 86400 : (timeRange == .month ? 30 * 86400 : 13 * 604800))
                 .chartXSelection(value: $selectedDate)
                 .chartXAxis {
                     if timeRange == .quarter {

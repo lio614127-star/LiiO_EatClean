@@ -66,20 +66,14 @@ struct WeightChartView: View {
                                 )
                                 .interpolationMethod(.catmullRom)
                                 .foregroundStyle(LinearGradient(colors: [.cyan, .teal], startPoint: .top, endPoint: .bottom))
-                                .lineStyle(StrokeStyle(lineWidth: 3))
-                                
-                                PointMark(
-                                    x: .value("Tuần", entry.startDate, unit: .weekOfYear),
-                                    y: .value("Cân nặng", weight)
-                                )
-                                .foregroundStyle(Color.cyan)
-                                .symbolSize(40)
+                                .lineStyle(StrokeStyle(lineWidth: 2))
                             }
                         }
                     } else {
                         ForEach(data) { entry in
+                            let alignedDate = Calendar.current.startOfDay(for: entry.date)
                             AreaMark(
-                                x: .value("Ngày", entry.date, unit: .day),
+                                x: .value("Ngày", alignedDate, unit: .day),
                                 yStart: .value("Min", yAxisDomain.lowerBound),
                                 yEnd: .value("Cân nặng", entry.weight)
                             )
@@ -87,26 +81,28 @@ struct WeightChartView: View {
                             .foregroundStyle(LinearGradient(colors: [.cyan.opacity(0.3), .teal.opacity(0.0)], startPoint: .top, endPoint: .bottom))
                             
                             LineMark(
-                                x: .value("Ngày", entry.date, unit: .day),
+                                x: .value("Ngày", alignedDate, unit: .day),
                                 y: .value("Cân nặng", entry.weight)
                             )
                             .interpolationMethod(.catmullRom)
                             .foregroundStyle(LinearGradient(colors: [.cyan, .teal], startPoint: .top, endPoint: .bottom))
-                            .lineStyle(StrokeStyle(lineWidth: 3))
+                            .lineStyle(StrokeStyle(lineWidth: timeRange == .week ? 3 : 2))
                             
-                            PointMark(
-                                x: .value("Ngày", entry.date, unit: .day),
-                                y: .value("Cân nặng", entry.weight)
-                            )
-                            .foregroundStyle(Color.cyan)
-                            .symbolSize(40)
+                            if timeRange == .week {
+                                PointMark(
+                                    x: .value("Ngày", alignedDate, unit: .day),
+                                    y: .value("Cân nặng", entry.weight)
+                                )
+                                .foregroundStyle(Color.cyan)
+                                .symbolSize(40)
+                            }
                         }
                     }
                 }
                 .chartYScale(domain: yAxisDomain)
                 .chartXScale(domain: xAxisDomain)
                 .chartScrollableAxes(.horizontal)
-                .chartXVisibleDomain(length: timeRange == .week ? 7 * 86400 : (timeRange == .month ? 7 * 86400 : 4 * 604800))
+                .chartXVisibleDomain(length: timeRange == .week ? 7 * 86400 : (timeRange == .month ? 30 * 86400 : 13 * 604800))
                 .chartXAxis {
                     if timeRange == .quarter {
                         AxisMarks(values: .stride(by: .weekOfYear, count: 1)) { value in
