@@ -68,6 +68,14 @@
     - 04: Offline UI Degradation & Banner System
   - **Wave 4** *(blocked on Wave 1+3+4 completion)*
     - 05: Pending Chat Queue & Connection Recovery
+- [ ] Phase 20: Pro Chart UX & Data Visualization (CHRT)
+  - **Wave 1** *(foundation — no dependencies)*
+    - 01: TimeRange Expansion & Smart Axis Label Engine
+  - **Wave 2** *(blocked on Wave 1)*
+    - 02: Calorie Chart Overhaul — Dynamic Spacing, Scrollable Month, Label Skipping
+    - 03: Weight Chart Overhaul — Line + Gradient, Subtle Target Line
+  - **Wave 3** *(blocked on Wave 2)*
+    - 04: Pro Segmented Filter & Empty-State UX
 
 ## Progress
 
@@ -92,3 +100,4 @@
 | 17. Voice Chat | v1.2 | Verified | 2026-05-08 |
 | 18. Advanced Insights & Health-Aware AI | v1.2 | Verified | 2026-05-08 |
 | 19. Offline Mode & Custom Foods | v1.2 | Verified | 2026-05-08 |
+| 20. Pro Chart UX & Data Visualization | v1.2 | Not started | — |
