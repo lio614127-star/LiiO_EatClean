@@ -18,6 +18,7 @@ class HomeViewModel {
     
     // Proactive AI
     var dailySummary: DailySummary?
+    var insights: [DailyInsight]?
     private let summaryService = DailySummaryService()
     
     private let mealRepository: MealRepositoryProtocol
@@ -69,6 +70,9 @@ class HomeViewModel {
         
         // Generate AI Summary in background — NOT blocking dashboard UI
         await loadDailySummaryIfNeeded()
+        
+        let insightDetector = InsightDetector()
+        insights = await insightDetector.detectInsights()
     }
     
     private var lastSummaryMealCount: Int = -1

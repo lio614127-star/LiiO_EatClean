@@ -27,6 +27,13 @@ struct ChatView: View {
                                 }
                                 .id(message.id)
                             }
+                            
+                            if viewModel.healthSafetyApplied {
+                                HealthSafetyBadge(isHighSeverity: false)
+                                    .padding(.top, 8)
+                                    .transition(.opacity)
+                                    .animation(.easeIn, value: viewModel.healthSafetyApplied)
+                            }
                         }
                         .padding(.vertical, 16)
                     }
