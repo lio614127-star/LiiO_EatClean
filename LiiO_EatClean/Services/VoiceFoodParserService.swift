@@ -50,7 +50,7 @@ class VoiceFoodParserService {
         Câu: '\(text)'
         """
         
-        let responseText = try await aiService.generateText(prompt: prompt)
+        let responseText = try await aiService.generateText(prompt: prompt, requestType: .voiceParsing, feature: "Phân tích giọng nói")
         
         // Parse the JSON array from responseText
         let cleaned = extractJSON(from: responseText)

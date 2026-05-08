@@ -9,6 +9,7 @@ protocol UserRepositoryProtocol {
     
     func fetchAPIKeys() async throws -> [APIKeyModel]
     func saveAPIKey(_ key: APIKeyModel) async throws
+    func deleteAPIKey(id: UUID) async throws
     
     func fetchWaterLog(for date: Date) async throws -> Double
     func addWater(amount: Double, for date: Date) async throws

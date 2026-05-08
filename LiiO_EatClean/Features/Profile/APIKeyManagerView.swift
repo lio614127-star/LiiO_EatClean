@@ -6,12 +6,27 @@ class APIKeyManagerViewModel {
     private let userRepository: UserRepositoryProtocol
     
     var showingAddSheet = false
+    var isTesting = false
     var newProvider = "gemini"
+    var newKeyName = ""
     var newKeyInput = ""
+    var newIsPaid = false
     var errorMessage: String?
     
     init(userRepository: UserRepositoryProtocol = UserRepository()) {
         self.userRepository = userRepository
+    }
+    
+    var freeGeminiKeys: [APIKeyModel] {
+        keys.filter { $0.provider == "gemini" && $0.isPaid != true }
+    }
+    
+    var paidGeminiKeys: [APIKeyModel] {
+        keys.filter { $0.provider == "gemini" && $0.isPaid == true }
+    }
+    
+    var openAIKeys: [APIKeyModel] {
+        keys.filter { $0.provider == "openai" }
     }
     
     func loadKeys() async {
@@ -22,32 +37,76 @@ class APIKeyManagerViewModel {
         }
     }
     
-    func moveKeys(from source: IndexSet, to destination: Int) async {
-        keys.move(fromOffsets: source, toOffset: destination)
-        // Update priorities based on new order
-        for (index, var key) in keys.enumerated() {
-            key.priority = index // Lower index = higher priority (or reversed, depends on sort descriptor. In UserRepository it's ascending: false, wait, earlier I changed it to descending. So highest number = highest priority. Let's make index 0 = highest priority, so priority = keys.count - index)
-            keys[index] = key
+    func moveKeys(from source: IndexSet, to destination: Int, in group: String) async {
+        var providerKeys: [APIKeyModel]
+        if group == "paid-gemini" {
+            providerKeys = paidGeminiKeys
+        } else if group == "free-gemini" {
+            providerKeys = freeGeminiKeys
+        } else {
+            providerKeys = openAIKeys
+        }
+        
+        providerKeys.move(fromOffsets: source, toOffset: destination)
+        
+        // Combine back and update priorities
+        let currentGroupIDs = Set(providerKeys.map { $0.id })
+        let otherKeys = keys.filter { !currentGroupIDs.contains($0.id) }
+        let updatedKeys = (providerKeys + otherKeys)
+        
+        for (index, var key) in updatedKeys.enumerated() {
+            key.priority = updatedKeys.count - index
             try? await userRepository.saveAPIKey(key)
         }
+        await loadKeys()
     }
     
-    func deleteKeys(at offsets: IndexSet) async {
-        for index in offsets {
-            let key = keys[index]
-            try? await (userRepository as? UserRepository)?.deleteAPIKey(provider: key.provider)
-        }
-        keys.remove(atOffsets: offsets)
+    func deleteKey(_ key: APIKeyModel) async {
+        try? await userRepository.deleteAPIKey(id: key.id)
+        await loadKeys()
     }
     
     func saveNewKey() async {
         guard !newKeyInput.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        let newKey = APIKeyModel(id: UUID(), provider: newProvider, key: newKeyInput.trimmingCharacters(in: .whitespaces), isActive: true, healthScore: 100, priority: keys.count)
+        
+        isTesting = true
+        defer { isTesting = false }
+        
+        var apiVersion: String? = nil
+        var isPaid: Bool = newIsPaid
+        
+        // Test the key before saving
+        do {
+            if newProvider == "gemini" {
+                let result = try await AIService.shared.testGeminiKey(newKeyInput.trimmingCharacters(in: .whitespaces))
+                apiVersion = result.version
+                isPaid = result.isPaid // Use auto-detected status
+            } else {
+                _ = try await AIService.shared.testOpenAIKey(newKeyInput.trimmingCharacters(in: .whitespaces))
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+
+        let newKey = APIKeyModel(
+            id: UUID(), 
+            name: newKeyName.isEmpty ? nil : newKeyName,
+            provider: newProvider, 
+            key: newKeyInput.trimmingCharacters(in: .whitespaces), 
+            isActive: true, 
+            healthScore: 100, 
+            priority: keys.count,
+            apiVersion: apiVersion,
+            isPaid: isPaid
+        )
+        
         do {
             try await userRepository.saveAPIKey(newKey)
             await loadKeys()
             showingAddSheet = false
             newKeyInput = ""
+            newKeyName = ""
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -68,14 +127,50 @@ struct APIKeyManagerView: View {
     var body: some View {
         NavigationStack {
             List {
-                ForEach(viewModel.keys, id: \.id) { key in
-                    KeyCardView(key: key, maskedString: viewModel.maskedKey(key.key))
+                if !viewModel.paidGeminiKeys.isEmpty {
+                    Section("Google Gemini (PAID)") {
+                        ForEach(viewModel.paidGeminiKeys) { key in
+                            KeyCardView(key: key, maskedString: viewModel.maskedKey(key.key))
+                        }
+                        .onDelete { offsets in
+                            for index in offsets {
+                                let key = viewModel.paidGeminiKeys[index]
+                                Task { await viewModel.deleteKey(key) }
+                            }
+                        }
+                    }
                 }
-                .onMove { source, destination in
-                    Task { await viewModel.moveKeys(from: source, to: destination) }
+                
+                if !viewModel.freeGeminiKeys.isEmpty {
+                    Section("Google Gemini (FREE)") {
+                        ForEach(viewModel.freeGeminiKeys) { key in
+                            KeyCardView(key: key, maskedString: viewModel.maskedKey(key.key))
+                        }
+                        .onDelete { offsets in
+                            for index in offsets {
+                                let key = viewModel.freeGeminiKeys[index]
+                                Task { await viewModel.deleteKey(key) }
+                            }
+                        }
+                    }
                 }
-                .onDelete { offsets in
-                    Task { await viewModel.deleteKeys(at: offsets) }
+                
+                if !viewModel.openAIKeys.isEmpty {
+                    Section("OpenAI") {
+                        ForEach(viewModel.openAIKeys) { key in
+                            KeyCardView(key: key, maskedString: viewModel.maskedKey(key.key))
+                        }
+                        .onDelete { offsets in
+                            for index in offsets {
+                                let key = viewModel.openAIKeys[index]
+                                Task { await viewModel.deleteKey(key) }
+                            }
+                        }
+                    }
+                }
+                
+                if viewModel.keys.isEmpty {
+                    ContentUnavailableView("Chưa có API Key", systemImage: "key.fill", description: Text("Thêm key để sử dụng các tính năng AI."))
                 }
             }
             .navigationTitle("Quản lý API Keys")
@@ -83,9 +178,6 @@ struct APIKeyManagerView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Đóng") { dismiss() }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -101,14 +193,24 @@ struct APIKeyManagerView: View {
             .sheet(isPresented: $viewModel.showingAddSheet) {
                 NavigationStack {
                     Form {
-                        Picker("Nhà cung cấp", selection: $viewModel.newProvider) {
-                            Text("Google Gemini").tag("gemini")
-                            Text("OpenAI").tag("openai")
+                        Section("Thông tin Key") {
+                            Picker("Nhà cung cấp", selection: $viewModel.newProvider) {
+                                Text("Google Gemini").tag("gemini")
+                                Text("OpenAI").tag("openai")
+                            }
+                            
+                            TextField("Tên gợi nhớ (không bắt buộc)", text: $viewModel.newKeyName)
+                            
+                            TextField("API Key", text: $viewModel.newKeyInput)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                            
+                            if viewModel.newProvider == "gemini" {
+                                Text("Tự động kiểm tra loại Key (Free/Paid) khi lưu")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
-                        
-                        TextField("API Key", text: $viewModel.newKeyInput)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
                     }
                     .navigationTitle("Thêm Key Mới")
                     .navigationBarTitleDisplayMode(.inline)
@@ -117,10 +219,14 @@ struct APIKeyManagerView: View {
                             Button("Hủy") { viewModel.showingAddSheet = false }
                         }
                         ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Lưu") {
-                                Task { await viewModel.saveNewKey() }
+                            if viewModel.isTesting {
+                                ProgressView()
+                            } else {
+                                Button("Lưu") {
+                                    Task { await viewModel.saveNewKey() }
+                                }
+                                .disabled(viewModel.newKeyInput.isEmpty)
                             }
-                            .disabled(viewModel.newKeyInput.isEmpty)
                         }
                     }
                 }
@@ -142,11 +248,20 @@ struct KeyCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label(
-                    key.provider == "gemini" ? "Google Gemini" : "OpenAI",
-                    systemImage: key.provider == "gemini" ? "sparkles" : "cpu"
-                )
-                .font(.headline)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(displayName)
+                        .font(.headline)
+                    
+                    if let version = key.apiVersion {
+                        Text(version)
+                            .font(.caption2)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(Color.blue.opacity(0.1))
+                            .foregroundColor(.blue)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                }
                 
                 Spacer()
                 
@@ -188,6 +303,15 @@ struct KeyCardView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+    
+    private var displayName: String {
+        let name = key.name ?? (key.provider == "gemini" ? "Gemini Key" : "OpenAI Key")
+        if key.provider == "gemini" {
+            let status = key.isPaid == true ? "Paid" : "Free"
+            return "\(name) - \(status)"
+        }
+        return name
     }
     
     private var healthColor: Color {

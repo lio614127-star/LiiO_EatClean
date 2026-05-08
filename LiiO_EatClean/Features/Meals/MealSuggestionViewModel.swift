@@ -49,7 +49,7 @@ class MealSuggestionViewModel {
                 mealType: suggestedMealType
             )
             
-            let message = try await aiService.sendChatMessage(history: [], systemPrompt: prompt)
+            let message = try await aiService.sendChatMessage(history: [], systemPrompt: prompt, feature: "Gợi ý bữa ăn")
             
             await MainActor.run {
                 if let foods = message.suggestedFoods, !foods.isEmpty {

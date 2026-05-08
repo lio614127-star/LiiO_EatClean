@@ -26,16 +26,30 @@ struct MealPlanSheet: View {
                     
                     // Meal cards
                     if viewModel.isLoading {
-                        VStack(spacing: 16) {
-                            ProgressView("Đang tạo kế hoạch...")
-                                .padding(40)
-                            Text("AI đang phân tích dinh dưỡng và sở thích của bạn")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
+                        VStack(spacing: 12) {
+                            // Real-time model transparency rows for parallel tasks
+                            let mealOrder = ["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"]
+                            let planningActivities = AIActivityCenter.shared.activities.filter { 
+                                ($0.featureSource.contains("Kế hoạch:") || 
+                                 $0.featureSource.contains("Bữa") || 
+                                 $0.featureSource.contains("Master")) && 
+                                $0.status != .completed 
+                            }.sorted { a1, a2 in
+                                let o1 = mealOrder.firstIndex(where: { a1.featureSource.contains($0) }) ?? 99
+                                let o2 = mealOrder.firstIndex(where: { a2.featureSource.contains($0) }) ?? 99
+                                return o1 < o2
+                            }
+                            
+                            ForEach(planningActivities) { activity in
+                                ActivityRow(activity: activity)
+                                    .frame(maxWidth: 320)
+                                    .transition(.opacity.combined(with: .scale))
+                            }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 40)
+                        .padding(.top, 60)
+                        .padding(.horizontal)
+                        .animation(.spring(), value: AIActivityCenter.shared.activities)
                     } else if let error = viewModel.errorMessage {
                         VStack(spacing: 12) {
                             Image(systemName: "exclamationmark.triangle")

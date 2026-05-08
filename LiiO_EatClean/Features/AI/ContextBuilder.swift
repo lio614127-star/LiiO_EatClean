@@ -76,9 +76,34 @@ class ContextBuilder {
         case .mealPlan:
             return try await buildMealPlanContext(
                 targetCalories: effectiveRemaining,
-                memory: memory
+                memory: memory,
+                mealType: mealType
             )
         }
+    }
+    
+    func buildFullUserContext() async throws -> String {
+        let user = try await userRepository.fetchUser()
+        let memory = try await memoryRepository.fetchMemory()
+        
+        var context = """
+        [Mục tiêu & Calories]
+        - Mục tiêu: \(user?.goalType ?? "Duy trì cân nặng")
+        - Target Calories: \(Int(user?.dailyCalorieTarget ?? 2000)) kcal
+        """
+        
+        if memory.hasContent {
+            context += "\n\n[Sở thích & Bệnh lý]"
+            if !memory.likes.isEmpty { context += "\n- Thích: \(memory.likes.joined(separator: ", "))" }
+            if !memory.dislikes.isEmpty { context += "\n- Không thích: \(memory.dislikes.joined(separator: ", "))" }
+            if !memory.avoidFoods.isEmpty { context += "\n- Tránh: \(memory.avoidFoods.joined(separator: ", "))" }
+            if !memory.healthConditions.isEmpty {
+                let conds = memory.healthConditions.map { "\($0.name): \($0.dietaryNotes)" }.joined(separator: "; ")
+                context += "\n- Tình trạng sức khoẻ: \(conds)"
+            }
+        }
+        
+        return context
     }
     
     // MARK: - Strategy: Chat (existing behavior, backward compatible)
@@ -187,19 +212,26 @@ class ContextBuilder {
     
     private func buildMealPlanContext(
         targetCalories: Double,
-        memory: UserProfileMemory
+        memory: UserProfileMemory,
+        mealType: String? = nil
     ) async throws -> String {
         var prompt = """
         Bạn là chuyên gia dinh dưỡng chuyên về ẩm thực Việt Nam.
-        Hãy lên thực đơn 1 ngày gồm 4 bữa với tổng khoảng \(Int(targetCalories)) kcal.
-        
-        Phân bổ gợi ý:
-        - Bữa sáng: ~\(Int(targetCalories * 0.25)) kcal (25%)
-        - Bữa trưa: ~\(Int(targetCalories * 0.35)) kcal (35%)
-        - Bữa tối: ~\(Int(targetCalories * 0.30)) kcal (30%)
-        - Ăn vặt: ~\(Int(targetCalories * 0.10)) kcal (10%)
-        
         """
+        
+        if let type = mealType {
+            prompt += "\nHãy lên thực đơn cho RIÊNG \(type) với tổng khoảng \(Int(targetCalories)) kcal."
+        } else {
+            prompt += """
+            \nHãy lên thực đơn 1 ngày gồm 4 bữa với tổng khoảng \(Int(targetCalories)) kcal.
+            
+            Phân bổ gợi ý:
+            - Bữa sáng: ~\(Int(targetCalories * 0.25)) kcal (25%)
+            - Bữa trưa: ~\(Int(targetCalories * 0.35)) kcal (35%)
+            - Bữa tối: ~\(Int(targetCalories * 0.30)) kcal (30%)
+            - Ăn vặt: ~\(Int(targetCalories * 0.10)) kcal (10%)
+            """
+        }
         
         // Base context: Memory injection (always if available)
         if memory.hasContent {
@@ -250,13 +282,13 @@ class ContextBuilder {
         {
           "action": "meal_plan",
           "items": [
-            {"name":"Tên món","calories":400,"protein":25,"carbs":50,"fat":10,"servingSize":1.0,"mealType":"Bữa sáng"}
+            {"name":"Tên món","calories":400,"protein":25,"carbs":50,"fat":10,"servingSize":1.0,"mealType":"\(mealType ?? "Bữa sáng")"}
           ]
         }
         ```
         
         Mỗi item PHẢI có mealType là 1 trong: "Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt".
-        Mỗi bữa nên có 2-3 món. servingSize luôn = 1.0. Calo và macros tính cho đúng 1 phần ăn.
+        Mỗi bữa nên có 1-2 món chính. servingSize luôn = 1.0. Calo và macros tính cho đúng 1 phần ăn.
         """
         
         return prompt

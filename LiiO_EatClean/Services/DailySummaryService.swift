@@ -100,7 +100,7 @@ class DailySummaryService {
             var aiSuggestion = "Uống đủ nước và cố gắng ăn nhiều rau xanh hơn vào ngày mai."
             
             if !meals.isEmpty {
-                let aiResponse = try await aiService.generateText(prompt: fullPrompt)
+                let aiResponse = try await aiService.generateText(prompt: fullPrompt, requestType: .dailySummary, feature: "Tổng kết ngày")
                 // Parse JSON block out of markdown response if it exists
                 let jsonString = extractJSON(from: aiResponse)
                 

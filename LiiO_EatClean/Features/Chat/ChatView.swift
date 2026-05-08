@@ -14,32 +14,25 @@ struct ChatView: View {
                     ScrollView {
                         LazyVStack(spacing: 16) {
                             ForEach(viewModel.messages) { message in
-                                ActionableMessageView(message: message) { food in
+                                ActionableMessageView(
+                                    message: message, 
+                                    isStreaming: viewModel.isStreaming && message.id == viewModel.messages.last?.id
+                                ) { food in
                                     viewModel.logSuggestedFood(food)
                                 }
                                 .id(message.id)
                             }
-                            
-                            if viewModel.isTyping {
-                                TypingIndicator()
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 4)
-                                    .id("TypingIndicator")
-                            }
                         }
                         .padding(.vertical, 16)
+                    }
+                    .onChange(of: viewModel.messages.last?.text) { _ in
+                        if viewModel.isStreaming {
+                            proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom)
+                        }
                     }
                     .onChange(of: viewModel.messages.count) { _ in
                         withAnimation {
                             proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom)
-                        }
-                    }
-                    .onChange(of: viewModel.isTyping) { isTyping in
-                        if isTyping {
-                            withAnimation {
-                                proxy.scrollTo("TypingIndicator", anchor: .bottom)
-                            }
                         }
                     }
                     .onTapGesture {
@@ -67,7 +60,7 @@ struct ChatView: View {
                             .background(Color(UIColor.secondarySystemBackground))
                             .cornerRadius(20)
                             .focused($isInputFocused)
-                            .disabled(viewModel.isTyping)
+                            .disabled(viewModel.isStreaming)
                         
                         Button(action: {
                             sendMessage()
@@ -77,7 +70,7 @@ struct ChatView: View {
                                 .frame(width: 32, height: 32)
                                 .foregroundColor(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .gray : .green)
                         }
-                        .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isTyping)
+                        .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isStreaming)
                         .padding(.bottom, 4)
                     }
                     .padding(.horizontal)
@@ -117,38 +110,24 @@ struct ChatView: View {
     }
     
     private func sendMessage() {
+        guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         viewModel.sendMessage(inputText)
         inputText = ""
     }
 }
 
-// Simple Typing Indicator
-struct TypingIndicator: View {
-    @State private var scale: CGFloat = 0.5
+struct StreamingCursor: View {
+    @State private var opacity: Double = 1.0
     
     var body: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(Color.gray.opacity(0.5))
-                .frame(width: 6, height: 6)
-                .scaleEffect(scale)
-                .animation(.easeInOut(duration: 0.6).repeatForever().delay(0), value: scale)
-            Circle()
-                .fill(Color.gray.opacity(0.5))
-                .frame(width: 6, height: 6)
-                .scaleEffect(scale)
-                .animation(.easeInOut(duration: 0.6).repeatForever().delay(0.2), value: scale)
-            Circle()
-                .fill(Color.gray.opacity(0.5))
-                .frame(width: 6, height: 6)
-                .scaleEffect(scale)
-                .animation(.easeInOut(duration: 0.6).repeatForever().delay(0.4), value: scale)
-        }
-        .padding(12)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
-        .onAppear {
-            scale = 1.0
-        }
+        Rectangle()
+            .fill(Color.green)
+            .frame(width: 2, height: 16)
+            .opacity(opacity)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {
+                    opacity = 0.0
+                }
+            }
     }
 }

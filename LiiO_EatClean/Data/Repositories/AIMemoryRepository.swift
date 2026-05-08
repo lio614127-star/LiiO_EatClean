@@ -1,5 +1,6 @@
 import Foundation
 import CoreData
+import Observation
 
 protocol AIMemoryRepositoryProtocol {
     func fetchMemory() async throws -> UserProfileMemory

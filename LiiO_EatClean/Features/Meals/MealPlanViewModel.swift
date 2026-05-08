@@ -13,6 +13,7 @@ class MealPlanViewModel {
     // Weekly plan state
     var weeklyPlan: [WeeklyDayPlan] = []
     var isLoadingWeekly = false
+    var weeklyErrorMessage: String?
     var selectedWeekDay: Int? = nil
     
     private let aiService = AIService.shared
@@ -47,51 +48,64 @@ class MealPlanViewModel {
             self.loggedMealTypes = []
         }
         
+        let mealTypes = Self.mealTypes
+        
         do {
-            let prompt = try await contextBuilder.buildSystemPrompt(
-                for: "Lên kế hoạch ăn",
-                strategy: .mealPlan,
-                remainingCalories: targetCalories,
-                mealType: nil
-            )
+            let userContext = try await contextBuilder.buildFullUserContext()
+            let rawFoods = try await AIOrchestrator.shared.generateDayPlanBatched(
+                mealTypes: mealTypes,
+                userContext: userContext,
+                targetCalories: targetCalories
+            ) { partialFoods in
+                // ⚡ Streaming update: Normalize and show immediately
+                let normalized = partialFoods.map { food in
+                    var f = food
+                    f.mealType = Self.normalizeMealType(f.mealType ?? "Ăn vặt")
+                    return f
+                }
+                Task { @MainActor in
+                    self.planItems.append(contentsOf: normalized)
+                    HapticManager.interaction() // Gentle feedback per chunk
+                }
+            }
             
-            let message = try await aiService.sendChatMessage(history: [], systemPrompt: prompt)
+            // Final pass: Normalize all for final validation
+            let allFoods = rawFoods.map { food in
+                var f = food
+                f.mealType = Self.normalizeMealType(f.mealType ?? "Ăn vặt")
+                return f
+            }
             
             await MainActor.run {
-                if let foods = message.suggestedFoods, !foods.isEmpty {
-                    // Normalize mealTypes and validate calories
-                    var normalized = foods.map { food -> AISuggestedFood in
-                        var f = food
-                        f.mealType = Self.normalizeMealType(f.mealType ?? "Ăn vặt")
-                        return f
-                    }
-                    
+                if !allFoods.isEmpty {
                     // Validate total calories (D-02: ±5%)
-                    normalized = Self.validateCalories(items: normalized, target: targetCalories)
-                    
-                    self.planItems = normalized
+                    self.planItems = Self.validateCalories(items: allFoods, target: targetCalories)
                 } else {
                     self.errorMessage = "AI không thể tạo kế hoạch lúc này. Hãy thử lại."
                 }
-                self.isLoading = false
             }
         } catch {
             await MainActor.run {
                 self.errorMessage = "Lỗi kết nối AI: \(error.localizedDescription)"
-                self.isLoading = false
             }
+        }
+        
+        await MainActor.run {
+            self.isLoading = false
         }
     }
     
-    // MARK: - Calorie Validation (D-02: AI phân bổ + app validate ±5%)
+    // MARK: - Calorie Validation (Soft Constraints: ±15% tolerance)
     
     static func validateCalories(items: [AISuggestedFood], target: Double) -> [AISuggestedFood] {
         let total = items.reduce(0) { $0 + $1.calories }
-        let upperBound = target * 1.05
+        let upperBound = target * 1.15
+        let lowerBound = target * 0.85
         
-        guard total > upperBound else { return items }
+        // Only trim/scale if it's wildly off (outside ±15% tolerance)
+        guard total > upperBound || total < lowerBound else { return items }
         
-        // Proportional trim — create new items with scaled values
+        // Proportional rescale — create new items with scaled values
         let ratio = target / total
         return items.map { item in
             AISuggestedFood(
@@ -211,138 +225,91 @@ class MealPlanViewModel {
         await MainActor.run {
             self.isLoadingWeekly = true
             self.weeklyPlan = []
-            self.errorMessage = nil
+            self.weeklyErrorMessage = nil
         }
         
+        let days = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
+        
         do {
-            let memory = memoryManager.fetchMemory()
-            
-            var prompt = """
-            Bạn là chuyên gia dinh dưỡng Việt Nam.
-            Lên thực đơn 7 NGÀY, mỗi ngày 4 bữa, tổng mỗi ngày ~\(Int(targetCalories)) kcal.
-            Đa dạng món, không lặp quá 2 lần trong tuần.
-            """
-            
-            if memory.hasContent {
-                if !memory.allAvoidFoods.isEmpty {
-                    prompt += "\n⛔ CẤM: \(memory.allAvoidFoods.joined(separator: ", "))"
-                }
-                if !memory.likes.isEmpty {
-                    prompt += "\nƯa thích: \(memory.likes.joined(separator: ", "))"
-                }
-            }
-            
-            prompt += """
-            
-            
-            QUAN TRỌNG: Trả về kết quả trong một Markdown code block chuẩn ` ```json ... ``` `. Không giải thích thêm.
-            
-            Định dạng JSON:
-            ```json
-            {
-              "action": "weekly_plan",
-              "days": [
-                {
-                  "day": "T2",
-                  "totalCalories": 1800,
-                  "highlights": ["Phở bò", "Cơm gà", "Cá hấp"],
-                  "items": [
-                    {"name":"Phở bò","calories":400,"protein":25,"carbs":50,"fat":10,"servingSize":1.0,"mealType":"Bữa sáng"}
-                  ]
-                }
-              ]
-            }
-            ```
-            
-            Mỗi item: {name,calories,protein,carbs,fat,servingSize:1.0,mealType:"Bữa sáng|Bữa trưa|Bữa tối|Ăn vặt"}
-            Mỗi bữa 1-2 món. highlights là 3 món tiêu biểu nhất mỗi ngày.
-            """
-            
-            let message = try await aiService.sendChatMessage(history: [], systemPrompt: prompt)
+            let userContext = try await contextBuilder.buildFullUserContext()
+            let plans = try await AIOrchestrator.shared.generateWeekPlanBatched(userContext: userContext)
             
             await MainActor.run {
-                let text = message.text
-                if !text.isEmpty {
-                    self.weeklyPlan = Self.parseWeeklyPlan(text, target: targetCalories)
-                }
-                if self.weeklyPlan.isEmpty {
-                    self.errorMessage = "Lỗi Parse JSON. Raw text: \(text.prefix(300))"
-                }
+                self.weeklyPlan = plans
                 self.isLoadingWeekly = false
             }
         } catch {
             print("generateWeekPlan error: \(error)")
             await MainActor.run {
-                self.errorMessage = error.localizedDescription
+                self.weeklyErrorMessage = "Lỗi tạo kế hoạch tuần: \(error.localizedDescription)"
                 self.isLoadingWeekly = false
             }
         }
     }
     
-    static func parseWeeklyPlan(_ text: String, target: Double) -> [WeeklyDayPlan] {
-        // Extract JSON from response (handle markdown code blocks)
+    static func parseSingleDayPlan(_ text: String, dayName: String) -> WeeklyDayPlan? {
         var jsonText = text
-        
-        // Remove markdown code block markers if present
-        if let jsonBlockStart = text.range(of: "```json") {
-            jsonText = String(text[jsonBlockStart.upperBound...])
-            if let jsonBlockEnd = jsonText.range(of: "```") {
-                jsonText = String(jsonText[..<jsonBlockEnd.lowerBound])
-            }
+        if let firstBracket = jsonText.firstIndex(of: "{"),
+           let lastBracket = jsonText.lastIndex(of: "}") {
+            jsonText = String(jsonText[firstBracket...lastBracket])
         }
         
-        guard let jsonStart = jsonText.firstIndex(of: "{"),
-              let jsonEnd = jsonText.lastIndex(of: "}") else { return [] }
-        
-        let jsonString = String(jsonText[jsonStart...jsonEnd])
-        guard let data = jsonString.data(using: .utf8) else { return [] }
+        guard let data = jsonText.data(using: .utf8) else { return nil }
         
         do {
-            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let days = json["days"] as? [[String: Any]] {
-                return days.compactMap { dayDict -> WeeklyDayPlan? in
-                    guard let day = dayDict["day"] as? String else { return nil }
-                    let totalCal = dayDict["totalCalories"] as? Double ?? 0
-                    let highlights = dayDict["highlights"] as? [String] ?? []
-                    
-                    // Parse items if present
-                    var items: [AISuggestedFood] = []
-                    if let itemsArray = dayDict["items"] as? [[String: Any]] {
-                        items = itemsArray.compactMap { itemDict -> AISuggestedFood? in
-                            guard let name = itemDict["name"] as? String else { return nil }
-                            return AISuggestedFood(
-                                name: name,
-                                calories: itemDict["calories"] as? Double ?? 0,
-                                protein: itemDict["protein"] as? Double ?? 0,
-                                carbs: itemDict["carbs"] as? Double ?? 0,
-                                fat: itemDict["fat"] as? Double ?? 0,
-                                servingSize: 1.0,
-                                mealType: normalizeMealType(itemDict["mealType"] as? String ?? "Ăn vặt")
-                            )
-                        }
-                    }
-                    
-                    return WeeklyDayPlan(
-                        day: day,
-                        totalCalories: totalCal,
-                        highlights: highlights,
-                        items: items
-                    )
-                }
-            }
+            let plan = try JSONDecoder().decode(WeeklyDayPlan.self, from: data)
+            return WeeklyDayPlan(
+                day: dayName,
+                breakfast: plan.breakfast,
+                lunch: plan.lunch,
+                dinner: plan.dinner,
+                snack: plan.snack
+            )
         } catch {
-            print("Weekly plan parse error: \(error)")
+            print("Single day parse error: \(error)")
+            return nil
         }
-        return []
+    }
+    
+    func reset() {
+        self.planItems = []
+        self.isLoading = false
+        self.errorMessage = nil
+        self.loggedMealTypes = []
+        self.weeklyPlan = []
+        self.isLoadingWeekly = false
+        self.weeklyErrorMessage = nil
     }
 }
 
 // MARK: - Weekly Plan Model
 
-struct WeeklyDayPlan: Identifiable {
-    let id = UUID()
-    let day: String          // "T2", "T3", etc.
-    let totalCalories: Double
-    let highlights: [String] // 2-3 representative food names
-    let items: [AISuggestedFood]
+struct WeeklyDayPlan: Identifiable, Codable {
+    var id = UUID()
+    let day: String
+    let breakfast: AISuggestedFood?
+    let lunch: AISuggestedFood?
+    let dinner: AISuggestedFood?
+    let snack: AISuggestedFood?
+    
+    var items: [AISuggestedFood] {
+        var results: [AISuggestedFood] = []
+        if var b = breakfast { b.mealType = "Bữa sáng"; results.append(b) }
+        if var l = lunch { l.mealType = "Bữa trưa"; results.append(l) }
+        if var d = dinner { d.mealType = "Bữa tối"; results.append(d) }
+        if var s = snack { s.mealType = "Ăn vặt"; results.append(s) }
+        return results
+    }
+    
+    var totalCalories: Double {
+        items.reduce(0) { $0 + $1.calories }
+    }
+    
+    var highlights: [String] {
+        items.prefix(2).map { $0.name }
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case day, breakfast, lunch, dinner, snack
+    }
 }

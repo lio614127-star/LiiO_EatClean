@@ -38,7 +38,7 @@ class BarcodeResultService {
         If you don't know, provide a best guess.
         """
         
-        let responseText = try await aiService.generateText(prompt: prompt)
+        let responseText = try await aiService.generateText(prompt: prompt, requestType: .mealSuggestion, feature: "Quét Barcode")
         let cleanedText = extractJSON(from: responseText)
         
         guard let data = cleanedText.data(using: .utf8) else {

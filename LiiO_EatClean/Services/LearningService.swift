@@ -64,7 +64,7 @@ class LearningService {
         """
         
         let prompt = systemPrompt + "\nTin nhắn: \"\(message)\""
-        let responseText = try await aiService.generateText(prompt: prompt)
+        let responseText = try await aiService.generateText(prompt: prompt, requestType: .memoryExtraction, feature: "Học tập trí nhớ")
         
         // Parse the text block to get the JSON
         if let jsonString = responseText.extractJSON(),

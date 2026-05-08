@@ -94,10 +94,18 @@ struct VoiceInputView: View {
             // Status Text
             VStack(spacing: 8) {
                 if isParsing {
-                    ProgressView()
-                    Text("Đang phân tích...")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
+                    VStack(spacing: 24) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        
+                        // Real-time model transparency row
+                        if let activity = AIActivityCenter.shared.activities.last(where: { $0.featureSource == "Phân tích giọng nói" }) {
+                            ActivityRow(activity: activity)
+                                .frame(maxWidth: 280)
+                                .transition(.opacity.combined(with: .scale))
+                        }
+                    }
+                    .animation(.spring(), value: AIActivityCenter.shared.activities)
                 } else if speechService.isListening {
                     Text("Đang nghe...")
                         .font(.headline)

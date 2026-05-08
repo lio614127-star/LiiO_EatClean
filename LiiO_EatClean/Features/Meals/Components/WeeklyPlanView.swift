@@ -11,14 +11,30 @@ struct WeeklyPlanView: View {
         NavigationStack {
             Group {
                 if viewModel.isLoadingWeekly {
-                    VStack(spacing: 16) {
-                        ProgressView("Đang tạo kế hoạch tuần...")
-                            .padding(40)
-                        Text("AI đang phân bổ dinh dưỡng cho 7 ngày")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    VStack(spacing: 12) {
+                        // Real-time model transparency rows for parallel tasks (Days of the week)
+                        let dayOrder = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
+                        let weeklyActivities = AIActivityCenter.shared.activities.filter { 
+                            ($0.featureSource.contains("Thứ") || 
+                             $0.featureSource.contains("Chủ Nhật") || 
+                             $0.featureSource.contains("Gom")) && 
+                            $0.status != .completed
+                        }.sorted { a1, a2 in
+                            let o1 = dayOrder.firstIndex(where: { a1.featureSource.contains($0) }) ?? 99
+                            let o2 = dayOrder.firstIndex(where: { a2.featureSource.contains($0) }) ?? 99
+                            return o1 < o2
+                        }
+                        
+                        ForEach(weeklyActivities) { activity in
+                            ActivityRow(activity: activity)
+                                .frame(maxWidth: 320)
+                                .transition(.opacity.combined(with: .scale))
+                        }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.top, 60)
+                    .padding(.horizontal)
+                    .animation(.spring(), value: AIActivityCenter.shared.activities)
                 } else if viewModel.weeklyPlan.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "calendar.badge.exclamationmark")
@@ -27,7 +43,7 @@ struct WeeklyPlanView: View {
                         Text("Chưa có kế hoạch tuần")
                             .font(.headline)
                         
-                        if let error = viewModel.errorMessage {
+                        if let error = viewModel.weeklyErrorMessage {
                             Text(error)
                                 .font(.caption)
                                 .foregroundColor(.red)
@@ -114,7 +130,7 @@ struct WeeklyDayRow: View {
             Text(dayPlan.day)
                 .font(.headline)
                 .foregroundColor(.green)
-                .frame(width: 30, alignment: .leading)
+                .frame(width: 60, alignment: .leading)
             
             // Separator
             Text("—")

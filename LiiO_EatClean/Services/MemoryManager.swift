@@ -15,17 +15,15 @@ class MemoryManager: MemoryManagerProtocol {
     // MARK: - Core CRUD
     
     func fetchMemory() -> UserProfileMemory {
-        guard let data = defaults.data(forKey: memoryKey),
-              let memory = try? JSONDecoder().decode(UserProfileMemory.self, from: data) else {
-            return UserProfileMemory()
-        }
-        return memory
+        return AIMemoryRepository.shared.currentMemory
     }
     
     func saveMemory(_ memory: UserProfileMemory) {
-        if let data = try? JSONEncoder().encode(memory) {
-            defaults.set(data, forKey: memoryKey)
-            NotificationCenter.default.post(name: .memoryDidUpdate, object: nil)
+        Task {
+            try? await AIMemoryRepository.shared.saveMemory(memory)
+            await MainActor.run {
+                NotificationCenter.default.post(name: .memoryDidUpdate, object: nil)
+            }
         }
     }
     

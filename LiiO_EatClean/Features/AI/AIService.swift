@@ -24,6 +24,50 @@ enum AIError: LocalizedError {
     }
 }
 
+enum AIRequestType {
+    // Lite Tier (v1beta, Flash-Lite)
+    case parsing
+    case classification
+    case memoryExtraction
+    case formatting
+    case activityTracking
+    case barcodeAnalysis
+    case toneRewrite
+    
+    // Main Tier (v1beta, Flash)
+    case chat
+    case mealSuggestion
+    case mealPlanDay
+    case dailySummary
+    case ocrRecognition
+    case voiceParsing
+    case insightDetection
+    
+    // Reasoning Tier (v1, Pro)
+    case weeklyPlan
+    case trendAnalysis
+    case contextCompression
+    case healthReasoning
+    case personalization
+}
+
+struct AIModelInfo: Equatable, Codable {
+    let name: String
+    let provider: String
+    let status: String
+    var icon: String {
+        provider == "gemini" ? "sparkles" : "bolt.fill"
+    }
+}
+
+enum AIChatStreamResult {
+    case modelInfo(AIModelInfo)
+    case chunk(String)
+    case suggestions([AISuggestedFood])
+    case finalCleanText(String)  // Cleaned text with JSON blocks stripped — replaces accumulated chunks
+    case error(String)
+}
+
 // MARK: - Response model for parsing AI-suggested foods
 struct AISuggestedFood: Codable, Identifiable, Equatable {
     var id = UUID()
@@ -100,22 +144,63 @@ class AIService {
         self.poolManager = APIKeyPoolManager(repository: userRepository)
     }
     
-    private func executeWithRetry<T>(operation: (APIKeyModel) async throws -> T) async throws -> T {
+    private func executeWithRetry<T>(task: AIRequestType, feature: String, forcedKey: APIKeyModel? = nil, subTasks: [String] = [], isInternal: Bool = false, operation: @escaping (APIKeyModel, AIModelConfig) async throws -> T) async throws -> T {
         try await poolManager.loadKeys()
         
         var lastError: Error = AIError.missingKey
+        var activityID: UUID? = nil
         
-        for _ in 0..<3 { // Max 3 retries
-            guard let key = await poolManager.getBestKey() else {
-                throw AIError.missingKey
+        for attempt in 0..<3 {
+            let key: APIKeyModel
+            // Use forcedKey for first attempt, but allow fallback to best available key if it fails
+            if attempt == 0, let forced = forcedKey {
+                key = forced
+            } else {
+                guard let best = await poolManager.getBestKey(for: task) else {
+                    throw AIError.missingKey
+                }
+                key = best
+            }
+            
+            let tier: AIModelTier = (key.isPaid == true) ? .paid : .free
+            let config = AIModelRouter.shared.getBestConfig(for: task, tier: tier, provider: key.provider)
+            
+            if activityID == nil {
+                activityID = await AIActivityCenter.shared.startTask(
+                    feature: feature,
+                    model: config.modelName,
+                    provider: key.provider,
+                    initialStatus: "Đang chuẩn bị...",
+                    keyName: key.name ?? (key.isPaid == true ? "Paid Key" : "Free Key"),
+                    keyTier: key.isPaid == true ? "PAID" : "FREE",
+                    subTasks: subTasks,
+                    isInternal: isInternal
+                )
             }
             
             do {
-                let result = try await operation(key)
+                await AIActivityCenter.shared.updateTask(id: activityID!, status: .processing("Đang xử lý..."), model: config.modelName, provider: key.provider)
+                let result = try await operation(key, config)
                 try await poolManager.reportSuccess(keyID: key.id)
+                await AIActivityCenter.shared.updateTask(id: activityID!, status: .completed, progressText: "✓ Hoàn tất")
                 return result
             } catch {
                 lastError = error
+                
+                // Check if we should try a fallback config (e.g. v1 -> v1beta)
+                if let aiError = error as? AIError, case .networkError(let msg) = aiError, msg.contains("404") {
+                    if let fallbackConfig = AIModelRouter.shared.getFallbackConfig(for: config) {
+                        await AIActivityCenter.shared.updateTask(id: activityID!, status: .swapping("Đang đổi endpoint..."), model: fallbackConfig.modelName)
+                        do {
+                            let result = try await operation(key, fallbackConfig)
+                            try await poolManager.reportSuccess(keyID: key.id)
+                            await AIActivityCenter.shared.updateTask(id: activityID!, status: .completed, progressText: "✓ Hoàn tất")
+                            return result
+                        } catch {
+                            lastError = error
+                        }
+                    }
+                }
                 
                 var statusCode = -1
                 if let aiError = error as? AIError {
@@ -129,18 +214,136 @@ class AIService {
                 }
                 
                 try await poolManager.reportError(keyID: key.id, statusCode: statusCode)
+                
+                if attempt < 2 {
+                    await AIActivityCenter.shared.updateTask(id: activityID!, status: .swapping("Lỗi, đang đổi key..."))
+                }
             }
         }
         
+        await AIActivityCenter.shared.updateTask(id: activityID!, status: .failed(lastError.localizedDescription))
         throw lastError
     }
     
+    // MARK: - Streaming Orchestrator
+    private func executeWithRetryStream(task: AIRequestType, feature: String, forcedKey: APIKeyModel? = nil, subTasks: [String] = [], isInternal: Bool = false, operation: @escaping (APIKeyModel, AIModelConfig) -> AsyncThrowingStream<AIChatStreamResult, Error>) -> AsyncThrowingStream<AIChatStreamResult, Error> {
+        return AsyncThrowingStream { continuation in
+            Task {
+                try await poolManager.loadKeys()
+                
+                var activityID: UUID? = nil
+                var lastError: Error = AIError.missingKey
+                
+                for attempt in 0..<3 {
+                    let key: APIKeyModel
+                    // Use forcedKey for first attempt, but allow fallback to best available key if it fails
+                    if attempt == 0, let forced = forcedKey {
+                        key = forced
+                    } else {
+                        guard let best = await poolManager.getBestKey(for: task) else {
+                            continuation.finish(throwing: AIError.missingKey)
+                            return
+                        }
+                        key = best
+                    }
+                    
+                    var success = false
+                    let tier: AIModelTier = (key.isPaid == true) ? .paid : .free
+                    var config = AIModelRouter.shared.getBestConfig(for: task, tier: tier, provider: key.provider)
+                    
+                    if activityID == nil {
+                        activityID = await AIActivityCenter.shared.startTask(
+                            feature: feature,
+                            model: config.modelName,
+                            provider: key.provider,
+                            initialStatus: "Đang chuẩn bị...",
+                            keyName: key.name ?? (key.isPaid == true ? "Paid Key" : "Free Key"),
+                            keyTier: key.isPaid == true ? "PAID" : "FREE",
+                            subTasks: subTasks,
+                            isInternal: isInternal
+                        )
+                    }
+                    
+                    await AIActivityCenter.shared.updateTask(
+                        id: activityID!,
+                        status: .thinking,
+                        model: config.modelName,
+                        provider: key.provider,
+                        progressText: "Đang suy nghĩ..."
+                    )
+                    
+                    do {
+                        for try await result in operation(key, config) {
+                            success = true
+                            switch result {
+                            case .modelInfo(let info):
+                                await AIActivityCenter.shared.updateTask(id: activityID!, status: .streaming("Đang phản hồi..."), progressText: info.status)
+                                continuation.yield(.modelInfo(info))
+                            case .chunk(let text):
+                                continuation.yield(.chunk(text))
+                            case .suggestions(let foods):
+                                continuation.yield(.suggestions(foods))
+                            case .finalCleanText(let text):
+                                continuation.yield(.finalCleanText(text))
+                            case .error(let msg):
+                                continuation.yield(.error(msg))
+                            }
+                        }
+                        
+                        try await poolManager.reportSuccess(keyID: key.id)
+                        await AIActivityCenter.shared.updateTask(id: activityID!, status: .completed, progressText: "✓ Hoàn tất")
+                        continuation.finish()
+                        return
+                    } catch {
+                        lastError = error
+                        
+                        // Check if fallback needed (404)
+                        if let aiError = error as? AIError, case .networkError(let msg) = aiError, msg.contains("404"),
+                           let fallbackConfig = AIModelRouter.shared.getFallbackConfig(for: config) {
+                            config = fallbackConfig
+                            await AIActivityCenter.shared.updateTask(id: activityID!, status: .swapping("Đang chuyển đổi..."), model: config.modelName)
+                            do {
+                                for try await result in operation(key, config) {
+                                    success = true
+                                    continuation.yield(result)
+                                }
+                                try await poolManager.reportSuccess(keyID: key.id)
+                                await AIActivityCenter.shared.updateTask(id: activityID!, status: .completed, progressText: "✓ Hoàn tất")
+                                continuation.finish()
+                                return
+                            } catch {
+                                lastError = error
+                            }
+                        }
+                        
+                        var statusCode = -1
+                        if let aiError = error as? AIError {
+                            switch aiError {
+                            case .invalidKey: statusCode = 401
+                            case .quotaExceeded: statusCode = 429
+                            default: statusCode = -1001
+                            }
+                        }
+                        try await poolManager.reportError(keyID: key.id, statusCode: statusCode)
+                        
+                        if attempt < 2 {
+                            await AIActivityCenter.shared.updateTask(id: activityID!, status: .swapping("Lỗi, đang đổi key..."))
+                        }
+                    }
+                }
+                
+                await AIActivityCenter.shared.updateTask(id: activityID!, status: .failed(lastError.localizedDescription))
+                continuation.finish(throwing: lastError)
+            }
+        }
+    }
+    
     func suggestMeals(remainingCalories: Double, mealType: String, userGoal: String = "Duy trì cân nặng") async throws -> [AISuggestedFood] {
-        return try await executeWithRetry { key in
-            if key.provider == "gemini" {
-                return try await self.callGemini(apiKey: key.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
+        return try await executeWithRetry(task: .mealSuggestion, feature: "Gợi ý món ăn", subTasks: ["Gợi ý: \(mealType)"]) { key, config in
+            if config.provider == "gemini" {
+                return try await self.callGemini(apiKey: key.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal, config: config)
             } else {
-                return try await self.callOpenAI(apiKey: key.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
+                return try await self.callOpenAI(apiKey: key.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal, config: config)
             }
         }
     }
@@ -165,15 +368,56 @@ class AIService {
     }
     
     // MARK: - Validation
-    func testGeminiKey(_ key: String) async throws -> Bool {
+    func testGeminiKey(_ key: String) async throws -> (version: String, isPaid: Bool) {
         let cleanKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(cleanKey)")!
-        let requestBody: [String: Any] = [
-            "contents": [["parts": [["text": "hi"]]]],
-            "generationConfig": ["maxOutputTokens": 5]
-        ]
-        _ = try await performRequest(url: url, body: requestBody)
-        return true
+        
+        // Step 1: Detect version using Flash (most compatible)
+        let versions = ["v1beta", "v1"]
+        var detectedVersion = "v1beta"
+        var success = false
+        
+        for version in versions {
+            let url = URL(string: "https://generativelanguage.googleapis.com/\(version)/models/gemini-2.5-flash:generateContent?key=\(cleanKey)")!
+            let requestBody: [String: Any] = [
+                "contents": [["parts": [["text": "hi"]]]],
+                "generationConfig": ["maxOutputTokens": 5]
+            ]
+            
+            do {
+                _ = try await performRequest(url: url, body: requestBody)
+                detectedVersion = version
+                success = true
+                break
+            } catch {
+                if let aiError = error as? AIError, case .networkError(let msg) = aiError, msg.contains("404") {
+                    continue
+                }
+                // If it's a 403 or 429, the key might be valid but restricted/busy, but we'll consider it "working" if we get a response
+                if let aiError = error as? AIError, case .networkError(let msg) = aiError, (msg.contains("403") || msg.contains("429")) {
+                    detectedVersion = version
+                    success = true
+                    break
+                }
+            }
+        }
+        
+        if !success { throw AIError.invalidKey }
+        
+        // Step 2: Detect if Paid (check if Pro is accessible on v1)
+        var isPaid = false
+        let proUrl = URL(string: "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent?key=\(cleanKey)")!
+        do {
+            _ = try await performRequest(url: proUrl, body: [
+                "contents": [["parts": [["text": "hi"]]]],
+                "generationConfig": ["maxOutputTokens": 5]
+            ])
+            isPaid = true
+        } catch {
+            // Failure on Pro (403/404) means it's a Free key
+            isPaid = false
+        }
+        
+        return (version: detectedVersion, isPaid: isPaid)
     }
     
     func testOpenAIKey(_ key: String) async throws -> Bool {
@@ -184,35 +428,30 @@ class AIService {
             "messages": [["role": "user", "content": "hi"]],
             "max_tokens": 5
         ]
-        _ = try await performRequest(url: url, body: requestBody, extraHeaders: ["Authorization": "Bearer \(cleanKey)"])
-        return true
+        
+        do {
+            _ = try await performRequest(url: url, body: requestBody, extraHeaders: ["Authorization": "Bearer \(cleanKey)"])
+            return true
+        } catch {
+            // Enhanced error message for OpenAI
+            if let aiError = error as? AIError, case .quotaExceeded = aiError {
+                throw AIError.networkError("OpenAI: Tài khoản của bạn đã hết hạn mức (Quota) hoặc hết tiền. Vui lòng kiểm tra lại billing.")
+            }
+            throw error
+        }
     }
     
     // MARK: - Raw Generation API
-    func generateText(prompt: String) async throws -> String {
-        return try await executeWithRetry { key in
+    func generateText(prompt: String, requestType: AIRequestType = .chat, feature: String = "AI Generation", forcedKey: APIKeyModel? = nil, subTasks: [String] = [], isInternal: Bool = false) async throws -> String {
+        return try await executeWithRetry(task: requestType, feature: feature, forcedKey: forcedKey, subTasks: subTasks, isInternal: isInternal) { key, config in
             let cleanKey = key.key.trimmingCharacters(in: .whitespacesAndNewlines)
             
-            if key.provider == "gemini" {
-                let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(cleanKey)")!
-                let requestBody: [String: Any] = [
-                    "contents": [["parts": [["text": prompt]]]],
-                    "generationConfig": ["temperature": 0.3]
-                ]
-                let data = try await self.performRequest(url: url, body: requestBody)
-                guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let candidates = json["candidates"] as? [[String: Any]],
-                      let first = candidates.first,
-                      let content = first["content"] as? [String: Any],
-                      let parts = content["parts"] as? [[String: Any]],
-                      let text = parts.first?["text"] as? String else {
-                    throw AIError.invalidResponse
-                }
-                return text
+            if config.provider == "gemini" {
+                return try await self.executeGeminiRequest(version: config.endpoint, model: config.modelName, apiKey: cleanKey, prompt: prompt)
             } else {
                 let url = URL(string: "https://api.openai.com/v1/chat/completions")!
                 let requestBody: [String: Any] = [
-                    "model": "gpt-4o-mini",
+                    "model": config.modelName,
                     "messages": [["role": "user", "content": prompt]],
                     "temperature": 0.3
                 ]
@@ -230,20 +469,22 @@ class AIService {
     }
     
     // MARK: - Chat API
-    func sendChatMessage(history: [ChatMessage], systemPrompt: String) async throws -> ChatMessage {
-        return try await executeWithRetry { key in
-            if key.provider == "gemini" {
-                return try await self.callGeminiChat(apiKey: key.key, history: history, systemPrompt: systemPrompt)
-            } else {
-                return try await self.callOpenAIChat(apiKey: key.key, history: history, systemPrompt: systemPrompt)
-            }
+    func sendChatMessage(history: [ChatMessage], systemPrompt: String, task: AIRequestType = .chat, feature: String = "AI Coach", forcedKey: APIKeyModel? = nil, subTasks: [String] = [], isInternal: Bool = false) async throws -> ChatMessage {
+        return try await executeWithRetry(task: task, feature: feature, forcedKey: forcedKey, subTasks: subTasks, isInternal: isInternal) { key, config in
+            try await self.callGeminiChat(apiKey: key.key, history: history, systemPrompt: systemPrompt, config: config)
+        }
+    }
+    
+    func sendChatMessageStream(history: [ChatMessage], systemPrompt: String, task: AIRequestType = .chat, feature: String = "AI Coach Chat", forcedKey: APIKeyModel? = nil, subTasks: [String] = [], isInternal: Bool = false) -> AsyncThrowingStream<AIChatStreamResult, Error> {
+        return executeWithRetryStream(task: task, feature: feature, forcedKey: forcedKey, subTasks: subTasks, isInternal: isInternal) { key, config in
+            self.callGeminiChatStream(apiKey: key.key, history: history, systemPrompt: systemPrompt, config: config)
         }
     }
 
     // MARK: - Gemini API
-    private func callGemini(apiKey: String, remainingCalories: Double, mealType: String, userGoal: String) async throws -> [AISuggestedFood] {
+    private func callGemini(apiKey: String, remainingCalories: Double, mealType: String, userGoal: String, config: AIModelConfig) async throws -> [AISuggestedFood] {
         let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(cleanKey)")!
+        let url = URL(string: "https://generativelanguage.googleapis.com/\(config.endpoint)/models/\(config.modelName):generateContent?key=\(cleanKey)")!
         
         let prompt = buildPrompt(remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
         
@@ -271,14 +512,14 @@ class AIService {
     }
     
     // MARK: - OpenAI API
-    private func callOpenAI(apiKey: String, remainingCalories: Double, mealType: String, userGoal: String) async throws -> [AISuggestedFood] {
+    private func callOpenAI(apiKey: String, remainingCalories: Double, mealType: String, userGoal: String, config: AIModelConfig) async throws -> [AISuggestedFood] {
         let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         let url = URL(string: "https://api.openai.com/v1/chat/completions")!
         
         let prompt = buildPrompt(remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal)
         
         let requestBody: [String: Any] = [
-            "model": "gpt-4o-mini",
+            "model": config.modelName,
             "messages": [["role": "user", "content": prompt]],
             "temperature": 0.7,
             "max_tokens": 512
@@ -302,15 +543,12 @@ class AIService {
     }
     
     // MARK: - Chat API Implementations
-    private func callGeminiChat(apiKey: String, history: [ChatMessage], systemPrompt: String) async throws -> ChatMessage {
+    private func callGeminiChat(apiKey: String, history: [ChatMessage], systemPrompt: String, config: AIModelConfig) async throws -> ChatMessage {
         let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(cleanKey)")!
+        let url = URL(string: "https://generativelanguage.googleapis.com/\(config.endpoint)/models/\(config.modelName):generateContent?key=\(cleanKey)")!
         
         // Convert history
         var contents: [[String: Any]] = []
-        // System instructions in Gemini API are ideally passed via system_instruction field, but injecting into first user prompt is a common fallback
-        // We'll inject system prompt into a dummy user message at the start if history is empty, or prepend to the first user message.
-        // For simplicity, we prepend it to the first message we send, or create one.
         
         var isFirstUser = true
         for msg in history {
@@ -348,7 +586,7 @@ class AIService {
         return parseChatResponse(text)
     }
     
-    private func callOpenAIChat(apiKey: String, history: [ChatMessage], systemPrompt: String) async throws -> ChatMessage {
+    private func callOpenAIChat(apiKey: String, history: [ChatMessage], systemPrompt: String, config: AIModelConfig) async throws -> ChatMessage {
         let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         let url = URL(string: "https://api.openai.com/v1/chat/completions")!
         
@@ -361,7 +599,7 @@ class AIService {
         }
         
         let requestBody: [String: Any] = [
-            "model": "gpt-4o-mini",
+            "model": config.modelName,
             "messages": messages,
             "temperature": 0.7,
             "max_tokens": 4096
@@ -458,7 +696,216 @@ class AIService {
         }
     }
     
+    private func executeGeminiRequest(version: String, model: String, apiKey: String, prompt: String) async throws -> String {
+        let url = URL(string: "https://generativelanguage.googleapis.com/\(version)/models/\(model):generateContent?key=\(apiKey)")!
+        let requestBody: [String: Any] = [
+            "contents": [["parts": [["text": prompt]]]],
+            "generationConfig": ["temperature": 0.3]
+        ]
+        let data = try await self.performRequest(url: url, body: requestBody)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let candidates = json["candidates"] as? [[String: Any]],
+              let first = candidates.first,
+              let content = first["content"] as? [String: Any],
+              let parts = content["parts"] as? [[String: Any]],
+              let text = parts.first?["text"] as? String else {
+            throw AIError.invalidResponse
+        }
+        return text
+    }
+    
+    // MARK: - Gemini Streaming Implementation
+    private func callGeminiChatStream(apiKey: String, history: [ChatMessage], systemPrompt: String, config: AIModelConfig) -> AsyncThrowingStream<AIChatStreamResult, Error> {
+        return AsyncThrowingStream { continuation in
+            Task {
+                let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                // Gemini streaming uses streamGenerateContent endpoint
+                let url = URL(string: "https://generativelanguage.googleapis.com/\(config.endpoint)/models/\(config.modelName):streamGenerateContent?key=\(cleanKey)")!
+                
+                var contents: [[String: Any]] = []
+                var isFirstUser = true
+                for msg in history {
+                    let role = msg.role == .user ? "user" : "model"
+                    var text = msg.text
+                    if isFirstUser && msg.role == .user {
+                        text = "\(systemPrompt)\n\n\(text)"
+                        isFirstUser = false
+                    }
+                    contents.append(["role": role, "parts": [["text": text]]])
+                }
+                if isFirstUser { contents.append(["role": "user", "parts": [["text": systemPrompt]]]) }
+
+                let requestBody: [String: Any] = [
+                    "contents": contents,
+                    "generationConfig": ["temperature": 0.7]
+                ]
+                
+                do {
+                    let (bytes, response) = try await self.performStreamRequest(url: url, body: requestBody)
+                    var fullText = ""
+                    
+                    // Gemini stream is a JSON array of objects
+                    // However, the bytes come in as a stream of JSON blocks.
+                    // The standard Gemini stream response is a JSON array that grows.
+                    // For simplicity, we use a custom parser or handle chunks.
+                    
+                    // Actually, streamGenerateContent returns a JSON array: [ {...}, {...} ]
+                    // We need to parse each element as it arrives.
+                    
+                    var buffer = Data()
+                    var isInsideJSON = false
+                    
+                    for try await byte in bytes {
+                        buffer.append(byte)
+                        
+                        if let str = String(data: buffer, encoding: .utf8) {
+                            if str.contains("{") && str.contains("}") {
+                                if let start = str.range(of: "{")?.lowerBound,
+                                   let end = str.range(of: "}", options: .backwards)?.upperBound {
+                                    let jsonStr = String(str[start..<end])
+                                    
+                                    if let jsonData = jsonStr.data(using: .utf8),
+                                       let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                                       let candidates = json["candidates"] as? [[String: Any]],
+                                       let first = candidates.first,
+                                       let content = first["content"] as? [String: Any],
+                                       let parts = content["parts"] as? [[String: Any]],
+                                       let text = parts.first?["text"] as? String {
+                                        
+                                        fullText += text
+                                        
+                                        // Detect if we've hit a JSON block
+                                        if !isInsideJSON {
+                                            if fullText.contains("```json") || fullText.contains("json {") || (fullText.contains("{") && fullText.contains("\"action\"")) {
+                                                isInsideJSON = true
+                                            }
+                                        }
+                                        
+                                        // Only yield chunks if we're not in the middle of a JSON block
+                                        if !isInsideJSON {
+                                            continuation.yield(.chunk(text))
+                                        }
+                                        
+                                        buffer = Data(str[end...].data(using: .utf8) ?? Data())
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Extract suggestions and clean text at the end
+                    let finalMessage = parseChatResponse(fullText)
+                    if let suggestions = finalMessage.suggestedFoods {
+                        continuation.yield(.suggestions(suggestions))
+                    }
+                    // Always yield cleaned text to strip any JSON blocks from display
+                    if finalMessage.text != fullText {
+                        continuation.yield(.finalCleanText(finalMessage.text))
+                    }
+                    
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+    
+    // MARK: - OpenAI Streaming Implementation
+    private func callOpenAIChatStream(apiKey: String, history: [ChatMessage], systemPrompt: String, config: AIModelConfig) -> AsyncThrowingStream<AIChatStreamResult, Error> {
+        return AsyncThrowingStream { continuation in
+            Task {
+                let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                let url = URL(string: "https://api.openai.com/v1/chat/completions")!
+                
+                var messages: [[String: Any]] = [["role": "system", "content": systemPrompt]]
+                for msg in history { messages.append(["role": msg.role.rawValue, "content": msg.text]) }
+                
+                let requestBody: [String: Any] = [
+                    "model": config.modelName,
+                    "messages": messages,
+                    "temperature": 0.7,
+                    "stream": true
+                ]
+                
+                do {
+                    let (bytes, response) = try await self.performStreamRequest(url: url, body: requestBody, extraHeaders: ["Authorization": "Bearer \(cleanKey)"])
+                    var fullText = ""
+                    var isInsideJSON = false
+                    
+                    for try await line in bytes.lines {
+                        if line.hasPrefix("data: ") {
+                            let dataStr = line.replacingOccurrences(of: "data: ", with: "")
+                            if dataStr == "[DONE]" { break }
+                            
+                            if let data = dataStr.data(using: .utf8),
+                               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                               let choices = json["choices"] as? [[String: Any]],
+                               let first = choices.first,
+                               let delta = first["delta"] as? [String: Any],
+                               let content = delta["content"] as? String {
+                                
+                                fullText += content
+                                
+                                // Detect if we've hit a JSON block
+                                if !isInsideJSON {
+                                    if fullText.contains("```json") || fullText.contains("json {") || (fullText.contains("{") && fullText.contains("\"action\"")) {
+                                        isInsideJSON = true
+                                    }
+                                }
+                                
+                                // Only yield chunks if we're not in the middle of a JSON block
+                                if !isInsideJSON {
+                                    continuation.yield(.chunk(content))
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Extract suggestions and clean text at the end
+                    let finalMessage = parseChatResponse(fullText)
+                    if let suggestions = finalMessage.suggestedFoods {
+                        continuation.yield(.suggestions(suggestions))
+                    }
+                    // Always yield cleaned text to strip any JSON blocks from display
+                    if finalMessage.text != fullText {
+                        continuation.yield(.finalCleanText(finalMessage.text))
+                    }
+                    
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+    
+    private func performStreamRequest(url: URL, body: [String: Any], extraHeaders: [String: String] = [:]) async throws -> (URLSession.AsyncBytes, URLResponse) {
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (key, value) in extraHeaders { request.setValue(value, forHTTPHeaderField: key) }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 90
+        
+        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AIError.networkError("Không nhận được HTTP response")
+        }
+        
+        if !(200...299).contains(httpResponse.statusCode) {
+            // Read error body from stream if possible, but for simplicity we throw generic error
+            if httpResponse.statusCode == 429 { throw AIError.quotaExceeded }
+            if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 { throw AIError.invalidKey }
+            throw AIError.networkError("HTTP \(httpResponse.statusCode)")
+        }
+        
+        return (bytes, response)
+    }
+
     private func parseChatResponse(_ text: String) -> ChatMessage {
+        // Strategy 1: Look for ```json ... ``` markdown code blocks
         let pattern = "```json(.*?)```"
         let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
         let nsString = text as NSString
@@ -469,24 +916,65 @@ class AIService {
         
         if let match = results?.last { // Find the last JSON block
             let jsonString = nsString.substring(with: match.range(at: 1))
-            
-            struct ActionWrapper: Codable {
-                let action: String
-                let items: [AISuggestedFood]?
-            }
-            
-            if let data = jsonString.data(using: .utf8),
-               let wrapper = try? JSONDecoder().decode(ActionWrapper.self, from: data) {
-                if wrapper.action == "suggest_meal" || wrapper.action == "meal_plan" {
-                    foods = wrapper.items
-                    // Only remove the block from the text if it's a known chat/daily action
-                    cleanText = nsString.replacingCharacters(in: match.range, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-                // For "weekly_plan", we intentionally leave the JSON in cleanText
-                // so MealPlanViewModel can parse it manually.
+            foods = tryParseActionJSON(jsonString)
+            if foods != nil {
+                cleanText = nsString.replacingCharacters(in: match.range, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
             }
         }
         
-        return ChatMessage(role: .assistant, text: cleanText, suggestedFoods: foods)
+        // Strategy 2: Fallback — AI returned raw JSON without markdown code block
+        // Look for { "action": "suggest_meal" ... } or json { ... } patterns
+        if foods == nil {
+            let rawPatterns = [
+                "(?:json\\s*)?\\{\\s*\"action\"\\s*:\\s*\"(?:suggest_meal|meal_plan)\".*?\\}\\s*\\]\\s*\\}",  // json { "action":... } with items array
+                "\\{\\s*\"action\"\\s*:\\s*\"(?:suggest_meal|meal_plan)\"[^}]*\"items\"\\s*:\\s*\\[.*?\\]\\s*\\}"  // { "action":..., "items":[...] }
+            ]
+            
+            for rawPattern in rawPatterns {
+                if let rawRegex = try? NSRegularExpression(pattern: rawPattern, options: [.dotMatchesLineSeparators]),
+                   let rawMatch = rawRegex.firstMatch(in: text, options: [], range: NSRange(location: 0, length: nsString.length)) {
+                    var rawJSON = nsString.substring(with: rawMatch.range)
+                    // Strip leading "json " prefix if present
+                    if rawJSON.hasPrefix("json") {
+                        rawJSON = String(rawJSON.dropFirst(4)).trimmingCharacters(in: .whitespaces)
+                    }
+                    foods = tryParseActionJSON(rawJSON)
+                    if foods != nil {
+                        cleanText = nsString.replacingCharacters(in: rawMatch.range, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                        break
+                    }
+                }
+            }
+        }
+        
+        // Final cleanup: Collapse redundant newlines (3 or more -> 2)
+        // This prevents large gaps where JSON blocks were stripped out
+        let newlineRegex = try? NSRegularExpression(pattern: "\n{3,}", options: [])
+        cleanText = newlineRegex?.stringByReplacingMatches(in: cleanText, options: [], range: NSRange(location: 0, length: (cleanText as NSString).length), withTemplate: "\n\n") ?? cleanText
+        
+        return ChatMessage(role: .assistant, text: cleanText.trimmingCharacters(in: .whitespacesAndNewlines), suggestedFoods: foods)
+    }
+    
+    /// Shared JSON parsing for both code-block and raw JSON strategies
+    private func tryParseActionJSON(_ jsonString: String) -> [AISuggestedFood]? {
+        struct ActionWrapper: Codable {
+            let action: String
+            let items: [AISuggestedFood]?
+        }
+        
+        guard let data = jsonString.data(using: .utf8) else { return nil }
+        
+        // Try ActionWrapper first (for Chat/Special actions)
+        if let wrapper = try? JSONDecoder().decode(ActionWrapper.self, from: data) {
+            if wrapper.action == "suggest_meal" || wrapper.action == "meal_plan" {
+                return wrapper.items
+            }
+        }
+        // Fallback: Try plain array (for batched plans)
+        if let plainItems = try? JSONDecoder().decode([AISuggestedFood].self, from: data) {
+            return plainItems
+        }
+        
+        return nil
     }
 }

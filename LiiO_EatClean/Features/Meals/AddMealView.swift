@@ -166,15 +166,21 @@ struct AddMealView: View {
             Divider()
             
             if viewModel.isLoadingAI {
-                HStack(spacing: 12) {
+                VStack(spacing: 16) {
                     ProgressView()
-                    Text("AI đang phân tích thực đơn...")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    
+                    // Real-time model transparency row
+                    if let activity = AIActivityCenter.shared.activities.last(where: { $0.featureSource == "Gợi ý bữa ăn" }) {
+                        ActivityRow(activity: activity)
+                            .frame(maxWidth: 320)
+                            .padding(.horizontal)
+                            .transition(.opacity.combined(with: .scale))
+                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 20)
                 .background(Color(.systemGroupedBackground))
+                .animation(.spring(), value: AIActivityCenter.shared.activities)
                 
             } else if let error = viewModel.aiError {
                 HStack(alignment: .top, spacing: 8) {

@@ -36,6 +36,7 @@ struct MealsView: View {
                         
                         // Meal Plan Button (D-03: entry point)
                         Button {
+                            guard !showMealPlanSheet else { return }
                             showMealPlanSheet = true
                         } label: {
                             HStack {
@@ -64,22 +65,6 @@ struct MealsView: View {
                             mealSection(for: type)
                         }
                         
-                        // Memory & AI Section
-                        VStack(spacing: 16) {
-                            AIMemoryBadgeView(hasMemory: AIMemoryRepository.shared.currentMemory.hasContent) {
-                                showMemoryHub = true
-                            }
-                            
-                            AISuggestionSectionView(
-                                remainingCalories: viewModel.remainingCalories,
-                                onMealLogged: {
-                                    Task { await viewModel.loadTodayMeals() }
-                                }
-                            )
-                        }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .padding(.vertical, 16)
                     }
                     .listStyle(.insetGrouped)
                     .refreshable {
@@ -105,6 +90,7 @@ struct MealsView: View {
                 .id(item.id + "-\(viewModel.todayMeals.flatMap { $0.mealFoods }.count)")
             }
             .fullScreenCover(isPresented: $showMealPlanSheet, onDismiss: {
+                mealPlanViewModel.reset()
                 Task { await viewModel.loadTodayMeals() }
             }) {
                 MealPlanSheet(

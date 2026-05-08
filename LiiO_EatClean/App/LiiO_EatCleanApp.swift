@@ -12,7 +12,7 @@ struct LiiO_EatCleanApp: App {
                 try await FoodRepository().seedDatabaseIfNeeded()
                 print("🚀 App: Database ready.")
                 
-                await performAIMemoryMigration()
+                await Self.performAIMemoryMigration()
             } catch {
                 print("❌ Failed to seed database: \(error)")
             }
@@ -26,7 +26,7 @@ struct LiiO_EatCleanApp: App {
         }
     }
     
-    private func performAIMemoryMigration() async {
+    private static func performAIMemoryMigration() async {
         let key = "com.liio.EatClean.userMemory"
         guard let data = UserDefaults.standard.data(forKey: key) else { return }
         

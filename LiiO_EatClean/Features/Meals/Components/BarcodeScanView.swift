@@ -59,13 +59,18 @@ struct BarcodeScanView: View {
                     .multilineTextAlignment(.center)
                     .padding()
             } else if isLookingUp {
-                VStack(spacing: 16) {
+                VStack(spacing: 24) {
                     ProgressView()
                         .scaleEffect(1.5)
-                    Text("Đang tra cứu...")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
+                    
+                    // Real-time model transparency row
+                    if let activity = AIActivityCenter.shared.activities.last(where: { $0.featureSource == "Quét Barcode" }) {
+                        ActivityRow(activity: activity)
+                            .frame(maxWidth: 280)
+                            .transition(.opacity.combined(with: .scale))
+                    }
                 }
+                .animation(.spring(), value: AIActivityCenter.shared.activities)
             } else {
                 CameraPreviewView(session: scanner.captureSession)
                     .ignoresSafeArea()

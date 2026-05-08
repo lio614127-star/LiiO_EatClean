@@ -101,15 +101,19 @@ class UserRepository: UserRepositoryProtocol {
             request.sortDescriptors = [NSSortDescriptor(keyPath: \APIKey.priority, ascending: false)]
             let results = try self.context.fetch(request)
             return results.map { key in
-                APIKeyModel(
+                let attributes = key.entity.attributesByName.keys
+                return APIKeyModel(
                     id: key.id ?? UUID(),
+                    name: attributes.contains("name") ? key.value(forKey: "name") as? String : nil,
                     provider: key.provider ?? "",
                     key: key.key ?? "",
                     isActive: key.isActive,
                     lastUsed: key.lastUsed,
                     healthScore: Int(key.healthScore),
                     priority: Int(key.priority),
-                    cooldownUntil: key.cooldownUntil
+                    cooldownUntil: key.cooldownUntil,
+                    apiVersion: attributes.contains("apiVersion") ? key.value(forKey: "apiVersion") as? String : nil,
+                    isPaid: attributes.contains("isPaid") ? key.value(forKey: "isPaid") as? Bool : nil
                 )
             }
         }
@@ -117,9 +121,9 @@ class UserRepository: UserRepositoryProtocol {
     
     func saveAPIKey(_ apiKey: APIKeyModel) async throws {
         try await context.perform {
-            // Check if key for this provider exists
+            // Check if key with this id exists
             let request: NSFetchRequest<APIKey> = APIKey.fetchRequest()
-            request.predicate = NSPredicate(format: "provider == %@", apiKey.provider)
+            request.predicate = NSPredicate(format: "id == %@", apiKey.id as CVarArg)
             let existing = try self.context.fetch(request)
             
             let coreDataKey: APIKey
@@ -137,6 +141,27 @@ class UserRepository: UserRepositoryProtocol {
             coreDataKey.priority = Int16(apiKey.priority)
             coreDataKey.cooldownUntil = apiKey.cooldownUntil
             
+            // Safely map new fields if they exist in the CoreData entity
+            if coreDataKey.entity.attributesByName.keys.contains("name") {
+                coreDataKey.setValue(apiKey.name, forKey: "name")
+            }
+            if coreDataKey.entity.attributesByName.keys.contains("apiVersion") {
+                coreDataKey.setValue(apiKey.apiVersion, forKey: "apiVersion")
+            }
+            if coreDataKey.entity.attributesByName.keys.contains("isPaid") {
+                coreDataKey.setValue(apiKey.isPaid, forKey: "isPaid")
+            }
+            
+            try self.context.save()
+        }
+    }
+    
+    func deleteAPIKey(id: UUID) async throws {
+        try await context.perform {
+            let request: NSFetchRequest<APIKey> = APIKey.fetchRequest()
+            request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+            let results = try self.context.fetch(request)
+            results.forEach { self.context.delete($0) }
             try self.context.save()
         }
     }

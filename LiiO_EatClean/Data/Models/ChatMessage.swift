@@ -8,8 +8,9 @@ enum ChatRole: String, Codable {
 struct ChatMessage: Identifiable, Codable {
     var id = UUID()
     let role: ChatRole
-    let text: String
-    let suggestedFoods: [AISuggestedFood]?
+    var text: String
+    var suggestedFoods: [AISuggestedFood]?
+    var modelInfo: AIModelInfo?
     
     var isUser: Bool {
         return role == .user
