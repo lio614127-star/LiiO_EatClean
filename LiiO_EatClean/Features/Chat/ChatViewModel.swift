@@ -18,14 +18,20 @@ class ChatViewModel {
         
         // Add a welcoming message
         messages.append(ChatMessage(role: .assistant, text: "Chào bạn! Mình là trợ lý dinh dưỡng cá nhân của bạn đây. Hôm nay bạn ăn uống thế nào rồi?", suggestedFoods: nil))
+        listenForRetries()
     }
     
     var currentModelInfo: AIModelInfo?
     var isStreaming = false
     
-    func sendMessage(_ text: String) {
+    func sendMessage(_ text: String, isRetry: Bool = false, pendingId: UUID? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        
+        if !NetworkMonitor.shared.isConnected && !isRetry {
+            PendingChatQueue.shared.enqueue(text: trimmed, conversationID: UUID())
+            return
+        }
         
         let userMessage = ChatMessage(role: .user, text: trimmed, suggestedFoods: nil)
         messages.append(userMessage)
@@ -113,6 +119,9 @@ class ChatViewModel {
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
                 }
+                if let pid = pendingId {
+                    PendingChatQueue.shared.markFailed(id: pid)
+                }
             }
             
             await MainActor.run {
@@ -131,6 +140,10 @@ class ChatViewModel {
                 // Trigger haptic on complete
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred()
+                
+                if let pid = pendingId, self.errorMessage == nil {
+                    PendingChatQueue.shared.remove(id: pid)
+                }
             }
         }
         
@@ -192,6 +205,18 @@ class ChatViewModel {
                     self.errorMessage = "Lỗi lưu món ăn: \(error.localizedDescription)"
                 }
             }
+        }
+    }
+    
+    // MARK: - Retry Logic
+    private func listenForRetries() {
+        NotificationCenter.default.addObserver(
+            forName: .pendingChatReadyToSend,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let message = notification.userInfo?["message"] as? PendingMessage else { return }
+            self?.sendMessage(message.text, isRetry: true, pendingId: message.id)
         }
     }
 }

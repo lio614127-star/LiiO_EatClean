@@ -13,6 +13,8 @@ struct ChatView: View {
     
     // Offline State
     private var isOffline: Bool { !NetworkMonitor.shared.isConnected }
+    
+    var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Messages List
@@ -34,6 +36,40 @@ struct ChatView: View {
                                     .padding(.top, 8)
                                     .transition(.opacity)
                                     .animation(.easeIn, value: viewModel.healthSafetyApplied)
+                            }
+                            
+                            // Pending Messages
+                            ForEach(PendingChatQueue.shared.pendingMessages) { pending in
+                                VStack(alignment: .trailing, spacing: 4) {
+                                    Text(pending.text)
+                                        .padding(12)
+                                        .background(Color(red: 0.3, green: 0.69, blue: 0.31).opacity(0.8))
+                                        .foregroundColor(.white)
+                                        .cornerRadius(16)
+                                    
+                                    HStack(spacing: 4) {
+                                        switch pending.status {
+                                        case .pending:
+                                            Image(systemName: "clock").font(.caption2)
+                                            Text("Đang chờ kết nối...").font(.caption2)
+                                        case .sending:
+                                            ProgressView().controlSize(.mini)
+                                            Text("Đang gửi...").font(.caption2)
+                                        case .failed:
+                                            Image(systemName: "exclamationmark.triangle").font(.caption2)
+                                            Text("Không gửi được").font(.caption2)
+                                            Button("Thử lại") {
+                                                Task { await PendingChatQueue.shared.retryPending() }
+                                            }
+                                            .font(.caption2.bold())
+                                            .foregroundColor(Color(red: 0.3, green: 0.69, blue: 0.31))
+                                        }
+                                    }
+                                    .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                                .padding(.horizontal)
+                                .id(pending.id)
                             }
                         }
                         .padding(.vertical, 16)
