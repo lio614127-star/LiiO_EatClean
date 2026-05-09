@@ -5,7 +5,7 @@
 - ✅ **v1.0 MVP Calorie Tracker** — Phases 1-10 (shipped 2026-05-04)
 - ✅ **v1.1 Trải Nghiệm Nhanh & AI Chủ Động** — Phases 11-14 (shipped 2026-05-06)
 - ✅ **v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện** — Phases 15-20 (shipped 2026-05-09)
-- 🚧 **v1.3 Nutrition Engine & Smart Assistant** — Phases 21-22 (Planning)
+- 🚧 **v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi** — Phases 21-22 (in progress)
 
 ## Phases
 
@@ -50,31 +50,24 @@
 *See `.planning/milestones/v1.2-ROADMAP.md` for full details.*
 </details>
 
-### 🚧 v1.3 Nutrition Engine & Smart Assistant (In Progress)
+### 🚧 v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi (In Progress)
 
-- [ ] Phase 21: Hybrid Planning & Structured Data Layer (PLAN, UNIT, MEAL)
-  - Wave 1
-    - 01: Refactor `MealPlanService` for Kcal Split & Candidate Selection
-  - Wave 2
-    - 02: Implement `FoodPortionProfile` & Smart Unit Conversion
-  - Wave 3
-    - 03: CoreData Schema Migration for `StructuredMeal` & Ingredients
-  - Wave 4
-    - 04: Single-pass AI Planning Prompt & Orchestration
-- [ ] Phase 22: AI Cooking Assistant & Diversity Engine (COOK, DIVE, SWAP)
-  - Wave 1
-    - 01: Diversity Engine Metadata & Rules
-  - Wave 2
-    - 02: Local Recommendation Engine (App-side Swap)
-  - Wave 3
-    - 03: Recipe Context Card & Step-by-step UI
-  - Wave 4
-    - 04: Voice Cooking Commands Integration
+- [ ] **Phase 21: Next-Gen Nutrition & AI Planning Update**
+  - Wave 1: Turbo Daily Planning & All-in-one AI Orchestration
+  - Wave 2: Smart Unit Recognition & Composed Food Schema Updates
+  - Wave 3: Recipe Detail View & Ingredient Breakdown UI
+  - Wave 4: AI Cooking Coach Deep-link & Instruction Flow
+  - Wave 5: Magic Swap & Interactive Plan Editor UI
+- [ ] **Phase 22: HealthKit Integration & Macro Dashboard**
+  - Wave 1: HealthKit Permissions & Weight/Calorie Sync Service
+  - Wave 2: Detailed Macro Tracking Dashboard & Data Visualization
 
 ## Progress
 
 | Phase | Milestone | Status | Completed |
 |-------|-----------|--------|-----------|
-| 1-20 | v1.0-v1.2 | Complete | 2026-05-09 |
-| 21. Hybrid Planning & Structured Data | v1.3 | Not started | - |
-| 22. AI Cooking Assistant & Diversity | v1.3 | Not started | - |
+| 1-10 | v1.0 | Complete | 2026-05-04 |
+| 11-14 | v1.1 | Complete | 2026-05-06 |
+| 15-20 | v1.2 | Complete | 2026-05-09 |
+| 21. Next-Gen Nutrition AI | v1.3 | Not started | - |
+| 22. HealthKit & Macros | v1.3 | Not started | - |

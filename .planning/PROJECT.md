@@ -8,17 +8,18 @@ LiiO EatClean là app iOS theo dõi calories và bữa ăn hàng ngày, giúp ng
 
 User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — nhanh, đẹp, chính xác.
 
-## Current Milestone: v1.3 Nutrition Engine & Smart Assistant
+## Current Milestone: v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi
 
-**Goal:** Chuyển đổi từ AI-generated 100% sang mô hình Hybrid (App kiểm soát cấu trúc, AI tăng cường thông minh). Tối ưu tốc độ lập kế hoạch (4-10s), chuẩn hoá dữ liệu thành phần (Ingredient-level) và ra mắt Trợ lý nấu ăn giọng nói.
+**Goal:** Hiện đại hoá hạ tầng dữ liệu dinh dưỡng, tối ưu hoá tốc độ lập kế hoạch, và cung cấp trải nghiệm hướng dẫn nấu ăn chi tiết ngay từ thực đơn gợi ý.
 
 **Target features:**
-- **Constraint-based Planning:** Single-pass AI call dựa trên framework kcal split và candidate pool do app tính sẵn.
-- **Smart Unit System:** Triển khai `FoodPortionProfile` hỗ trợ đơn vị Việt (chén, tô, dĩa) và Density Layer.
-- **Structured Meal Details:** Phân rã món ăn thành thành phần (ingredients) để hỗ trợ edit/swap và grocery list.
-- **AI Cooking Assistant:** Mode hướng dẫn nấu ăn từng bước (Step-by-step) hỗ trợ Voice Mode.
-- **Local Recommendation Engine:** Đề xuất swap món tức thì dựa trên kcal & prefs mà không cần AI call.
-- **Diversity Engine:** Kiểm soát trùng món dựa trên metadata (Protein, Cuisine, Method).
+- **Turbo Daily Planning:** Tối ưu hóa AI Orchestration để lên kế hoạch ngày trong < 10 giây.
+- **Smart Unit & Recipe Detail:** Tự động nhận diện đơn vị (chén, dĩa, cái, gram) và hiển thị bóc tách nguyên liệu chi tiết cho món ăn.
+- **AI Cooking Coach:** Hướng dẫn nấu ăn từng bước tỉ mỉ thông qua kết nối trực tiếp với AI Coach từ thực đơn.
+- **Interactive Plan Editor:** Cho phép người dùng chỉnh sửa plan của AI, chọn món thay thế (Top 10 gợi ý) hoặc tự thêm món.
+- **Meal Variety Logic:** Thuật toán chống lặp món và ưu tiên thực đơn thuần Việt, nguyên liệu dễ tìm.
+- **HealthKit Integration:** Đồng bộ cân nặng và calories với Apple Health (Cơ bản).
+- **Macro Tracking:** Hiển thị chi tiết tỉ lệ Protein, Carbs, Fat với biểu đồ trực quan.
 
 ## Requirements
 
@@ -54,12 +55,14 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 
 ### Active
 
-- [ ] Hybrid Planning Engine: App-side kcal split + candidate selection + single AI pass.
-- [ ] FoodPortionProfile: Hệ thống đơn vị quy đổi thông minh (chén, tô, dĩa).
-- [ ] Structured Meal Components: Lưu trữ món ăn dưới dạng array of ingredients.
-- [ ] AI Cooking Mode: Hướng dẫn nấu ăn voice-activated & step-by-step.
-- [ ] Diversity Engine: Metadata-based anti-repetition rules.
-- [ ] Local Swap UI: Cho phép user đổi món tức thì từ candidate pool.
+- [ ] Turbo Daily Planning (All-in-one Prompting)
+- [ ] Smart Unit Recognition (chén, dĩa, gram...)
+- [ ] Recipe Detail View (Ingredient breakdown)
+- [ ] AI Cooking Coach Integration (Deep-link to Chat)
+- [ ] Magic Swap Feature (Interactive Plan Editor)
+- [ ] Anti-Repeat & Vietnamese Priority Logic
+- [ ] HealthKit Integration (Basic sync)
+- [ ] Macro Tracking Dashboard
 
 ### Out of Scope
 
@@ -72,7 +75,7 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 
 **Target user:** Người Việt Nam muốn giảm cân, theo dõi calories hàng ngày.
 
-**Current State (v1.2 Shipped):** Đã có nền tảng AI vững chắc (Memory, Safety, Voice). Đang bước vào giai đoạn v1.3 tập trung vào cấu trúc dữ liệu sâu (Ingredient-level) và tối ưu hoá hiệu năng lập kế hoạch.
+**Current State (v1.2 Shipped):** LiiO EatClean đã trở thành một trợ lý AI toàn diện với khả năng ghi nhớ sâu sắc người dùng, hỗ trợ voice chat, hoạt động offline và bảo vệ sức khoẻ thông qua ràng buộc bệnh lý. Giao diện biểu đồ đã đạt chuẩn premium.
 
 ## Constraints
 
@@ -92,7 +95,7 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 | Hybrid food database | Hỗ trợ món Việt instant | ✓ Good |
 | AI Chat & Learning Memory | UX cá nhân hóa sâu | ✓ Good |
 | Parallel API Calls | Giảm latency đáng kể cho AI Planning | ✓ Good |
-| Constraint-based Planning | Tối ưu tốc độ và độ chính xác của AI Plan | ✓ Pending |
+| Consolidated Insights | Giảm clutter cho Home screen | ✓ Good |
 
 ## Evolution
 
