@@ -2,7 +2,7 @@ import SwiftUI
 
 struct DailySummaryCardView: View {
     let summary: DailySummary?
-    @State private var isExpanded: Bool = false
+    @AppStorage("isDailySummaryExpanded") private var isExpanded: Bool = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -114,19 +114,6 @@ struct DailySummaryCardView: View {
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-        // Auto expand when insights arrive (summary loads async in background)
-        .onChange(of: summary?.insights.count ?? 0) { oldValue, newValue in
-            if newValue > 0 && !isExpanded {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    isExpanded = true
-                }
-            }
-        }
-        .onAppear {
-            if let sum = summary, !sum.insights.isEmpty {
-                isExpanded = true
-            }
-        }
     }
     
 }
