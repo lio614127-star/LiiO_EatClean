@@ -6,6 +6,8 @@ struct WeightChartView: View {
     let weeklyData: [WeeklyAggregate]
     let timeRange: TimeRange
     
+    @State private var selectedDate: Date?
+    
     // Calculate Y-axis domain dynamically to avoid chart starting at 0
     private var yAxisDomain: ClosedRange<Double> {
         let weights = timeRange == .quarter 
@@ -102,13 +104,14 @@ struct WeightChartView: View {
                 .chartYScale(domain: yAxisDomain)
                 .chartXScale(domain: xAxisDomain)
                 .chartScrollableAxes(.horizontal)
-                .chartXVisibleDomain(length: timeRange == .week ? 7 * 86400 : (timeRange == .month ? 30 * 86400 : 13 * 604800))
+                .chartXVisibleDomain(length: timeRange == .week ? 7 * 86400 : (timeRange == .month ? 14 * 86400 : 7 * 604800))
+                .chartXSelection(value: $selectedDate)
                 .chartXAxis {
                     if timeRange == .quarter {
                         AxisMarks(values: .stride(by: .weekOfYear, count: 1)) { value in
                             if let date = value.as(Date.self), let week = weeklyData.first(where: { Calendar.current.isDate($0.startDate, equalTo: date, toGranularity: .weekOfYear) }) {
                                 AxisValueLabel {
-                                    Text("W\(week.weekNumber)")
+                                    Text("T\(week.weekNumber)")
                                         .font(.system(size: 10))
                                 }
                             }
@@ -136,9 +139,9 @@ struct WeightChartView: View {
                                         Text("\(day)")
                                             .font(.system(size: 10))
                                     }
+                                    AxisGridLine()
                                 }
                             }
-                            AxisGridLine()
                         }
                     }
                 }

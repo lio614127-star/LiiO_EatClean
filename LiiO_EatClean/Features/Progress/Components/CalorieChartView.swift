@@ -50,13 +50,19 @@ struct CalorieChartView: View {
                             .cornerRadius(4)
                             .annotation(position: .top) {
                                 if let selected = selectedDate, Calendar.current.isDate(selected, inSameDayAs: item.startDate) {
-                                    Text("\(Int(item.averageCalories))")
-                                        .font(.caption2.bold())
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(Color(.systemBackground))
-                                        .cornerRadius(4)
-                                        .shadow(radius: 2)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Tuần \(item.weekNumber)")
+                                            .font(.caption2.bold())
+                                        Text("TB: \(Int(item.averageCalories)) kcal")
+                                            .font(.system(size: 8))
+                                        Text("Tổng: \(Int(item.averageCalories * 7)) kcal")
+                                            .font(.system(size: 8))
+                                    }
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 4)
+                                    .background(Color(.systemBackground))
+                                    .cornerRadius(6)
+                                    .shadow(color: .black.opacity(0.1), radius: 4)
                                 }
                             }
                         }
@@ -83,30 +89,27 @@ struct CalorieChartView: View {
                     }
                     
                     RuleMark(y: .value("Mục tiêu", dailyTarget))
-                        .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5]))
-                        .foregroundStyle(.red.opacity(0.5))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                        .foregroundStyle(.red.opacity(0.4))
                         .annotation(position: .overlay, alignment: .topTrailing) {
-                            Text("Mục tiêu (\(Int(dailyTarget)))")
-                                .font(.caption2)
-                                .foregroundColor(.red.opacity(0.8))
+                            Text("\(Int(dailyTarget)) kcal")
+                                .font(.system(size: 8))
+                                .foregroundColor(.red.opacity(0.6))
                                 .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
-                                .background(Color(.systemBackground).opacity(0.9))
-                                .cornerRadius(4)
-                                .offset(y: -15)
+                                .offset(y: -10)
                         }
                 }
                 .chartYScale(domain: 0...max(3000, max(dailyTarget * 1.2, maxVal * 1.1)))
                 .chartXScale(domain: xAxisDomain)
                 .chartScrollableAxes(.horizontal)
-                .chartXVisibleDomain(length: timeRange == .week ? 7 * 86400 : (timeRange == .month ? 30 * 86400 : 13 * 604800))
+                .chartXVisibleDomain(length: timeRange == .week ? 7 * 86400 : (timeRange == .month ? 14 * 86400 : 7 * 604800))
                 .chartXSelection(value: $selectedDate)
                 .chartXAxis {
                     if timeRange == .quarter {
                         AxisMarks(values: .stride(by: .weekOfYear, count: 1)) { value in
                             if let date = value.as(Date.self), let week = weeklyData.first(where: { Calendar.current.isDate($0.startDate, equalTo: date, toGranularity: .weekOfYear) }) {
                                 AxisValueLabel {
-                                    Text("W\(week.weekNumber)")
+                                    Text("T\(week.weekNumber)")
                                         .font(.system(size: 10))
                                 }
                             }
@@ -134,9 +137,9 @@ struct CalorieChartView: View {
                                         Text("\(day)")
                                             .font(.system(size: 10))
                                     }
+                                    AxisGridLine()
                                 }
                             }
-                            AxisGridLine()
                         }
                     }
                 }
