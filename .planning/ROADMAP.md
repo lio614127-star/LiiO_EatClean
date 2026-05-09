@@ -5,6 +5,7 @@
 - ✅ **v1.0 MVP Calorie Tracker** — Phases 1-10 (shipped 2026-05-04)
 - ✅ **v1.1 Trải Nghiệm Nhanh & AI Chủ Động** — Phases 11-14 (shipped 2026-05-06)
 - ✅ **v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện** — Phases 15-20 (shipped 2026-05-09)
+- 🚧 **v1.3 Nutrition Engine & Smart Assistant** — Phases 21-22 (Planning)
 
 ## Phases
 
@@ -49,32 +50,31 @@
 *See `.planning/milestones/v1.2-ROADMAP.md` for full details.*
 </details>
 
-### 🚧 v1.3 Next-Gen Nutrition Architecture (Planning)
+### 🚧 v1.3 Nutrition Engine & Smart Assistant (In Progress)
 
-- [ ] Phase 21: Next-Gen Nutrition & AI Planning Update
-- [ ] Phase 22: Advanced Meal Visualizer & Social Sharing (Placeholder)
+- [ ] Phase 21: Hybrid Planning & Structured Data Layer (PLAN, UNIT, MEAL)
+  - Wave 1
+    - 01: Refactor `MealPlanService` for Kcal Split & Candidate Selection
+  - Wave 2
+    - 02: Implement `FoodPortionProfile` & Smart Unit Conversion
+  - Wave 3
+    - 03: CoreData Schema Migration for `StructuredMeal` & Ingredients
+  - Wave 4
+    - 04: Single-pass AI Planning Prompt & Orchestration
+- [ ] Phase 22: AI Cooking Assistant & Diversity Engine (COOK, DIVE, SWAP)
+  - Wave 1
+    - 01: Diversity Engine Metadata & Rules
+  - Wave 2
+    - 02: Local Recommendation Engine (App-side Swap)
+  - Wave 3
+    - 03: Recipe Context Card & Step-by-step UI
+  - Wave 4
+    - 04: Voice Cooking Commands Integration
 
 ## Progress
 
 | Phase | Milestone | Status | Completed |
 |-------|-----------|--------|-----------|
-| 1. Project Foundation & Data Layer | v1.0 | Complete | 2026-04-29 |
-| 2. Splash + Onboarding + Goal Setup | v1.0 | Complete | 2026-04-29 |
-| 3. Home Dashboard | v1.0 | Complete | 2026-04-29 |
-| 4. Food Database (Hybrid Search) | v1.0 | Complete | 2026-04-29 |
-| 5. Meal Logging (Core Loop) | v1.0 | Complete | 2026-04-29 |
-| 6. Progress & Weight Tracking | v1.0 | Complete | 2026-04-29 |
-| 7. Profile + AI Meal Suggestions | v1.0 | Complete | 2026-04-29 |
-| 8. Water Tracking + Smart Reminders + Polish | v1.0 | Complete | 2026-04-29 |
-| 9. AI Nutritionist Chatbox | v1.0 | Complete | 2026-05-01 |
-| 10. AI-Powered Meals Tab | v1.0 | Complete | 2026-05-04 |
-| 11. Gamification & UI Polish | v1.1 | Complete | 2026-05-04 |
-| 12. Advanced Data Inputs | v1.1 | Complete | 2026-05-05 |
-| 13. Proactive AI | v1.1 | Complete | 2026-05-05 |
-| 14. AI Meal Planning Engine | v1.1 | Complete | 2026-05-06 |
-| 15. AI Memory Hub & Personality | v1.2 | Complete | 2026-05-07 |
-| 16. API Infrastructure & Context Compression | v1.2 | Complete | 2026-05-08 |
-| 17. Voice Chat | v1.2 | Complete | 2026-05-08 |
-| 18. Advanced Insights & Health-Aware AI | v1.2 | Complete | 2026-05-08 |
-| 19. Offline Mode & Custom Foods | v1.2 | Complete | 2026-05-08 |
-| 20. Pro Chart UX & Data Visualization | v1.2 | Complete | 2026-05-09 |
+| 1-20 | v1.0-v1.2 | Complete | 2026-05-09 |
+| 21. Hybrid Planning & Structured Data | v1.3 | Not started | - |
+| 22. AI Cooking Assistant & Diversity | v1.3 | Not started | - |

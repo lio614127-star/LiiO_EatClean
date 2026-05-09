@@ -8,15 +8,17 @@ LiiO EatClean là app iOS theo dõi calories và bữa ăn hàng ngày, giúp ng
 
 User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — nhanh, đẹp, chính xác.
 
-## Current Milestone: v1.3 Next-Gen Nutrition Architecture
+## Current Milestone: v1.3 Nutrition Engine & Smart Assistant
 
-**Goal:** Hiện đại hoá hạ tầng dữ liệu dinh dưỡng, tối ưu hoá trải nghiệm lập kế hoạch bữa ăn tự động và mở rộng khả năng kết nối/chia sẻ (Social, HealthKit).
+**Goal:** Chuyển đổi từ AI-generated 100% sang mô hình Hybrid (App kiểm soát cấu trúc, AI tăng cường thông minh). Tối ưu tốc độ lập kế hoạch (4-10s), chuẩn hoá dữ liệu thành phần (Ingredient-level) và ra mắt Trợ lý nấu ăn giọng nói.
 
 **Target features:**
-- HealthKit integration (Đồng bộ cân nặng, calories bước đầu)
-- Macro tracking (protein, carbs, fat breakdown chi tiết hơn)
-- Advanced Meal Visualizer (Sử dụng biểu đồ sinh động cho từng bữa ăn)
-- Social Sharing (Chia sẻ kết quả progress/món ăn đẹp mắt)
+- **Constraint-based Planning:** Single-pass AI call dựa trên framework kcal split và candidate pool do app tính sẵn.
+- **Smart Unit System:** Triển khai `FoodPortionProfile` hỗ trợ đơn vị Việt (chén, tô, dĩa) và Density Layer.
+- **Structured Meal Details:** Phân rã món ăn thành thành phần (ingredients) để hỗ trợ edit/swap và grocery list.
+- **AI Cooking Assistant:** Mode hướng dẫn nấu ăn từng bước (Step-by-step) hỗ trợ Voice Mode.
+- **Local Recommendation Engine:** Đề xuất swap món tức thì dựa trên kcal & prefs mà không cần AI call.
+- **Diversity Engine:** Kiểm soát trùng món dựa trên metadata (Protein, Cuisine, Method).
 
 ## Requirements
 
@@ -52,10 +54,12 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 
 ### Active
 
-- [ ] HealthKit integration (sync weight, calories)
-- [ ] Macro tracking (protein, carbs, fat breakdown chi tiết hơn)
-- [ ] Advanced Meal Visualizer
-- [ ] Social Sharing UI
+- [ ] Hybrid Planning Engine: App-side kcal split + candidate selection + single AI pass.
+- [ ] FoodPortionProfile: Hệ thống đơn vị quy đổi thông minh (chén, tô, dĩa).
+- [ ] Structured Meal Components: Lưu trữ món ăn dưới dạng array of ingredients.
+- [ ] AI Cooking Mode: Hướng dẫn nấu ăn voice-activated & step-by-step.
+- [ ] Diversity Engine: Metadata-based anti-repetition rules.
+- [ ] Local Swap UI: Cho phép user đổi món tức thì từ candidate pool.
 
 ### Out of Scope
 
@@ -68,7 +72,7 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 
 **Target user:** Người Việt Nam muốn giảm cân, theo dõi calories hàng ngày.
 
-**Current State (v1.2 Shipped):** LiiO EatClean đã trở thành một trợ lý AI toàn diện với khả năng ghi nhớ sâu sắc người dùng, hỗ trợ voice chat, hoạt động offline và bảo vệ sức khoẻ thông qua ràng buộc bệnh lý. Giao diện biểu đồ đã đạt chuẩn premium.
+**Current State (v1.2 Shipped):** Đã có nền tảng AI vững chắc (Memory, Safety, Voice). Đang bước vào giai đoạn v1.3 tập trung vào cấu trúc dữ liệu sâu (Ingredient-level) và tối ưu hoá hiệu năng lập kế hoạch.
 
 ## Constraints
 
@@ -88,7 +92,7 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 | Hybrid food database | Hỗ trợ món Việt instant | ✓ Good |
 | AI Chat & Learning Memory | UX cá nhân hóa sâu | ✓ Good |
 | Parallel API Calls | Giảm latency đáng kể cho AI Planning | ✓ Good |
-| Consolidated Insights | Giảm clutter cho Home screen | ✓ Good |
+| Constraint-based Planning | Tối ưu tốc độ và độ chính xác của AI Plan | ✓ Pending |
 
 ## Evolution
 
