@@ -130,11 +130,27 @@ struct WeightChartView: View {
                             AxisGridLine()
                         }
                     } else {
-                        // Month mode: Smart skipping
+                        // Month mode: Smart skipping + Month Anchors
                         AxisMarks(values: .stride(by: .day, count: 1)) { value in
                             if let date = value.as(Date.self) {
                                 let day = Calendar.current.component(.day, from: date)
-                                if [1, 5, 10, 15, 20, 25, 30].contains(day) {
+                                let month = Calendar.current.component(.month, from: date)
+                                let year = Calendar.current.component(.year, from: date) % 100
+                                
+                                if day == 1 {
+                                    AxisValueLabel(verticalSpacing: 0) {
+                                        VStack(alignment: .leading, spacing: 0) {
+                                            Text("\(month)/\(year)")
+                                                .font(.system(size: 10, weight: .semibold))
+                                                .foregroundColor(.secondary.opacity(0.8))
+                                            Text("\(day)")
+                                                .font(.system(size: 10))
+                                        }
+                                        .padding(.top, 4)
+                                    }
+                                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                                        .foregroundStyle(.secondary.opacity(0.3))
+                                } else if [5, 10, 15, 20, 25, 30].contains(day) {
                                     AxisValueLabel {
                                         Text("\(day)")
                                             .font(.system(size: 10))
@@ -153,7 +169,7 @@ struct WeightChartView: View {
                         }
                     }
                 }
-                .frame(height: 250)
+                .frame(height: 220) // Consistent height for chart area
             }
         }
         .padding()
@@ -182,6 +198,7 @@ struct WeightChartView: View {
                     .padding(.horizontal)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 250)
+        .frame(height: 220)
+        .frame(maxWidth: .infinity)
     }
 }
