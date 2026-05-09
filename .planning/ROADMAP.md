@@ -68,7 +68,7 @@
     - 04: Offline UI Degradation & Banner System
   - **Wave 4** *(blocked on Wave 1+3+4 completion)*
     - 05: Pending Chat Queue & Connection Recovery
-- [ ] Phase 20: Pro Chart UX & Data Visualization (CHRT)
+- [x] Phase 20: Pro Chart UX & Data Visualization (CHRT)
   - **Wave 1** *(foundation — no dependencies)*
     - 01: TimeRange Expansion & Smart Axis Label Engine
   - **Wave 2** *(blocked on Wave 1)*
@@ -76,6 +76,16 @@
     - 03: Weight Chart Overhaul — Line + Gradient, Subtle Target Line
   - **Wave 3** *(blocked on Wave 2)*
     - 04: Pro Segmented Filter & Empty-State UX
+- [ ] Phase 21: Next-Gen Nutrition Architecture & AI Planning 2.0 (PLAN2)
+  - **Wave 1** *(foundation — performance & data structure)*
+    - 01: Constraint-based Single Pass Planning Engine
+    - 02: FoodPortionProfile & Smart Unit System Migration
+  - **Wave 2** *(blocked on Wave 1)*
+    - 03: Structured Meal Parsing (Ingredient-level breakdown)
+    - 04: Diversity Engine & Repetition Metadata Rules
+  - **Wave 3** *(blocked on Wave 2)*
+    - 05: Editable Meal Plan UI & Local Swap Recommendation Engine
+    - 06: Recipe Context Card & AI Cooking Instructor Mode
 
 ## Progress
 
@@ -100,4 +110,5 @@
 | 17. Voice Chat | v1.2 | Verified | 2026-05-08 |
 | 18. Advanced Insights & Health-Aware AI | v1.2 | Verified | 2026-05-08 |
 | 19. Offline Mode & Custom Foods | v1.2 | Verified | 2026-05-08 |
-| 20. Pro Chart UX & Data Visualization | v1.2 | Not started | — |
+| 20. Pro Chart UX & Data Visualization | v1.2 | Verified | 2026-05-08 |
+| 21. Next-Gen Nutrition Architecture & AI Planning 2.0 | v1.2 | Planning | - |

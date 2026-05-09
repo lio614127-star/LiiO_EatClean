@@ -20,12 +20,13 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 - Custom Food Builder
 - Context Compression Engine
 - AI Personality Settings
+- Next-Gen Nutrition Architecture (Planning 2.0)
 
 ## Current Position
 
 Phase: 20
-Status: Executed
-Last activity: 2026-05-08 — Phase 20 executed (Charts overhauled, 3T aggregation)
+Status: UAT Verified
+Last activity: 2026-05-08 — Phase 20 UAT completed (all gaps resolved)
 
 ## Memory
 
@@ -49,6 +50,8 @@ Last activity: 2026-05-08 — Phase 20 executed (Charts overhauled, 3T aggregati
 - **Custom Branding**: Integrated `avatar_tool` as the primary visual identity. Replaced text-based Splash Screen with a styled image logo and generated a full suite of optimized App Icons (40px to 1024px) for production-grade display.
 - **AI Meal Planning Flow**: Decoupled planning from tracking via a full-screen sheet. Implemented adaptive context (History + Insights) to prevent repetitive suggestions and address nutritional gaps.
 - **Proportional Calorie Trimming**: Implemented app-side logic to scale AI-suggested meal portions proportionally to fit within ±5% of the user's daily calorie target.
+- **Advanced Chart Refinement**: Implemented Apple Health-style chart axes with smart label skipping (1, 5, 10...) for 30N/3T views, month/year anchors (e.g., 5/26), and fixed chart height (220px) to prevent UI jumping.
+- **Persistent Summary UX**: The Daily Summary Card expansion state is now persistent via `@AppStorage`. Auto-expansion on new insights has been removed to respect the user's manual preference.
 
 ### Learnings
 - AI `mealType` mapping must strictly match UI categories ("Bữa phụ" -> "Ăn vặt") to prevent ghost data.
@@ -133,6 +136,9 @@ Last activity: 2026-05-08 — Phase 20 executed (Charts overhauled, 3T aggregati
 | 2026-05-08 | Phase 20 context gathered | `.planning/phases/20-pro-chart-ux-data-visualization/20-CONTEXT.md` |
 | 2026-05-08 | Phase 20 planned | 3 plans in 3 waves |
 | 2026-05-08 | Phase 20 executed | `.planning/phases/20-pro-chart-ux-data-visualization/` |
+| 2026-05-08 | Phase 20 UAT verified | Fixed axis mark spacing and empty state logic |
+| 2026-05-09 | Chart & Summary Refinements | Added month/year anchors to charts, fixed Y-axis jumping, moved target label to axis, and implemented Daily Summary expansion persistence. |
+| 2026-05-09 | Phase 21 context gathered | `.planning/capture/ai-meal-planning-2.0.md` |
 
 ---
-*Last updated: 2026-05-08 after Phase 20 execution*
+*Last updated: 2026-05-09 after Chart & Summary Refinements*
