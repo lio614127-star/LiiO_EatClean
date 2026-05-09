@@ -4,6 +4,7 @@
 
 - ✅ **v1.0 MVP Calorie Tracker** — Phases 1-10 (shipped 2026-05-04)
 - ✅ **v1.1 Trải Nghiệm Nhanh & AI Chủ Động** — Phases 11-14 (shipped 2026-05-06)
+- ✅ **v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện** — Phases 15-20 (shipped 2026-05-09)
 
 ## Phases
 
@@ -35,57 +36,23 @@
 *See `.planning/milestones/v1.1-ROADMAP.md` for full details.*
 </details>
 
-### 🚧 v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện (Planning)
+<details>
+<summary>✅ v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện (Phases 15-20) — SHIPPED 2026-05-09</summary>
 
-- [x] Phase 15: AI Memory Hub & Personality (MEMH, PERS)
-  - Wave 1
-    - 01: CoreData Schema & AIMemoryRepository
-  - Wave 2
-    - 02: Data Migration & ContextBuilder Update
-  - Wave 3
-    - 03: Memory Hub UI & Guided Setup
-  - Wave 4
-    - 04: Personality UX & Navigation Entry Points
-- [x] Phase 16: API Infrastructure & Context Compression (APIK, COMP)
-- [x] Phase 17: Voice Chat (VCHT)
-- [x] Phase 18: Advanced Insights & Health-Aware AI (HLTH, INSE)
-  - Wave 1
-    - 01: Health Food Mapping & Food Safety Validator
-  - Wave 2
-    - 02: ContextBuilder Health Safety Upgrade
-    - 03: AI Output Validation & Minimal Re-ask
-  - Wave 3
-    - 04: InsightDetector Expansion (Repeated Meals & Macro Imbalance)
-  - Wave 4
-    - 05: Insight Cards UI & Health Safety Badge
-- [x] Phase 19: Offline Mode & Custom Foods (OFFL, CFOD)
-  - **Wave 1** *(foundation — no dependencies)*
-    - 01: NetworkMonitor & CoreData Schema Updates
-  - **Wave 2** *(blocked on Wave 1 completion)*
-    - 02: Custom Food Builder Sheet & Repository
-  - **Wave 3** *(blocked on Wave 1+2 completion)*
-    - 03: FoodSearch Upgrade — 4-Section Priority & Custom Food Entry
-    - 04: Offline UI Degradation & Banner System
-  - **Wave 4** *(blocked on Wave 1+3+4 completion)*
-    - 05: Pending Chat Queue & Connection Recovery
-- [x] Phase 20: Pro Chart UX & Data Visualization (CHRT)
-  - **Wave 1** *(foundation — no dependencies)*
-    - 01: TimeRange Expansion & Smart Axis Label Engine
-  - **Wave 2** *(blocked on Wave 1)*
-    - 02: Calorie Chart Overhaul — Dynamic Spacing, Scrollable Month, Label Skipping
-    - 03: Weight Chart Overhaul — Line + Gradient, Subtle Target Line
-  - **Wave 3** *(blocked on Wave 2)*
-    - 04: Pro Segmented Filter & Empty-State UX
-- [ ] Phase 21: Next-Gen Nutrition Architecture & AI Planning 2.0 (PLAN2)
-  - **Wave 1** *(foundation — performance & data structure)*
-    - 01: Constraint-based Single Pass Planning Engine
-    - 02: FoodPortionProfile & Smart Unit System Migration
-  - **Wave 2** *(blocked on Wave 1)*
-    - 03: Structured Meal Parsing (Ingredient-level breakdown)
-    - 04: Diversity Engine & Repetition Metadata Rules
-  - **Wave 3** *(blocked on Wave 2)*
-    - 05: Editable Meal Plan UI & Local Swap Recommendation Engine
-    - 06: Recipe Context Card & AI Cooking Instructor Mode
+- [x] Phase 15: AI Memory Hub & Personality
+- [x] Phase 16: API Infrastructure & Context Compression
+- [x] Phase 17: Voice Chat
+- [x] Phase 18: Advanced Insights & Health-Aware AI
+- [x] Phase 19: Offline Mode & Custom Foods
+- [x] Phase 20: Pro Chart UX & Data Visualization
+
+*See `.planning/milestones/v1.2-ROADMAP.md` for full details.*
+</details>
+
+### 🚧 v1.3 Next-Gen Nutrition Architecture (Planning)
+
+- [ ] Phase 21: Next-Gen Nutrition & AI Planning Update
+- [ ] Phase 22: Advanced Meal Visualizer & Social Sharing (Placeholder)
 
 ## Progress
 
@@ -105,10 +72,9 @@
 | 12. Advanced Data Inputs | v1.1 | Complete | 2026-05-05 |
 | 13. Proactive AI | v1.1 | Complete | 2026-05-05 |
 | 14. AI Meal Planning Engine | v1.1 | Complete | 2026-05-06 |
-| 15. AI Memory Hub & Personality | v1.2 | Verified | 2026-05-07 |
-| 16. API Infrastructure & Context Compression | v1.2 | Verified | 2026-05-08 |
-| 17. Voice Chat | v1.2 | Verified | 2026-05-08 |
-| 18. Advanced Insights & Health-Aware AI | v1.2 | Verified | 2026-05-08 |
-| 19. Offline Mode & Custom Foods | v1.2 | Verified | 2026-05-08 |
-| 20. Pro Chart UX & Data Visualization | v1.2 | Verified | 2026-05-08 |
-| 21. Next-Gen Nutrition Architecture & AI Planning 2.0 | v1.2 | Planning | - |
+| 15. AI Memory Hub & Personality | v1.2 | Complete | 2026-05-07 |
+| 16. API Infrastructure & Context Compression | v1.2 | Complete | 2026-05-08 |
+| 17. Voice Chat | v1.2 | Complete | 2026-05-08 |
+| 18. Advanced Insights & Health-Aware AI | v1.2 | Complete | 2026-05-08 |
+| 19. Offline Mode & Custom Foods | v1.2 | Complete | 2026-05-08 |
+| 20. Pro Chart UX & Data Visualization | v1.2 | Complete | 2026-05-09 |

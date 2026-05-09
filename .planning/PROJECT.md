@@ -8,20 +8,15 @@ LiiO EatClean là app iOS theo dõi calories và bữa ăn hàng ngày, giúp ng
 
 User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — nhanh, đẹp, chính xác.
 
-## Current Milestone: v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện
+## Current Milestone: v1.3 Next-Gen Nutrition Architecture
 
-**Goal:** Chuyển đổi LiiO EatClean thành trợ lý dinh dưỡng hiểu người dùng ở mức độ cá nhân hoá sâu nhất (bệnh lý, sở thích, tính cách), hoạt động mượt mà (song song API, offline mode) và giao tiếp linh hoạt (Voice Chat).
+**Goal:** Hiện đại hoá hạ tầng dữ liệu dinh dưỡng, tối ưu hoá trải nghiệm lập kế hoạch bữa ăn tự động và mở rộng khả năng kết nối/chia sẻ (Social, HealthKit).
 
 **Target features:**
-- AI Memory Hub (Quản lý toàn bộ thông tin cá nhân)
-- API Key Pool + Auto Swap + Parallel Calls
-- Voice Chat cho AI Coach
-- Health-Aware AI (Ràng buộc bệnh lý khắt khe)
-- Insight Detection Engine (Mở rộng)
-- Offline Mode cho Core Features
-- Custom Food Builder
-- Context Compression Engine
-- AI Personality Settings
+- HealthKit integration (Đồng bộ cân nặng, calories bước đầu)
+- Macro tracking (protein, carbs, fat breakdown chi tiết hơn)
+- Advanced Meal Visualizer (Sử dụng biểu đồ sinh động cho từng bữa ăn)
+- Social Sharing (Chia sẻ kết quả progress/món ăn đẹp mắt)
 
 ## Requirements
 
@@ -37,67 +32,67 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 - ✓ Water tracking & Smart reminders — v1.0
 - ✓ AI Nutritionist Chatbox — v1.0
 - ✓ AI-Powered Meals Tab (Smart Suggestions, Context Memory, Log Ngay) — v1.0
-
 - ✓ Voice Input: Cho phép người dùng nói để log nhanh đồ ăn — v1.1
 - ✓ Barcode Scan: Quét mã vạch sản phẩm để tra cứu nhanh calories — v1.1
-- ✓ Daily AI Summary: Tóm tắt hành vi ăn uống cuối ngày và đưa ra lời khuyên — v1.1
-- ✓ AI Meal Planning: Sinh thực đơn theo ngày/tuần dựa trên memory và calo mục tiêu — v1.1
-- ✓ Streak Tracking: Đếm và hiển thị chuỗi ngày hoàn thành log bữa ăn/mục tiêu calo — v1.1
-- ✓ Advanced Memory Insight: Nhận diện pattern chưa tốt (ví dụ: thiếu protein, ăn khuya) — v1.1
-- ✓ UI Polish: Thêm haptic feedback, micro-animations khi tương tác — v1.1
+- ✓ Daily AI Summary: Tóm tắt hành vi ăn uống cuối ngày — v1.1
+- ✓ AI Meal Planning: Sinh thực đơn theo ngày/tuần dựa trên memory — v1.1
+- ✓ Streak Tracking: Đếm và hiển thị chuỗi ngày hoàn thành log — v1.1
+- ✓ Advanced Memory Insight: Nhận diện pattern chưa tốt — v1.1
+- ✓ UI Polish: Thêm haptic feedback, micro-animations — v1.1
+- ✓ AI Memory Hub: Quản lý Profile, Calories, Health, Preferences — v1.2
+- ✓ API Infrastructure Upgrade: Quản lý multi-keys, auto swap, parallel calls — v1.2
+- ✓ Voice Chat: Giao tiếp với AI Coach bằng giọng nói (Speech-to-text) — v1.2
+- ✓ Health-Aware AI: Ràng buộc tuyệt đối không đề xuất món ăn cấm/kỵ — v1.2
+- ✓ Insight Expansion: Nhận diện thói quen lặp món, lệch macro — v1.2
+- ✓ Offline Mode: Hoạt động đầy đủ tính năng core khi không có mạng — v1.2
+- ✓ Custom Food Builder: Tự định nghĩa món ăn cá nhân lưu local — v1.2
+- ✓ Context Compression: Nén history chat/memory tối ưu token — v1.2
+- ✓ AI Personality: Tuỳ chỉnh văn phong AI (5 tone presets) — v1.2
+- ✓ Pro Chart UX: Biểu đồ 3 tháng, smart labels, weight gradient — v1.2
 
 ### Active
 
-- [ ] AI Memory Hub: Màn hình quản lý toàn bộ Profile, Calories, Health, Preferences, Notes (chuyển icon từ Meals sang AI Coach).
-- [ ] API Infrastructure Upgrade: Quản lý nhiều API keys, auto swap, gọi API song song để giảm latency.
-- [ ] Voice Chat: Giao tiếp với AI Coach bằng giọng nói (Speech-to-text).
-- [ ] Health-Aware AI: Ràng buộc tuyệt đối không đề xuất món ăn cấm/kỵ theo bệnh lý người dùng.
-- [ ] Insight Expansion: Mở rộng các logic nhận diện hành vi (lặp món, lệch macro dài ngày).
-- [ ] Offline Mode: Log bữa ăn không cần mạng, đồng bộ sau.
-- [ ] Custom Food Builder: Cho phép người dùng tự định nghĩa món ăn và lưu local.
-- [ ] Context Compression: Nén nội dung memory và lịch sử chat để giảm token usage.
-- [ ] AI Personality: Tuỳ chỉnh văn phong AI (nghiêm túc, thân thiện, chill).
-- [ ] HealthKit integration (sync weight, calories) — *Pending backlog*
-- [ ] Macro tracking (protein, carbs, fat breakdown chi tiết hơn) — *Pending backlog*
+- [ ] HealthKit integration (sync weight, calories)
+- [ ] Macro tracking (protein, carbs, fat breakdown chi tiết hơn)
+- [ ] Advanced Meal Visualizer
+- [ ] Social Sharing UI
 
 ### Out of Scope
 
-- Workout tracking — làm loãng focus của app, core value là meal/calorie tracking
-- Community chat — rất tốn công, không phải core value
-- Android version — build native iOS trước, Android làm riêng sau nếu cần
-- Multi-device sync — v1 local-only, chuẩn bị schema cho sync sau
-- Firebase/backend — overkill cho v1, local CoreData đủ dùng
+- Workout tracking — làm loãng focus của app
+- Community chat — không phải core value
+- Android version — build native iOS trước
+- Multi-device sync — v1 local-only
 
 ## Context
 
-**Target user:** Người Việt Nam muốn giảm cân, theo dõi calories hàng ngày. App cá nhân (LiiO).
+**Target user:** Người Việt Nam muốn giảm cân, theo dõi calories hàng ngày.
 
-**Current State (v1.1 Shipped):** Hoàn thành v1.1, nâng cấp mạnh mẽ tốc độ log bữa ăn (Voice, Barcode) và tính chủ động của AI (Daily Summary, Meal Planning). Các tương tác UI đã được mượt mà hóa với haptic và micro-animations.
+**Current State (v1.2 Shipped):** LiiO EatClean đã trở thành một trợ lý AI toàn diện với khả năng ghi nhớ sâu sắc người dùng, hỗ trợ voice chat, hoạt động offline và bảo vệ sức khoẻ thông qua ràng buộc bệnh lý. Giao diện biểu đồ đã đạt chuẩn premium.
 
 ## Constraints
 
 - **Platform**: iOS only — SwiftUI, minimum iOS 17+
-- **Tech stack**: Swift + SwiftUI native — không cross-platform
-- **Data**: CoreData local-first — Repository pattern
+- **Tech stack**: Swift + SwiftUI native
+- **Data**: CoreData local-first
 - **Food API**: CalorieNinjas fallback cho local JSON
-- **AI API**: OpenAI hoặc Gemini (tích hợp multi-key)
-- **Design**: Apple-style — SF Pro font, bo góc 16-24px, màu xanh lá #4CAF50, custom app icon/logo.
+- **AI API**: OpenAI hoặc Gemini (tổng hợp multi-key)
 - **Architecture**: MVVM + Repository
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Swift + SwiftUI native | UI mượt, animation nhiều, HealthKit-ready | ✓ Good |
-| CoreData local-first | Đơn giản cho v1, không cần backend | ✓ Good |
-| Hybrid food database | Lợi thế cạnh tranh: hỗ trợ món Việt instant | ✓ Good |
-| AI Chat & Learning Memory | Nâng cao UX cá nhân hóa, prompt injection tối ưu token | ✓ Good |
-| Repository pattern | Tách data layer → dễ bảo trì và test | ✓ Good |
-| Ephemeral State (UserDefaults) | Hỗ trợ lưu trạng thái nhỏ không cần migration CoreData | ✓ Good |
+| Swift + SwiftUI native | UI mượt, HealthKit-ready | ✓ Good |
+| CoreData local-first | Đơn giản, không cần backend | ✓ Good |
+| Hybrid food database | Hỗ trợ món Việt instant | ✓ Good |
+| AI Chat & Learning Memory | UX cá nhân hóa sâu | ✓ Good |
+| Parallel API Calls | Giảm latency đáng kể cho AI Planning | ✓ Good |
+| Consolidated Insights | Giảm clutter cho Home screen | ✓ Good |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-06 after v1.1 milestone completion*
+*Last updated: 2026-05-09 after v1.2 milestone completion*
