@@ -138,15 +138,14 @@ struct WeightChartView: View {
                                 let year = Calendar.current.component(.year, from: date) % 100
                                 
                                 if day == 1 {
-                                    AxisValueLabel(verticalSpacing: 0) {
-                                        VStack(alignment: .leading, spacing: 0) {
-                                            Text("\(month)/\(year)")
-                                                .font(.system(size: 10, weight: .semibold))
-                                                .foregroundColor(.secondary.opacity(0.8))
+                                    AxisValueLabel(verticalSpacing: 4) {
+                                        VStack(alignment: .center, spacing: 2) {
                                             Text("\(day)")
                                                 .font(.system(size: 10))
+                                            Text("\(month)/\(year)")
+                                                .font(.system(size: 8, weight: .semibold))
+                                                .foregroundColor(.green)
                                         }
-                                        .padding(.top, 4)
                                     }
                                     AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [2, 2]))
                                         .foregroundStyle(.secondary.opacity(0.3))
