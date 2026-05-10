@@ -11,23 +11,22 @@ See: .planning/PROJECT.md (updated 2026-05-09)
 
 **Milestone: v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi**
 
-- Turbo Daily Planning (All-in-one Prompting)
-- Smart Unit Recognition (chén, dĩa, gram...)
-- Recipe Detail View (Ingredient breakdown)
-- AI Cooking Coach Integration (Deep-link to Chat)
-- Magic Swap Feature (Interactive Plan Editor)
-- Anti-Repeat & Vietnamese Priority Logic
-- HealthKit Integration (Basic sync)
+- ✅ Turbo Daily Planning (All-in-one Prompting)
+- ✅ Smart Unit Recognition (chén, dĩa, gram...)
+- ✅ Recipe Detail View (Ingredient breakdown)
+- ✅ AI Cooking Coach Integration (Deep-link to Chat)
+- ✅ Magic Swap Feature (Interactive Plan Editor)
+- ✅ Anti-Repeat & Vietnamese Priority Logic
 - Macro Tracking Dashboard
 
 ## Current Position
 
-Phase: 21
-Status: Executed
-Last activity: 2026-05-09 — Phase 21 implemented (Turbo Planning, Smart Units, Magic Swap)
-- Current Phase: Phase 21 (Completed)
-- Current Task: Finalized Interactive AI Nutrition Integration
-- Progress: 100% of Phase 21 complete
+Phase: 22
+Status: Context gathered
+Last activity: 2026-05-10 — Phase 21 UAT verified, Phase 22 context gathered
+- Current Phase: Phase 22 (Macro Dashboard)
+- Previous Phase: Phase 21 (Completed + UAT verified)
+- Progress: Phase 21 100% complete, Phase 22 ready to plan
 
 ## Memory
 
@@ -53,6 +52,11 @@ Last activity: 2026-05-09 — Phase 21 implemented (Turbo Planning, Smart Units,
 - **Proportional Calorie Trimming**: Implemented app-side logic to scale AI-suggested meal portions proportionally to fit within ±5% of the user's daily calorie target.
 - **Advanced Chart Refinement**: Implemented Apple Health-style chart axes with smart label skipping (1, 5, 10...) for 30N/3T views, month/year anchors (e.g., 5/26), and fixed chart height (220px) to prevent UI jumping.
 - **Persistent Summary UX**: The Daily Summary Card expansion state is now persistent via `@AppStorage`. Auto-expansion on new insights has been removed to respect the user's manual preference.
+- **AI Suggestion Caching**: Gợi ý AI trong AddMealView được cache theo mealType (Dictionary). Chuyển bữa không reload, chỉ forceRefresh khi user bấm "Hỏi AI". Tất cả request gợi ý đều `isInternal: true` để ẩn thẻ AI toàn cục.
+- **Ingredient Sorting**: AI prompt bắt buộc sắp xếp nguyên liệu chính lên đầu, gia vị xuống cuối danh sách.
+- **Vietnamese Meal Context**: AI prompt được tinh chỉnh để gợi ý phù hợp văn hóa ăn Việt theo buổi (Sáng: Phở/Bún/Xôi, Trưa/Tối: Cơm gia đình, Ăn vặt: Trái cây/Sữa chua).
+- **HealthKit Deferred**: HealthKit Integration (DATA-01, DATA-02) bỏ khỏi v1.3, chuyển sang v1.4+. Phase 22 chỉ tập trung Macro Dashboard.
+- **Macro Dashboard Position**: Macro section nằm bên dưới Calories Chart (không phải tab riêng). Macro là context của calories, không phải metric độc lập.
 
 ### Learnings
 - AI `mealType` mapping must strictly match UI categories ("Bữa phụ" -> "Ăn vặt") to prevent ghost data.

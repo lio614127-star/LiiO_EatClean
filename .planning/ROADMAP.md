@@ -52,7 +52,7 @@
 
 ### 🚧 v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi (In Progress)
 
-- [ ] **Phase 21: Next-Gen Nutrition & AI Planning Update**
+- [x] **Phase 21: Next-Gen Nutrition & AI Planning Update**
   - Wave 1: Turbo Daily Planning & All-in-one AI Orchestration
   - Wave 2: Smart Unit Recognition & Composed Food Schema Updates
   - Wave 3: Recipe Detail View & Ingredient Breakdown UI
