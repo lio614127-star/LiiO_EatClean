@@ -149,3 +149,27 @@ struct MacroProgressBar: View {
         }
     }
 }
+
+struct TrendBadge: View {
+    let label: String
+    let direction: MacroTrend.TrendDirection
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.caption2.bold())
+                .foregroundColor(color)
+            Image(systemName: direction.icon)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(color)
+            Text(direction.rawValue)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(color.opacity(0.1))
+        .cornerRadius(8)
+    }
+}

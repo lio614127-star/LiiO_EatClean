@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 struct MacroAggregate: Identifiable {
     let id = UUID()
