@@ -58,7 +58,7 @@
   - Wave 3: Recipe Detail View & Ingredient Breakdown UI
   - Wave 4: AI Cooking Coach Deep-link & Instruction Flow
   - Wave 5: Magic Swap & Interactive Plan Editor UI
-- [ ] **Phase 22: Macro Dashboard & Nutrition Insights**
+- [x] **Phase 22: Macro Dashboard & Nutrition Insights**
   - Wave 1: Macro Aggregation Service & Progress Integration
   - Wave 2: Macro Goal Rings, Trend Indicators & Coaching Insights
 
@@ -69,5 +69,5 @@
 | 1-10 | v1.0 | Complete | 2026-05-04 |
 | 11-14 | v1.1 | Complete | 2026-05-06 |
 | 15-20 | v1.2 | Complete | 2026-05-09 |
-| 21. Next-Gen Nutrition AI | v1.3 | Not started | - |
-| 22. Macro Dashboard | v1.3 | Not started | - |
+| 21. Next-Gen Nutrition AI | v1.3 | Complete | 2026-05-10 |
+| 22. Macro Dashboard | v1.3 | Complete | 2026-05-10 |
