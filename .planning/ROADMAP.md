@@ -50,7 +50,7 @@
 *See `.planning/milestones/v1.2-ROADMAP.md` for full details.*
 </details>
 
-### 🚧 v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi (In Progress)
+### ✅ v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi
 
 - [x] **Phase 21: Next-Gen Nutrition & AI Planning Update**
   - Wave 1: Turbo Daily Planning & All-in-one AI Orchestration
@@ -62,6 +62,13 @@
   - Wave 1: Macro Aggregation Service & Progress Integration
   - Wave 2: Macro Goal Rings, Trend Indicators & Coaching Insights
 
+### 🚀 v1.4 Nâng cấp Phân tích & Trải nghiệm (Upcoming)
+
+- [ ] **Phase 23: Advanced Chart Visualization & Custom Date Range**
+  - Wave 1: Custom Date Range Picker & Adaptive Axis Rules
+  - Wave 2: Calories Chart Data Visualization (Avg Bar + Min/Max Overlay)
+  - Wave 3: Weight Chart Progression (Smooth Line + Trend Badges)
+
 ## Progress
 
 | Phase | Milestone | Status | Completed |
@@ -71,3 +78,4 @@
 | 15-20 | v1.2 | Complete | 2026-05-09 |
 | 21. Next-Gen Nutrition AI | v1.3 | Complete | 2026-05-10 |
 | 22. Macro Dashboard | v1.3 | Complete | 2026-05-10 |
+| 23. Advanced Chart UX | v1.4 | Not started | - |
