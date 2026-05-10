@@ -50,6 +50,20 @@ struct ProgressTabView: View {
                         }
                         .frame(minHeight: 250)
                         
+                        // Macro Dashboard (only visible on Calories tab)
+                        if viewModel.selectedTab == .calories,
+                           let aggregate = viewModel.macroAggregate,
+                           let target = viewModel.macroTarget {
+                            MacroDashboardView(
+                                aggregate: aggregate,
+                                target: target,
+                                timeRange: viewModel.selectedTimeRange
+                            )
+                            .padding(.horizontal)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .animation(.easeInOut(duration: 0.3), value: viewModel.selectedTab)
+                        }
+                        
                         // Time Range Toggle
                         Picker("Thời gian", selection: $viewModel.selectedTimeRange) {
                             ForEach(TimeRange.allCases, id: \.self) { range in

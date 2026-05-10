@@ -34,6 +34,9 @@ class ProgressViewModel {
     var weeklyData: [WeeklyAggregate] = []
     var isLoading = false
     
+    var macroAggregate: MacroAggregate?
+    var macroTarget: MacroTarget?
+    
     private let mealRepository: MealRepositoryProtocol
     private let userRepository: UserRepositoryProtocol
     
@@ -79,11 +82,34 @@ class ProgressViewModel {
             }
             
             // Accumulate meal calories
+            var totalProtein: Double = 0
+            var totalCarbs: Double = 0
+            var totalFat: Double = 0
+            var totalCalsForMacro: Double = 0
+            
             for meal in meals {
                 let day = calendar.startOfDay(for: meal.date)
                 let totalCals = meal.mealFoods.reduce(0) { $0 + $1.caloriesSnapshot }
                 dailyCalories[day, default: 0.0] += totalCals
+                
+                for food in meal.mealFoods {
+                    totalProtein += food.proteinSnapshot * food.quantity
+                    totalCarbs += food.carbsSnapshot * food.quantity
+                    totalFat += food.fatSnapshot * food.quantity
+                    totalCalsForMacro += food.caloriesSnapshot * food.quantity
+                }
             }
+            
+            let activeDays = dailyCalories.values.filter { $0 > 0 }.count
+            macroAggregate = MacroAggregate(
+                totalProtein: totalProtein,
+                totalCarbs: totalCarbs,
+                totalFat: totalFat,
+                totalCalories: totalCalsForMacro,
+                daysCount: max(activeDays, 1)
+            )
+            
+            macroTarget = MacroTarget.default(calories: dailyTarget)
             
             // Convert to array and sort
             calorieData = dailyCalories.map { CalorieDailyTotal(date: $0.key, total: $0.value) }
