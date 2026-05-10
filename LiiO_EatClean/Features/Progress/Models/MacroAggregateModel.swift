@@ -45,3 +45,28 @@ struct MacroTarget {
     var carbsGrams: Double { (dailyCalories * carbsRatio) / 4 }
     var fatGrams: Double { (dailyCalories * fatRatio) / 9 }
 }
+
+struct MacroTrend {
+    let proteinTrend: TrendDirection
+    let carbsTrend: TrendDirection
+    let fatTrend: TrendDirection
+    
+    enum TrendDirection: String {
+        case up = "↑"
+        case down = "↓"
+        case stable = "→"
+        
+        var icon: String {
+            switch self {
+            case .up: return "arrow.up.right"
+            case .down: return "arrow.down.right"
+            case .stable: return "arrow.right"
+            }
+        }
+        
+        var color: (protein: Color, carbs: Color, fat: Color) {
+            // Context-dependent: up protein = good, up fat = caution
+            return (.blue, .purple, .orange)
+        }
+    }
+}

@@ -4,6 +4,7 @@ struct MacroDashboardView: View {
     let aggregate: MacroAggregate
     let target: MacroTarget
     let timeRange: TimeRange
+    let trend: MacroTrend?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -52,6 +53,23 @@ struct MacroDashboardView: View {
                     percentage: aggregate.fatPercentage,
                     color: .orange
                 )
+            }
+            
+            Divider()
+                .padding(.vertical, 4)
+            
+            // Goal Rings
+            MacroGoalRingsRow(aggregate: aggregate, target: target)
+            
+            // Trend badges (30N/3T only)
+            if let trend = trend {
+                HStack(spacing: 16) {
+                    TrendBadge(label: "P", direction: trend.proteinTrend, color: .blue)
+                    TrendBadge(label: "C", direction: trend.carbsTrend, color: .purple)
+                    TrendBadge(label: "F", direction: trend.fatTrend, color: .orange)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 4)
             }
         }
         .padding()

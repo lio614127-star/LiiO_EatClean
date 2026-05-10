@@ -36,6 +36,7 @@ class ProgressViewModel {
     
     var macroAggregate: MacroAggregate?
     var macroTarget: MacroTarget?
+    var macroTrend: MacroTrend?
     
     private let mealRepository: MealRepositoryProtocol
     private let userRepository: UserRepositoryProtocol
@@ -110,6 +111,43 @@ class ProgressViewModel {
             )
             
             macroTarget = MacroTarget.default(calories: dailyTarget)
+            
+            // Calculate Macro Trend (30N and 3T only)
+            if selectedTimeRange != .week && meals.count > 7 {
+                let midPoint = calendar.date(byAdding: .day, value: -daysToSubtract / 2, to: today)!
+                
+                let firstHalfMeals = meals.filter { $0.date < midPoint }
+                let secondHalfMeals = meals.filter { $0.date >= midPoint }
+                
+                func avgMacro(_ mealList: [MealModel], _ keyPath: KeyPath<MealFoodModel, Double>) -> Double {
+                    let total = mealList.flatMap { $0.mealFoods }.reduce(0.0) { $0 + $1[keyPath: keyPath] * $1.quantity }
+                    let days = max(Set(mealList.map { calendar.startOfDay(for: $0.date) }).count, 1)
+                    return total / Double(days)
+                }
+                
+                func trend(_ first: Double, _ second: Double) -> MacroTrend.TrendDirection {
+                    let change = second - first
+                    let threshold = max(first * 0.1, 3.0) // 10% or 3g minimum threshold
+                    if change > threshold { return .up }
+                    if change < -threshold { return .down }
+                    return .stable
+                }
+                
+                let pFirst = avgMacro(firstHalfMeals, \.proteinSnapshot)
+                let pSecond = avgMacro(secondHalfMeals, \.proteinSnapshot)
+                let cFirst = avgMacro(firstHalfMeals, \.carbsSnapshot)
+                let cSecond = avgMacro(secondHalfMeals, \.carbsSnapshot)
+                let fFirst = avgMacro(firstHalfMeals, \.fatSnapshot)
+                let fSecond = avgMacro(secondHalfMeals, \.fatSnapshot)
+                
+                macroTrend = MacroTrend(
+                    proteinTrend: trend(pFirst, pSecond),
+                    carbsTrend: trend(cFirst, cSecond),
+                    fatTrend: trend(fFirst, fSecond)
+                )
+            } else {
+                macroTrend = nil
+            }
             
             // Convert to array and sort
             calorieData = dailyCalories.map { CalorieDailyTotal(date: $0.key, total: $0.value) }

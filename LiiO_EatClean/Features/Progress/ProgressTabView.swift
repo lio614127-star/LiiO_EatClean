@@ -57,11 +57,20 @@ struct ProgressTabView: View {
                             MacroDashboardView(
                                 aggregate: aggregate,
                                 target: target,
-                                timeRange: viewModel.selectedTimeRange
+                                timeRange: viewModel.selectedTimeRange,
+                                trend: viewModel.macroTrend
                             )
                             .padding(.horizontal)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                             .animation(.easeInOut(duration: 0.3), value: viewModel.selectedTab)
+                            
+                            MacroInsightsView(
+                                aggregate: aggregate,
+                                target: target,
+                                trend: viewModel.macroTrend,
+                                timeRange: viewModel.selectedTimeRange
+                            )
+                            .padding(.horizontal)
                         }
                         
                         // Time Range Toggle
