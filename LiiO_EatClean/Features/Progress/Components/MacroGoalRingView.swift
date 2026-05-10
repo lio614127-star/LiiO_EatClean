@@ -34,6 +34,8 @@ struct MacroGoalRing: View {
     let target: Double
     let color: Color
     
+    @State private var animatedProgress: Double = 0
+    
     private var progress: Double {
         guard target > 0 else { return 0 }
         return min(current / target, 1.0)
@@ -53,13 +55,13 @@ struct MacroGoalRing: View {
                 
                 // Progress ring
                 Circle()
-                    .trim(from: 0, to: progress)
+                    .trim(from: 0, to: animatedProgress)
                     .stroke(
                         color,
                         style: StrokeStyle(lineWidth: 5, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
-                    .animation(.spring(response: 0.6), value: progress)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.8), value: animatedProgress)
                 
                 // Center text
                 Text("\(percentage)%")
@@ -77,5 +79,11 @@ struct MacroGoalRing: View {
                 .foregroundColor(.primary)
         }
         .frame(maxWidth: .infinity)
+        .onAppear {
+            animatedProgress = progress
+        }
+        .onChange(of: progress) { newValue in
+            animatedProgress = newValue
+        }
     }
 }

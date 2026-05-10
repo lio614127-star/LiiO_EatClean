@@ -11,12 +11,24 @@ struct MacroInsightsView: View {
         
         // Protein check
         let proteinGoalPct = target.proteinGrams > 0 ? (aggregate.avgDailyProtein / target.proteinGrams) * 100 : 0
-        if proteinGoalPct < 70 {
+        if proteinGoalPct > 120 {
+            result.append(MacroInsight(icon: "🔴", message: "Protein quá cao (\(Int(proteinGoalPct))%)", suggestion: "Dư thừa protein có thể gây áp lực cho gan/thận"))
+        } else if proteinGoalPct < 70 {
             result.append(MacroInsight(icon: "🔴", message: "Protein thấp (\(Int(proteinGoalPct))% mục tiêu)", suggestion: "Tăng thịt, cá, trứng, đậu phụ trong bữa ăn"))
         } else if proteinGoalPct < 90 {
             result.append(MacroInsight(icon: "🟡", message: "Protein hơi thấp (\(Int(proteinGoalPct))% mục tiêu)", suggestion: "Thêm 1 phần protein mỗi bữa chính"))
-        } else if proteinGoalPct >= 95 {
+        } else if proteinGoalPct >= 95 && proteinGoalPct <= 110 {
             result.append(MacroInsight(icon: "🟢", message: "Protein đạt mục tiêu (\(Int(proteinGoalPct))%)", suggestion: "Tiếp tục duy trì nhé!"))
+        }
+        
+        // Carbs check
+        let carbsGoalPct = target.carbsGrams > 0 ? (aggregate.avgDailyCarbs / target.carbsGrams) * 100 : 0
+        if carbsGoalPct > 130 {
+            result.append(MacroInsight(icon: "🔴", message: "Carbs vượt mục tiêu (\(Int(carbsGoalPct))%)", suggestion: "Giảm bớt tinh bột (cơm, bún, phở, bánh ngọt)"))
+        } else if carbsGoalPct < 70 {
+            result.append(MacroInsight(icon: "🔴", message: "Carbs thấp (\(Int(carbsGoalPct))%)", suggestion: "Thiếu tinh bột có thể gây mệt mỏi, thiếu năng lượng"))
+        } else if carbsGoalPct >= 90 && carbsGoalPct <= 110 {
+            result.append(MacroInsight(icon: "🟢", message: "Carbs cân bằng (\(Int(carbsGoalPct))%)", suggestion: "Lượng tinh bột đang rất tốt"))
         }
         
         // Fat check
@@ -25,7 +37,7 @@ struct MacroInsightsView: View {
             result.append(MacroInsight(icon: "🔴", message: "Chất béo vượt mục tiêu (\(Int(fatGoalPct))%)", suggestion: "Giảm đồ chiên, chuyển sang luộc/hấp"))
         } else if fatGoalPct > 110 {
             result.append(MacroInsight(icon: "🟡", message: "Chất béo hơi cao (\(Int(fatGoalPct))% mục tiêu)", suggestion: "Ưu tiên nấu ít dầu mỡ hơn"))
-        } else {
+        } else if fatGoalPct >= 80 && fatGoalPct <= 105 {
             result.append(MacroInsight(icon: "🟢", message: "Chất béo ổn định (\(Int(fatGoalPct))%)", suggestion: "Cân bằng tốt!"))
         }
         
