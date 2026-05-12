@@ -8,22 +8,19 @@ LiiO EatClean là app iOS theo dõi calories và bữa ăn hàng ngày, giúp ng
 
 User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — nhanh, đẹp, chính xác.
 
-## Current Milestone: v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi
+## Current Milestone: v1.5 [TBD]
 
-**Goal:** Hiện đại hoá hạ tầng dữ liệu dinh dưỡng, tối ưu hoá tốc độ lập kế hoạch, và cung cấp trải nghiệm hướng dẫn nấu ăn chi tiết ngay từ thực đơn gợi ý.
+**Goal:** [Mục tiêu sẽ được xác định qua /gsd-new-milestone]
 
 **Target features:**
-- **Turbo Daily Planning:** Tối ưu hóa AI Orchestration để lên kế hoạch ngày trong < 10 giây.
-- **Smart Unit & Recipe Detail:** Tự động nhận diện đơn vị (chén, dĩa, cái, gram) và hiển thị bóc tách nguyên liệu chi tiết cho món ăn.
-- **AI Cooking Coach:** Hướng dẫn nấu ăn từng bước tỉ mỉ thông qua kết nối trực tiếp với AI Coach từ thực đơn.
-- **Interactive Plan Editor:** Cho phép người dùng chỉnh sửa plan của AI, chọn món thay thế (Top 10 gợi ý) hoặc tự thêm món.
-- **Meal Variety Logic:** Thuật toán chống lặp món và ưu tiên thực đơn thuần Việt, nguyên liệu dễ tìm.
-- **HealthKit Integration:** Đồng bộ cân nặng và calories với Apple Health (Cơ bản).
-- **Macro Tracking:** Hiển thị chi tiết tỉ lệ Protein, Carbs, Fat với biểu đồ trực quan.
+- [Gợi ý: Tối ưu hóa hiệu năng, AI Coaching chuyên sâu, UI Analytics mở rộng]
 
 ## Requirements
 
 ### Validated
+
+<details>
+<summary>✓ v1.0 - v1.2: Foundation & AI Assistant</summary>
 
 - ✓ App foundation, CoreData schema, Tab bar navigation — v1.0
 - ✓ Splash screen với logo custom + auto transition — v1.0
@@ -52,17 +49,34 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 - ✓ Context Compression: Nén history chat/memory tối ưu token — v1.2
 - ✓ AI Personality: Tuỳ chỉnh văn phong AI (5 tone presets) — v1.2
 - ✓ Pro Chart UX: Biểu đồ 3 tháng, smart labels, weight gradient — v1.2
+</details>
+
+<details>
+<summary>✓ v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi</summary>
+
+- ✓ Turbo Daily Planning (All-in-one Prompting)
+- ✓ Smart Unit Recognition (chén, dĩa, gram...)
+- ✓ Recipe Detail View (Ingredient breakdown)
+- ✓ AI Cooking Coach Integration (Deep-link to Chat)
+- ✓ Magic Swap Feature (Interactive Plan Editor)
+- ✓ Anti-Repeat & Vietnamese Priority Logic
+- ✓ Macro Tracking Dashboard
+</details>
+
+<details>
+<summary>✓ v1.4 Nâng cấp Phân tích & Trải nghiệm</summary>
+
+- ✓ Advanced Chart Visualization (Swipe pagination, Apple Health style)
+- ✓ Smart Data Aggregation (Daily/Weekly/Monthly)
+- ✓ Metabolic Intelligence Engine (Adaptive TDEE, Goal History)
+- ✓ AI Coaching Cards (Insight-driven goal updates)
+- ✓ Reactive Calorie Target Sync
+- ✓ Stability & Performance Polish
+</details>
 
 ### Active
 
-- [ ] Turbo Daily Planning (All-in-one Prompting)
-- [ ] Smart Unit Recognition (chén, dĩa, gram...)
-- [ ] Recipe Detail View (Ingredient breakdown)
-- [ ] AI Cooking Coach Integration (Deep-link to Chat)
-- [ ] Magic Swap Feature (Interactive Plan Editor)
-- [ ] Anti-Repeat & Vietnamese Priority Logic
-- [ ] HealthKit Integration (Basic sync)
-- [ ] Macro Tracking Dashboard
+(Define next steps via `/gsd-new-milestone`)
 
 ### Out of Scope
 
@@ -70,12 +84,13 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 - Community chat — không phải core value
 - Android version — build native iOS trước
 - Multi-device sync — v1 local-only
+- HealthKit Integration — Removed (2026-05-12)
 
 ## Context
 
 **Target user:** Người Việt Nam muốn giảm cân, theo dõi calories hàng ngày.
 
-**Current State (v1.2 Shipped):** LiiO EatClean đã trở thành một trợ lý AI toàn diện với khả năng ghi nhớ sâu sắc người dùng, hỗ trợ voice chat, hoạt động offline và bảo vệ sức khoẻ thông qua ràng buộc bệnh lý. Giao diện biểu đồ đã đạt chuẩn premium.
+**Current State (v1.4 Shipped):** LiiO EatClean đã trở thành một nền tảng quản lý dinh dưỡng thông minh vượt trội. App không chỉ gợi ý món ăn mà còn chủ động phân tích sự thích nghi của cơ thể (Metabolic AI), hỗ trợ theo dõi Macro chi tiết và cung cấp trải nghiệm phân tích dữ liệu chuyên nghiệp (Advanced Charts).
 
 ## Constraints
 
@@ -90,16 +105,17 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Swift + SwiftUI native | UI mượt, HealthKit-ready | ✓ Good |
+| Swift + SwiftUI native | UI mượt, nhanh gọn | ✓ Good |
 | CoreData local-first | Đơn giản, không cần backend | ✓ Good |
 | Hybrid food database | Hỗ trợ món Việt instant | ✓ Good |
 | AI Chat & Learning Memory | UX cá nhân hóa sâu | ✓ Good |
 | Parallel API Calls | Giảm latency đáng kể cho AI Planning | ✓ Good |
 | Consolidated Insights | Giảm clutter cho Home screen | ✓ Good |
+| Metabolic Intelligence | Tự động thích ứng mục tiêu theo sinh lý | ✓ Good |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-09 after v1.2 milestone completion*
+*Last updated: 2026-05-12 after v1.4 milestone completion*

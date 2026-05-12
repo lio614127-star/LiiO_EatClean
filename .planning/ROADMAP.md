@@ -5,7 +5,8 @@
 - ✅ **v1.0 MVP Calorie Tracker** — Phases 1-10 (shipped 2026-05-04)
 - ✅ **v1.1 Trải Nghiệm Nhanh & AI Chủ Động** — Phases 11-14 (shipped 2026-05-06)
 - ✅ **v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện** — Phases 15-20 (shipped 2026-05-09)
-- 🚧 **v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi** — Phases 21-22 (in progress)
+- ✅ **v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi** — Phases 21-22 (shipped 2026-05-10)
+- 🚧 **v1.4 Nâng cấp Phân tích & Trải nghiệm** — Phases 23+ (in progress)
 
 ## Phases
 
@@ -56,18 +57,23 @@
   - Wave 1: Turbo Daily Planning & All-in-one AI Orchestration
   - Wave 2: Smart Unit Recognition & Composed Food Schema Updates
   - Wave 3: Recipe Detail View & Ingredient Breakdown UI
-  - Wave 4: AI Cooking Coach Deep-link & Instruction Flow
-  - Wave 5: Magic Swap & Interactive Plan Editor UI
-- [x] **Phase 22: Macro Dashboard & Nutrition Insights**
-  - Wave 1: Macro Aggregation Service & Progress Integration
-  - Wave 2: Macro Goal Rings, Trend Indicators & Coaching Insights
+<details>
+<summary>✅ v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi (Phases 21-22) — SHIPPED 2026-05-10</summary>
 
-### 🚀 v1.4 Nâng cấp Phân tích & Trải nghiệm (Upcoming)
+- [x] Phase 21: Next-Gen Nutrition & AI Planning Update
+- [x] Phase 22: Macro Dashboard & Nutrition Insights
 
-- [ ] **Phase 23: Advanced Chart Visualization & Custom Date Range**
-  - Wave 1: Custom Date Range Picker & Adaptive Axis Rules
-  - Wave 2: Calories Chart Data Visualization (Avg Bar + Min/Max Overlay)
-  - Wave 3: Weight Chart Progression (Smooth Line + Trend Badges)
+*See `.planning/milestones/v1.3-ROADMAP.md` for full details.*
+</details>
+
+<details>
+<summary>✅ v1.4 Nâng cấp Phân tích & Trải nghiệm (Phases 23-24) — SHIPPED 2026-05-12</summary>
+
+- [x] Phase 23: Advanced Chart Visualization & Custom Date Range
+- [x] Phase 24: AI Goal Setting
+
+*See `.planning/milestones/v1.4-ROADMAP.md` for full details.*
+</details>
 
 ## Progress
 
@@ -78,4 +84,5 @@
 | 15-20 | v1.2 | Complete | 2026-05-09 |
 | 21. Next-Gen Nutrition AI | v1.3 | Complete | 2026-05-10 |
 | 22. Macro Dashboard | v1.3 | Complete | 2026-05-10 |
-| 23. Advanced Chart UX | v1.4 | Not started | - |
+| 23. Advanced Chart UX | v1.4 | Complete | 2026-05-10 |
+| 24. AI Goal Setting | v1.4 | Complete | 2026-05-12 |

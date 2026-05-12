@@ -9,7 +9,8 @@ See: .planning/PROJECT.md (updated 2026-05-09)
 
 ## Current Milestone
 
-**Milestone: v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi**
+**Milestone: v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi** (Shipped 2026-05-10)
+**Milestone: v1.4 Nâng cấp Phân tích & Trải nghiệm** (In Progress)
 
 - ✅ Turbo Daily Planning (All-in-one Prompting)
 - ✅ Smart Unit Recognition (chén, dĩa, gram...)
@@ -20,13 +21,13 @@ See: .planning/PROJECT.md (updated 2026-05-09)
 - ✅ Macro Tracking Dashboard
 
 ## Current Position
-
-Phase: 23
-Status: Planning
-Last activity: 2026-05-10 — Phase 23 context gathered
-- Current Phase: Phase 23 context gathered
-- Previous Phase: Phase 22
-- Resume: .planning/phases/23-advanced-chart-visualization/23-CONTEXT.md
+Phase: 24
+Status: Complete
+Last activity: 2026-05-12 — Milestone v1.4 completed and audited. Phase 25 and HealthKit sync removed from scope.
+- Current Phase: Phase 24
+- Previous Phase: Phase 23
+- Audit: .planning/milestones/v1.4-AUDIT-REPORT.md
+- Resume: ROADMAP.md
 
 ## Memory
 
@@ -51,11 +52,13 @@ Last activity: 2026-05-10 — Phase 23 context gathered
 - **AI Meal Planning Flow**: Decoupled planning from tracking via a full-screen sheet. Implemented adaptive context (History + Insights) to prevent repetitive suggestions and address nutritional gaps.
 - **Proportional Calorie Trimming**: Implemented app-side logic to scale AI-suggested meal portions proportionally to fit within ±5% of the user's daily calorie target.
 - **Advanced Chart Refinement**: Implemented Apple Health-style chart axes with smart label skipping (1, 5, 10...) for 30N/3T views, month/year anchors (e.g., 5/26), and fixed chart height (220px) to prevent UI jumping.
+- **Smart Aggregation & Pagination**: Phase 23 implemented Swipe Pagination (DragGesture) to replace free scrolling. Aggregation is now adaptive (Daily <= 31, Weekly <= 120, Monthly > 120) with RangeMark overlays for calorie min/max and smooth CatmullRom weight lines.
+- **Custom Date Range**: Introduced `CustomDateRangePickerSheet` for flexible time period selection with quick presets.
 - **Persistent Summary UX**: The Daily Summary Card expansion state is now persistent via `@AppStorage`. Auto-expansion on new insights has been removed to respect the user's manual preference.
 - **AI Suggestion Caching**: Gợi ý AI trong AddMealView được cache theo mealType (Dictionary). Chuyển bữa không reload, chỉ forceRefresh khi user bấm "Hỏi AI". Tất cả request gợi ý đều `isInternal: true` để ẩn thẻ AI toàn cục.
 - **Ingredient Sorting**: AI prompt bắt buộc sắp xếp nguyên liệu chính lên đầu, gia vị xuống cuối danh sách.
 - **Vietnamese Meal Context**: AI prompt được tinh chỉnh để gợi ý phù hợp văn hóa ăn Việt theo buổi (Sáng: Phở/Bún/Xôi, Trưa/Tối: Cơm gia đình, Ăn vặt: Trái cây/Sữa chua).
-- **HealthKit Deferred**: HealthKit Integration (DATA-01, DATA-02) bỏ khỏi v1.3, chuyển sang v1.4+. Phase 22 chỉ tập trung Macro Dashboard.
+- **HealthKit Removed**: HealthKit Integration (DATA-01, DATA-02) đã bị loại bỏ hoàn toàn khỏi dự án.
 - **Macro Dashboard Position**: Macro section nằm bên dưới Calories Chart (không phải tab riêng). Macro là context của calories, không phải metric độc lập.
 
 ### Learnings
@@ -149,4 +152,10 @@ Last activity: 2026-05-10 — Phase 23 context gathered
 | 2026-05-10 | Phase 22 context gathered | `.planning/phases/22-macro-dashboard/22-CONTEXT.md` — HealthKit deferred, focus on Macro Dashboard under Calories chart |
 
 ---
-*Last updated: 2026-05-10 after Phase 22 context gathering*
+| 2026-05-10 | Phase 23 completed | `.planning/phases/23-advanced-chart-visualization/` |
+| 2026-05-10 | Phase 23 context gathered | `.planning/phases/23-advanced-chart-visualization/23-CONTEXT.md` |
+
+### Quick Tasks Completed
+| Task | Date | Status |
+| :--- | :--- | :--- |
+| Apple Health Grade Chart Correction | 2026-05-11 | ✅ Complete |
