@@ -11,10 +11,10 @@ progress:
 ## Current Position
 
 Phase: 25 - Date-Aware Planning Foundation
-Plan: —
-Status: Context gathered
-Last activity: Phase 25 context gathered
-Resume file: .planning/phases/25-date-aware-planning-foundation/25-CONTEXT.md
+Plan: 25-PLAN.md
+Status: Plan created
+Last activity: Phase 25 plan generated
+Resume file: .planning/phases/25-date-aware-planning-foundation/25-PLAN.md
 
 ## Active Context
 
