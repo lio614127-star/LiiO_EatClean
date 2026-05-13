@@ -46,6 +46,12 @@ class CalendarHeatmapViewModel {
         }
     }
     
+    func resetToToday() async {
+        let today = Date()
+        self.currentMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) ?? today
+        await loadMonthData()
+    }
+    
     func daysInMonth() -> [Date?] {
         let range = calendar.range(of: .day, in: .month, for: currentMonth)!
         let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: currentMonth))!

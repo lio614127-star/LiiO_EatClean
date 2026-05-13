@@ -22,7 +22,7 @@ Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi 
 
 ### 🚀 v1.5 Trợ lý AI Toàn diện (Voice, Heatmap & Rebalance)
 
-- [ ] **Phase 25: Date-Aware Planning Foundation**
+- [x] **Phase 25: Date-Aware Planning Foundation**
   - Goal: Cấu trúc lại hệ thống lập kế hoạch để lưu trữ an toàn theo ngày và không ghi đè dữ liệu lịch sử.
   - Requirements: PLAN-04, PLAN-05, PLAN-06, PLAN-07
   - Success Criteria:
@@ -30,7 +30,7 @@ Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi 
     2. Chọn ngày cũ xem được Plan cũ.
     3. Weekly Plan tạo ra 7 bản ghi DailyPlan tách biệt.
 
-- [ ] **Phase 26: Two-Layer Execution (Home integration)**
+- [x] **Phase 26: Two-Layer Execution (Home integration)**
   - Goal: Đưa kế hoạch vào đời thực thông qua Home tab mà không gây cản trở việc log món tự do.
   - Requirements: UI-01, UI-04, UI-05, PLAN-08
   - Success Criteria:
@@ -77,10 +77,10 @@ Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi 
 
 ## Progress
 
-- **Phases Complete:** 24
+- **Phases Complete:** 27
 - **Phases Active:** 0
-- **Phases Pending:** 7
-- **Completion:** 77% (24/31)
+- **Phases Pending:** 4
+- **Completion:** 87% (27/31)
 
 ---
 *Last updated: 2026-05-12 for Milestone v1.5*

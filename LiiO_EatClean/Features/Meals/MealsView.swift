@@ -23,9 +23,28 @@ struct MealsView: View {
                 } else {
                     List {
                         // Header
-                        VStack(spacing: 4) {
-                            Text(Calendar.current.isDateInToday(viewModel.selectedDate) ? "Hôm nay" : viewModel.selectedDate.formatted(.dateTime.day().month().year()))
+                        VStack(spacing: 8) {
+                            Text(Calendar.current.isDateInToday(viewModel.selectedDate) ? "Hôm nay" : viewModel.selectedDate.formatted(.dateTime.day().month().year().locale(Locale(identifier: "vi_VN"))))
                                 .font(.title2.bold())
+                            
+                            if !Calendar.current.isDateInToday(viewModel.selectedDate) {
+                                Button {
+                                    viewModel.selectedDate = Date()
+                                    Task { await viewModel.loadData() }
+                                } label: {
+                                    Text("Quay lại Hôm nay")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.green)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 16)
+                                                .stroke(Color.green.opacity(0.5), lineWidth: 1.5)
+                                        )
+                                }
+                                .transition(.scale.combined(with: .opacity))
+                            }
+                            
                             Text("Còn \(Int(viewModel.remainingCalories)) kcal")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)

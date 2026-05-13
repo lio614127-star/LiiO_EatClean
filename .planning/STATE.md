@@ -2,7 +2,7 @@
 milestone: v1.5
 status: planning
 progress:
-  phases_completed: 2
+  phases_completed: 3
   phases_total: 7
 ---
 
@@ -27,13 +27,15 @@ progress:
     3. Delta & Adherence Score được tính toán thời gian thực.
   - Status: Completed (Unified Timeline & Smart Linking Implemented)
 
-- [/] **Phase 27: Calendar Heatmap & Adherence**
+- [x] **Phase 27: Calendar Heatmap & Adherence**
   - Goal: Cung cấp góc nhìn toàn cảnh về kỷ luật ăn uống thông qua biểu đồ nhiệt.
   - Requirements: HEAT-01, HEAT-02, HEAT-03
   - Success Criteria:
     1. Lịch tháng hiển thị màu sắc dựa trên Adherence Score.
     2. Tap vào ngày để mở chi tiết lịch sử (Journal).
   - Status: Completed (Heatmap & Adherence Snapshotting Implemented)
+  - Last activity: Phase 27 verified.
+  - Resume file: .planning/phases/28-ai-rebalance/28-PLAN.md
 
 
 ## Active Context
