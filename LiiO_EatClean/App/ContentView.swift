@@ -50,6 +50,9 @@ struct ContentView: View {
                 .padding(.top, 60) // Offset for notch/status bar
                 .ignoresSafeArea(.all, edges: .bottom)
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("navigateToJournal"))) { _ in
+            selectedTab = 1
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AskAICoachAboutMeal"))) { _ in
             selectedTab = 4
         }

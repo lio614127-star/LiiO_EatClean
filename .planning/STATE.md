@@ -33,8 +33,8 @@ progress:
   - Success Criteria:
     1. Lịch tháng hiển thị màu sắc dựa trên Adherence Score.
     2. Tap vào ngày để mở chi tiết lịch sử (Journal).
-  - Status: Planned. Ready for execution.
-  - Resume file: .planning/phases/27-calendar-heatmap-adherence/27-01-PLAN.md
+  - Status: Completed (Heatmap & Adherence Snapshotting Implemented)
+
 
 ## Active Context
 

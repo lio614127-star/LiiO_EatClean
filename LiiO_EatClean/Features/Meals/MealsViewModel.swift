@@ -3,7 +3,8 @@ import SwiftUI
 
 @Observable
 class MealsViewModel {
-    var todayMeals: [MealModel] = []
+    var meals: [MealModel] = []
+    var selectedDate: Date = Date()
     var isLoading = false
     var user: UserModel?
     
@@ -16,8 +17,9 @@ class MealsViewModel {
         self.userRepository = userRepository
     }
     
-    func loadTodayMeals(forceSilent: Bool = false) async {
-        let isInitialLoad = todayMeals.isEmpty && !forceSilent
+    func loadData(for date: Date? = nil, forceSilent: Bool = false) async {
+        let targetDate = date ?? selectedDate
+        let isInitialLoad = meals.isEmpty && !forceSilent
         
         if isInitialLoad {
             isLoading = true
@@ -25,45 +27,42 @@ class MealsViewModel {
         
         do {
             user = try await userRepository.fetchUser()
-            let fetchedMeals = try await mealRepository.fetchMeals(by: Date())
+            let fetchedMeals = try await mealRepository.fetchMeals(by: targetDate)
             
-            // ⚡ Update only if data actually changed to avoid unnecessary List flashes
-            if fetchedMeals != todayMeals {
-                todayMeals = fetchedMeals
+            if fetchedMeals != meals {
+                meals = fetchedMeals
             }
             
-            // ⚡ Handle sync delays only on initial empty state
-            if todayMeals.isEmpty && isInitialLoad {
+            if meals.isEmpty && isInitialLoad {
                 try await Task.sleep(nanoseconds: 200_000_000)
-                todayMeals = try await mealRepository.fetchMeals(by: Date())
+                meals = try await mealRepository.fetchMeals(by: targetDate)
             }
         } catch {
-            print("Error loading today meals: \(error)")
+            print("Error loading meals for \(targetDate): \(error)")
         }
         
         if isInitialLoad {
             isLoading = false
         }
         
-        // Background Enrichment
-        let allFoods = todayMeals.flatMap { $0.mealFoods }.compactMap { $0.foodItem }
+        let allFoods = meals.flatMap { $0.mealFoods }.compactMap { $0.foodItem }
         BackgroundEnrichmentManager.shared.enrich(foods: allFoods)
     }
     
     func deleteMealFood(id: UUID) async {
         do {
             try await mealRepository.deleteMealFood(by: id)
-            await loadTodayMeals()
+            await loadData()
         } catch {
             print("Failed to delete meal food: \(error)")
         }
     }
     
     func toggleMealFoodStatus(id: UUID) async {
-        let currentStatus = todayMeals.flatMap { $0.mealFoods }.first(where: { $0.id == id })?.isEaten ?? false
+        let currentStatus = meals.flatMap { $0.mealFoods }.first(where: { $0.id == id })?.isEaten ?? false
         do {
             try await mealRepository.updateMealFoodStatus(id: id, isEaten: !currentStatus)
-            await loadTodayMeals()
+            await loadData()
         } catch {
             print("Failed to toggle meal food status: \(error)")
         }
@@ -71,13 +70,13 @@ class MealsViewModel {
     
     // Group meals by type
     func meals(for type: String) -> [MealModel] {
-        todayMeals.filter { $0.mealType.lowercased() == type.lowercased() }
+        meals.filter { $0.mealType.lowercased() == type.lowercased() }
     }
     
     private var validMealTypes: [String] { ["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"] }
     
     var totalCalories: Double {
-        todayMeals
+        meals
             .filter { meal in validMealTypes.contains { $0.lowercased() == meal.mealType.lowercased() } }
             .flatMap { $0.mealFoods }
             .filter { $0.isEaten }

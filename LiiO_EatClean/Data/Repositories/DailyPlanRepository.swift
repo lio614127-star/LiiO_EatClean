@@ -142,6 +142,7 @@ class DailyPlanRepository: DailyPlanRepositoryProtocol {
             }
             
             try self.context.save()
+            NotificationCenter.default.post(name: NSNotification.Name("mealPlanDidUpdate"), object: nil)
         }
     }
     

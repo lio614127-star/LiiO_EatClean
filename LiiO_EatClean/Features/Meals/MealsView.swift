@@ -18,13 +18,13 @@ struct MealsView: View {
             ZStack {
                 Color(.systemGroupedBackground).ignoresSafeArea()
                 
-                if viewModel.isLoading && viewModel.todayMeals.isEmpty {
+                if viewModel.isLoading && viewModel.meals.isEmpty {
                     ProgressView()
                 } else {
                     List {
                         // Header
                         VStack(spacing: 4) {
-                            Text("Hôm nay")
+                            Text(Calendar.current.isDateInToday(viewModel.selectedDate) ? "Hôm nay" : viewModel.selectedDate.formatted(.dateTime.day().month().year()))
                                 .font(.title2.bold())
                             Text("Còn \(Int(viewModel.remainingCalories)) kcal")
                                 .font(.subheadline)
@@ -81,14 +81,14 @@ struct MealsView: View {
                     }
                     .listStyle(.insetGrouped)
                     .refreshable {
-                        await viewModel.loadTodayMeals()
+                        await viewModel.loadData()
                     }
                 }
             }
             .navigationTitle("Meals")
             .navigationBarHidden(true)
             .sheet(item: $activeAddMealType, onDismiss: {
-                Task { await viewModel.loadTodayMeals() }
+                Task { await viewModel.loadData() }
             }) { item in
                 AddMealView(selectedMealType: item.id)
                     .id(item.id)
@@ -98,16 +98,16 @@ struct MealsView: View {
                     mealType: item.id,
                     initialMeals: viewModel.meals(for: item.id),
                     onUpdate: {
-                        Task { await viewModel.loadTodayMeals() }
+                        Task { await viewModel.loadData() }
                     }
                 )
-                .id(item.id + "-\(viewModel.todayMeals.flatMap { $0.mealFoods }.count)")
+                .id(item.id + "-\(viewModel.meals.flatMap { $0.mealFoods }.count)")
             }
             .fullScreenCover(isPresented: $showMealPlanSheet, onDismiss: {
                 // ⚡ Delay refresh to avoid transition glitch with fullScreenCover
                 Task {
                     try? await Task.sleep(nanoseconds: 100_000_000)
-                    await viewModel.loadTodayMeals(forceSilent: true)
+                    await viewModel.loadData(forceSilent: true)
                 }
             }) {
                 MealPlanSheet(
@@ -120,7 +120,7 @@ struct MealsView: View {
                 // ⚡ Delay refresh to avoid transition glitch with fullScreenCover
                 Task {
                     try? await Task.sleep(nanoseconds: 100_000_000)
-                    await viewModel.loadTodayMeals(forceSilent: true)
+                    await viewModel.loadData(forceSilent: true)
                 }
             }) {
                 WeeklyPlanView(
@@ -134,7 +134,13 @@ struct MealsView: View {
         }
         .onAppear {
             Task {
-                await viewModel.loadTodayMeals()
+                await viewModel.loadData()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("navigateToJournal"))) { notification in
+            if let date = notification.object as? Date {
+                viewModel.selectedDate = date
+                Task { await viewModel.loadData() }
             }
         }
     }

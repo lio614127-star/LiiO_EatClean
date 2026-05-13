@@ -5,6 +5,7 @@ import SwiftUI
 
 enum ProgressTab: String, CaseIterable {
     case calories = "Calo"
+    case adherence = "Kỷ luật"
     case weight = "Cân nặng"
 }
 

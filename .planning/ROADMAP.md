@@ -39,7 +39,7 @@ Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi 
     3. Log món khác cùng mealType gợi ý "Thay thế" (replaced status).
     4. Calories thực tế chỉ tính từ Actual MealLogs, không double count với Plan.
 
-- [ ] **Phase 27: Calendar Heatmap & Adherence**
+- [x] **Phase 27: Calendar Heatmap & Adherence**
   - Goal: Cung cấp góc nhìn toàn cảnh về kỷ luật ăn uống thông qua biểu đồ nhiệt.
   - Requirements: HEAT-01, HEAT-02, HEAT-03
   - Success Criteria:

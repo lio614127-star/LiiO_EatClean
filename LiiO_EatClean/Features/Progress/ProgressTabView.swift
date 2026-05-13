@@ -83,38 +83,40 @@ struct ProgressTabView: View {
                         .padding(.horizontal, 24)
                         .padding(.top, 20)
                         
-                        // Custom Time Range Selector (MOVED UP)
-                        HStack(spacing: 0) {
-                            ForEach(TimeRange.allCases, id: \.self) { range in
-                                let isSelected = viewModel.selectedTimeRange == range
-                                Button(action: {
-                                    if range == .custom {
-                                        isShowingCustomPicker = true
-                                    } else {
-                                        withAnimation {
-                                            viewModel.selectedTimeRange = range
-                                            viewModel.periodOffset = 0
-                                            Task { await viewModel.loadData() }
+                        if viewModel.selectedTab != .adherence {
+                            // Custom Time Range Selector (MOVED UP)
+                            HStack(spacing: 0) {
+                                ForEach(TimeRange.allCases, id: \.self) { range in
+                                    let isSelected = viewModel.selectedTimeRange == range
+                                    Button(action: {
+                                        if range == .custom {
+                                            isShowingCustomPicker = true
+                                        } else {
+                                            withAnimation {
+                                                viewModel.selectedTimeRange = range
+                                                viewModel.periodOffset = 0
+                                                Task { await viewModel.loadData() }
+                                            }
                                         }
+                                    }) {
+                                        Text(range == .custom ? customRangeLabel : range.rawValue)
+                                            .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                                            .foregroundColor(isSelected ? .primary : .secondary)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 8)
+                                            .background(isSelected ? Color(.systemBackground) : Color.clear)
+                                            .cornerRadius(8)
+                                            .shadow(color: isSelected ? .black.opacity(0.1) : .clear, radius: 2)
                                     }
-                                }) {
-                                    Text(range == .custom ? customRangeLabel : range.rawValue)
-                                        .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                                        .foregroundColor(isSelected ? .primary : .secondary)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 8)
-                                        .background(isSelected ? Color(.systemBackground) : Color.clear)
-                                        .cornerRadius(8)
-                                        .shadow(color: isSelected ? .black.opacity(0.1) : .clear, radius: 2)
+                                    .padding(2)
                                 }
-                                .padding(2)
                             }
+                            .background(Color(.systemGray6))
+                            .cornerRadius(10)
+                            .padding(.horizontal, 24)
+                            .padding(.top, 12) // ⚡ Added spacing between selectors
+                            .padding(.bottom, 24)
                         }
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 12) // ⚡ Added spacing between selectors
-                        .padding(.bottom, 24)
                         
                         ZStack {
                             let range = viewModel.currentDateRange
@@ -129,7 +131,7 @@ struct ProgressTabView: View {
                                     endDate: range.end
                                 )
                                 .animation(.easeInOut(duration: 0.35), value: viewModel.selectedTimeRange)
-                            } else {
+                            } else if viewModel.selectedTab == .weight {
                                 WeightChartView(
                                     data: viewModel.weightData,
                                     weeklyData: viewModel.weeklyData,
@@ -139,6 +141,9 @@ struct ProgressTabView: View {
                                     endDate: range.end
                                 )
                                 .animation(.easeInOut(duration: 0.35), value: viewModel.selectedTimeRange)
+                            } else if viewModel.selectedTab == .adherence {
+                                CalendarHeatmapView()
+                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                             }
                             
                             if viewModel.isLoading {
