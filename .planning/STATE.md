@@ -33,8 +33,8 @@ progress:
   - Success Criteria:
     1. Lịch tháng hiển thị màu sắc dựa trên Adherence Score.
     2. Tap vào ngày để mở chi tiết lịch sử (Journal).
-  - Status: Context gathered. Ready for planning.
-  - Resume file: .planning/phases/27-calendar-heatmap-adherence/27-CONTEXT.md
+  - Status: Context gathered & spec'd. Ready for implementation planning.
+  - Resume file: .planning/phases/27-calendar-heatmap-adherence/27-UI-SPEC.md
 
 ## Active Context
 
