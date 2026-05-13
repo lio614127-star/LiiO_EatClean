@@ -29,6 +29,7 @@ struct LiiO_EatCleanApp: App {
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .environment(networkMonitor)
                 .environment(voiceManager)
+                .environment(voiceManager.settings)
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             switch newPhase {

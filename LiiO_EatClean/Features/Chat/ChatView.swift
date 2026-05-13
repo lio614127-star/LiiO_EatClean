@@ -154,11 +154,18 @@ struct ChatView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showMemoryHub = true
-                    }) {
-                        Image(systemName: "brain.head.profile")
-                            .foregroundColor(.green)
+                    HStack(spacing: 16) {
+                        NavigationLink(destination: VoiceAssistantSettingsView()) {
+                            Image(systemName: "mic.badge.plus")
+                                .foregroundColor(.green)
+                        }
+                        
+                        Button(action: {
+                            showMemoryHub = true
+                        }) {
+                            Image(systemName: "brain.head.profile")
+                                .foregroundColor(.green)
+                        }
                     }
                 }
             }
