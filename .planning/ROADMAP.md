@@ -68,7 +68,7 @@ Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi 
     1. Nói "Hey LiiO" trong app thì AI lắng nghe.
     2. Auto-send khi dừng nói.
     3. Đổi tên AI hoạt động hoàn hảo.
-  - Progress: 1/5 plans complete
+  - Progress: 2/5 plans complete
 
 - [ ] **Phase 31: Global Context Builder cho AI Coach**
   - Goal: AI Coach đọc và hiểu mọi dữ liệu người dùng để tư vấn như một con người thực sự.

@@ -75,8 +75,8 @@ progress:
     1. Nói "Hey LiiO" trong app thì AI lắng nghe.
     2. Auto-send khi dừng nói.
     3. Đổi tên AI hoạt động hoàn hảo.
-  - Status: Executing Plan 1 of 5
-  - Last activity: Plan 1 (Foundation) completed.
+  - Status: Executing Plan 2 of 5
+  - Last activity: Plan 2 (Voice Engine) completed.
 
 ## Implementation Notes
 

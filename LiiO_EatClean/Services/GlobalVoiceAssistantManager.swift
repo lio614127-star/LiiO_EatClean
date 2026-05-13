@@ -14,7 +14,7 @@ class GlobalVoiceAssistantManager: NSObject {
     var audioLevel: Float = 0.0
     
     // MARK: - Dependencies
-    private let settings: AssistantVoiceSettings
+    let settings: AssistantVoiceSettings
     private let wakePhraseDetector: WakePhraseDetector
     private let speechService: SpeechRecognitionService
     private let ttsService: TextToSpeechService
@@ -318,6 +318,13 @@ class GlobalVoiceAssistantManager: NSObject {
     func handleAppForeground() {
         if settings.globalWakeEnabled {
             startListening()
+        }
+    }
+    
+    func dismissOverlay() {
+        if [.wakeDetected, .commandListening, .processing, .speaking, .error].contains(state) {
+            stopListening()
+            startListening() // Back to gate listening if enabled
         }
     }
     

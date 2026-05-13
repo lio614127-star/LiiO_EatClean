@@ -4,7 +4,13 @@ struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(NetworkMonitor.self) private var networkMonitor
     
-    @AppStorage("selectedTab") private var selectedTab = 0
+    @AppStorage("selectedTab") private var selectedTab = 4 // Default to AI Coach for testing or persistent storage
+    
+    @Environment(GlobalVoiceAssistantManager.self) var voiceManager
+    
+    var shouldShowVoiceOverlay: Bool {
+        [.wakeDetected, .commandListening, .processing, .speaking, .error].contains(voiceManager.state)
+    }
     
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -50,6 +56,21 @@ struct ContentView: View {
                 .padding(.top, 60) // Offset for notch/status bar
                 .ignoresSafeArea(.all, edges: .bottom)
         }
+        .overlay(alignment: .bottom) {
+            if shouldShowVoiceOverlay {
+                FloatingVoiceOverlay(
+                    onNavigateToChat: {
+                        selectedTab = 4
+                        voiceManager.dismissOverlay()
+                    },
+                    onDismiss: {
+                        voiceManager.dismissOverlay()
+                    }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.4), value: voiceManager.state)
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("navigateToJournal"))) { _ in
             selectedTab = 1
         }
