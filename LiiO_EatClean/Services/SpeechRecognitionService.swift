@@ -16,6 +16,7 @@ class SpeechRecognitionService {
     
     // Silence detection
     private var silenceTimer: Timer?
+    var silenceTimeout: TimeInterval = 1.0
     var onSilenceTimeout: (() -> Void)?
     
     init() {
@@ -139,6 +140,19 @@ class SpeechRecognitionService {
         audioLevel = 0.0
     }
     
+    /// Start a short recognition session for wake phrase detection
+    /// Automatically stops after maxDuration seconds
+    func startShortSession(maxDuration: TimeInterval = 3.0, onResult: @escaping (String) -> Void) {
+        startListening()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + maxDuration) { [weak self] in
+            guard let self, self.isListening else { return }
+            let transcript = self.transcript
+            self.stopListening()
+            onResult(transcript)
+        }
+    }
+    
     private func setupAudioSession() throws {
         let audioSession = AVAudioSession.sharedInstance()
         try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
@@ -147,9 +161,10 @@ class SpeechRecognitionService {
     
     private func resetSilenceTimer() {
         DispatchQueue.main.async { [weak self] in
-            self?.silenceTimer?.invalidate()
-            self?.silenceTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { _ in
-                self?.onSilenceTimeout?()
+            guard let self = self else { return }
+            self.silenceTimer?.invalidate()
+            self.silenceTimer = Timer.scheduledTimer(withTimeInterval: self.silenceTimeout, repeats: false) { _ in
+                self.onSilenceTimeout?()
             }
         }
     }

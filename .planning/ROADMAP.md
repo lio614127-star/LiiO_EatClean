@@ -53,20 +53,22 @@ Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi 
     1. AI nhận diện các bữa status "replaced" hoặc "skipped" để cân đối lại macro.
     2. Nút "Tái cấu trúc" hoạt động mượt mà chỉ cho các bữa chưa ăn.
 
-- [ ] **Phase 29: Chat Persistence Fix**
+- [x] **Phase 29: Chat Persistence Fix**
   - Goal: Đảm bảo lịch sử trò chuyện AI Coach không bị mất khi thoát ứng dụng.
   - Requirements: VOICE-06
   - Success Criteria:
     1. ChatSession và ChatMessage hoạt động ổn định trên CoreData.
     2. Mở app lên giữ nguyên phiên chat cũ.
+  - Status: Completed (UAT Passed)
 
-- [ ] **Phase 30: In-App Voice Assistant & Global Wake Phrase**
+- [/] **Phase 30: In-App Voice Assistant & Global Wake Phrase**
   - Goal: Trải nghiệm Hands-free đích thực, nói là hiểu.
   - Requirements: VOICE-01, VOICE-02, VOICE-03, VOICE-04
   - Success Criteria:
     1. Nói "Hey LiiO" trong app thì AI lắng nghe.
     2. Auto-send khi dừng nói.
     3. Đổi tên AI hoạt động hoàn hảo.
+  - Progress: 1/5 plans complete
 
 - [ ] **Phase 31: Global Context Builder cho AI Coach**
   - Goal: AI Coach đọc và hiểu mọi dữ liệu người dùng để tư vấn như một con người thực sự.
@@ -77,10 +79,10 @@ Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi 
 
 ## Progress
 
-- **Phases Complete:** 28
-- **Phases Active:** 29
-- **Phases Pending:** 2
-- **Completion:** 90% (28/31)
+- **Phases Complete:** 29
+- **Phases Active:** 30
+- **Phases Pending:** 1
+- **Completion:** 94% (29/31)
 
 ---
 *Last updated: 2026-05-12 for Milestone v1.5*

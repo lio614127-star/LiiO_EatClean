@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Trợ lý AI Toàn diện
 status: Executing Phase 30
-last_updated: "2026-05-13T06:34:33.386Z"
+last_updated: "2026-05-13T07:49:38.921Z"
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 14
-  completed_plans: 5
-  percent: 36
+  completed_plans: 6
+  percent: 43
 ---
 
 # Project State
@@ -68,7 +68,15 @@ progress:
 ### Known Blockers
 
 - CoreData currently lacks `DailyPlan`, `WeeklyPlan`, `ChatSession`, and `ChatMessage` entities. A lightweight migration/addition is required for Phase 25 and Phase 29.
-- Audio permissions must be requested before initializing the global Wake Phrase detector in Phase 30.
+- [/] **Phase 30: In-App Voice Assistant & Global Wake Phrase**
+  - Goal: Trải nghiệm Hands-free đích thực, nói là hiểu.
+  - Requirements: VOICE-01, VOICE-02, VOICE-03, VOICE-04
+  - Success Criteria:
+    1. Nói "Hey LiiO" trong app thì AI lắng nghe.
+    2. Auto-send khi dừng nói.
+    3. Đổi tên AI hoạt động hoàn hảo.
+  - Status: Executing Plan 1 of 5
+  - Last activity: Plan 1 (Foundation) completed.
 
 ## Implementation Notes
 

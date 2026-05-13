@@ -20,11 +20,25 @@ struct LiiO_EatCleanApp: App {
         }
     }
 
+    @State private var voiceManager = GlobalVoiceAssistantManager()
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some Scene {
         WindowGroup {
             SplashView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .environment(networkMonitor)
+                .environment(voiceManager)
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            switch newPhase {
+            case .active:
+                voiceManager.handleAppForeground()
+            case .background, .inactive:
+                voiceManager.handleAppBackground()
+            @unknown default:
+                break
+            }
         }
     }
     
