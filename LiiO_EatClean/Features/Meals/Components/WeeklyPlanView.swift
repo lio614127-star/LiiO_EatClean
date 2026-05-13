@@ -9,113 +9,203 @@ struct WeeklyPlanView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
-                if viewModel.isLoadingWeekly {
-                    VStack(spacing: 12) {
-                        // Real-time model transparency rows for parallel tasks (Days of the week)
-                        let dayOrder = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
-                        let weeklyActivities = AIActivityCenter.shared.activities.filter { 
-                            ($0.featureSource.contains("Thứ") || 
-                             $0.featureSource.contains("Chủ Nhật") || 
-                             $0.featureSource.contains("Gom")) && 
-                            $0.status != .completed
-                        }.sorted { a1, a2 in
-                            let o1 = dayOrder.firstIndex(where: { a1.featureSource.contains($0) }) ?? 99
-                            let o2 = dayOrder.firstIndex(where: { a2.featureSource.contains($0) }) ?? 99
-                            return o1 < o2
-                        }
-                        
-                        ForEach(weeklyActivities) { activity in
-                            ActivityRow(activity: activity)
-                                .frame(maxWidth: 320)
-                                .transition(.opacity.combined(with: .scale))
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.top, 60)
-                    .padding(.horizontal)
-                    .animation(.spring(), value: AIActivityCenter.shared.activities)
-                } else if viewModel.weeklyPlan.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "calendar.badge.exclamationmark")
-                            .font(.system(size: 48))
+            ScrollView {
+                VStack(spacing: 12) {
+                    // Header (D-05: compact 7-row overview)
+                    VStack(spacing: 2) {
+                        Text("Kế hoạch tuần")
+                            .font(.title3.bold())
+                        Text("Nhấn vào ngày để xem chi tiết")
+                            .font(.caption)
                             .foregroundColor(.secondary)
-                        Text("Chưa có kế hoạch tuần")
-                            .font(.headline)
-                        
-                        if let error = viewModel.weeklyErrorMessage {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                        } else {
-                            Text("Nhấn nút bên dưới để tạo")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Button {
-                            Task { await viewModel.generateWeekPlan(targetCalories: targetCalories) }
-                        } label: {
-                            HStack {
-                                Image(systemName: "sparkles")
-                                Text("Tạo kế hoạch tuần")
-                            }
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
-                            .background(Color.green)
-                            .cornerRadius(12)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.top, 8)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        VStack(spacing: 8) {
-                            // Header
-                            VStack(spacing: 4) {
-                                Text("Kế hoạch tuần")
-                                    .font(.title2.bold())
-                                Text("Nhấn vào ngày để xem chi tiết")
+                    .padding(.top, 12)
+                    .padding(.bottom, 4)
+                    
+                    if viewModel.weeklyPlan.isEmpty && (viewModel.isLoadingWeekly || viewModel.weeklyErrorMessage != nil) {
+                        if let error = viewModel.weeklyErrorMessage {
+                            VStack(spacing: 12) {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .font(.title)
+                                    .foregroundColor(.red)
+                                Text(error)
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(.red)
+                                    .multilineTextAlignment(.center)
+                                
+                                Button("Thử lại") {
+                                    viewModel.generateWeekPlan(targetCalories: targetCalories)
+                                }
+                                .buttonStyle(.bordered)
                             }
-                            .padding(.top, 8)
-                            .padding(.bottom, 4)
-                            
-                            // 7 day rows (D-05: compact 7-row overview)
-                            ForEach(viewModel.weeklyPlan) { dayPlan in
-                                WeeklyDayRow(dayPlan: dayPlan)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        selectedDay = dayPlan
-                                    }
+                            .padding()
+                        } else {
+                            // ⚡ Stable Skeleton rows while loading
+                            ForEach(0..<7, id: \.self) { _ in
+                                SkeletonWeeklyRow()
                             }
                         }
-                        .padding()
+                    } else if viewModel.weeklyPlan.isEmpty {
+                        // Empty state
+                        VStack(spacing: 12) {
+                            Image(systemName: "calendar.badge.plus")
+                                .font(.system(size: 48))
+                                .foregroundColor(.secondary)
+                            Text("Chưa có kế hoạch tuần")
+                                .font(.headline)
+                            Button("Tạo kế hoạch") {
+                                viewModel.generateWeekPlan(targetCalories: targetCalories)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        .padding(.top, 100)
+                    } else {
+                        // Smart Fill Summary
+                        if !viewModel.datesToGenerate.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("LiiO sẽ lấp đầy 7 ngày tiếp theo chưa có kế hoạch:")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.purple)
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(viewModel.datesToGenerate, id: \.self) { date in
+                                            Text(formatShortDate(date))
+                                                .font(.system(size: 10, weight: .bold))
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(Color.purple.opacity(0.1))
+                                                .clipShape(Capsule())
+                                        }
+                                    }
+                                }
+                            }
+                            .padding()
+                            .background(Color.purple.opacity(0.05))
+                            .cornerRadius(12)
+                            .padding(.horizontal)
+                        }
+
+                        // 7 day rows
+                        ForEach(viewModel.weeklyPlan) { dayPlan in
+                            WeeklyDayRow(dayPlan: dayPlan)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedDay = dayPlan
+                                }
+                        }
+                        
+                        // Confirm Button (Phase 26)
+                        Button {
+                            viewModel.confirmWeeklyPlan(targetCalories: targetCalories)
+                            dismiss()
+                        } label: {
+                            Text("Chốt kế hoạch tuần")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.green)
+                                .cornerRadius(12)
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 12)
                     }
                 }
+                .padding()
             }
             .background(Color(.systemGroupedBackground))
+            .navigationTitle("Lên kế hoạch tuần")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    HStack(spacing: 12) {
+                        Button {
+                            viewModel.generateWeekPlan(targetCalories: targetCalories)
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.subheadline)
+                        }
+                        
+                        if viewModel.weekOffset != 0 {
+                            Button {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    viewModel.weekOffset = 0
+                                    viewModel.generateWeekPlan(targetCalories: targetCalories)
+                                }
+                            } label: {
+                                Text("Hôm nay")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.green)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.green.opacity(0.5), lineWidth: 1.2)
+                                    )
+                            }
+                            .transition(.scale.combined(with: .opacity))
+                        }
+                    }
+                }
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Đóng") { dismiss() }
                 }
             }
+            .safeAreaInset(edge: .top) {
+                // ⚡ Stable Header for AI progress
+                VStack(spacing: 0) {
+                    if viewModel.isLoadingWeekly {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                let weeklyActivities = AIActivityCenter.shared.activities.filter { 
+                                    ($0.featureSource.contains("Thứ") || $0.featureSource.contains("Chủ Nhật") || $0.featureSource.contains("Gom")) && 
+                                    !$0.isFinished
+                                }
+                                
+                                ForEach(weeklyActivities) { activity in
+                                    HStack(spacing: 4) {
+                                        ProgressView().scaleEffect(0.6)
+                                        Text(activity.featureSource)
+                                            .font(.system(size: 10, weight: .bold))
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.purple.opacity(0.1))
+                                    .clipShape(Capsule())
+                                }
+                                
+                                if weeklyActivities.isEmpty {
+                                    Text("Đang phân tích...")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.purple)
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                        .frame(height: 34)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .background(Color(.systemBackground).opacity(0.9))
+                .overlay(Divider(), alignment: .bottom)
+            }
             .sheet(item: $selectedDay) { dayPlan in
-                WeeklyDayDetailView(dayPlan: dayPlan, targetCalories: targetCalories)
+                WeeklyDayDetailView(dayPlan: dayPlan, targetCalories: targetCalories, viewModel: viewModel)
             }
         }
         .task {
             if viewModel.weeklyPlan.isEmpty {
-                await viewModel.generateWeekPlan(targetCalories: targetCalories)
+                viewModel.generateWeekPlan(targetCalories: targetCalories)
             }
         }
+    }
+    
+    private func formatShortDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM"
+        return formatter.string(from: date)
     }
 }
 
@@ -165,6 +255,7 @@ struct WeeklyDayRow: View {
 struct WeeklyDayDetailView: View {
     let dayPlan: WeeklyDayPlan
     let targetCalories: Double
+    let viewModel: MealPlanViewModel // ⚡ Added reference
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -181,18 +272,23 @@ struct WeeklyDayDetailView: View {
                     }
                     .padding(.top, 8)
                     
-                    // Cards per meal type (view-only, no log action for weekly preview)
-                    ForEach(MealPlanViewModel.mealTypes, id: \.self) { mealType in
-                        let foods = dayPlan.items.filter { ($0.mealType ?? "Ăn vặt") == mealType }
-                        if !foods.isEmpty {
-                                MealPlanCard(
-                                    mealType: mealType,
-                                    foods: foods,
-                                    isLogged: false,
-                                    isViewOnly: true,
-                                    onLog: {} // No-op for weekly preview
-                                )
-                        }
+                    // Cards per meal type (Phase 26: use TimelineItem pattern)
+                    ForEach(dayPlan.timelineItems) { item in
+                        MealPlanCard(
+                            item: item,
+                            pendingLinks: [], // No links in weekly preview
+                            isViewOnly: false, // Allow swap/delete in preview
+                            onMarkEaten: { _ in }, // No logging in preview
+                            onSkip: { _ in },
+                            onLink: { _, _ in },
+                            onSwap: { food in
+                                Task { await viewModel.swapWeeklyMeal(item: food, day: dayPlan.day) }
+                            },
+                            onDelete: { food in
+                                viewModel.removeFoodFromWeeklyPlan(id: food.id, day: dayPlan.day)
+                            },
+                            onAddFood: {}
+                        )
                     }
                 }
                 .padding()
@@ -205,5 +301,24 @@ struct WeeklyDayDetailView: View {
                 }
             }
         }
+    }
+}
+struct SkeletonWeeklyRow: View {
+    var body: some View {
+        HStack {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.gray.opacity(0.1))
+                .frame(width: 80, height: 24)
+            Spacer()
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.gray.opacity(0.1))
+                .frame(width: 60, height: 20)
+        }
+        .padding()
+        .frame(height: 80)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(12)
+        .padding(.top, 8)
+        .opacity(0.6)
     }
 }

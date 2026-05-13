@@ -19,6 +19,115 @@ struct AIOrchestrator {
         let totalCalories: Int
     }
     
+    /// Streaming generate a day plan (Single-pass All-in-one)
+    func generateDayPlanStreaming(
+        targetCalories: Double,
+        userContext: String,
+        completedMealTypes: [String] = [],
+        isInternal: Bool = false,
+        onMeal: @escaping @Sendable (AISuggestedFood) -> Void
+    ) async throws -> [AISuggestedFood] {
+        try await poolManager.loadKeys()
+        
+        var allFoods: [AISuggestedFood] = []
+        var currentJSONBuffer = ""
+        var isInsideArray = false
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            Task {
+                do {
+                    let stream = aiService.generateDayPlanStream(targetCalories: targetCalories, userContext: userContext, completedMealTypes: completedMealTypes, isInternal: isInternal)
+                    
+                    for try await result in stream {
+                        switch result {
+                        case .chunk(let text):
+                            currentJSONBuffer += text
+                            
+                            // Detect and parse individual meal objects from the stream
+                            let parsedMeals = extractCompleteMeals(from: &currentJSONBuffer, isInsideArray: &isInsideArray)
+                            for meal in parsedMeals {
+                                allFoods.append(meal)
+                                onMeal(meal)
+                            }
+                            
+                        case .suggestions(let foods):
+                            // Final safety catch-all
+                            let newFoods = foods.filter { newFood in !allFoods.contains(where: { $0.name == newFood.name }) }
+                            for food in newFoods {
+                                allFoods.append(food)
+                                onMeal(food)
+                            }
+                            
+                        case .error(let msg):
+                            throw AIError.networkError(msg)
+                            
+                        default:
+                            break
+                        }
+                    }
+                    continuation.resume(returning: allFoods)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+    
+    private func extractCompleteMeals(from buffer: inout String, isInsideArray: inout Bool) -> [AISuggestedFood] {
+        var results: [AISuggestedFood] = []
+        
+        // Find the start of the JSON array if not already inside
+        if !isInsideArray {
+            if let index = buffer.firstIndex(of: "[") {
+                buffer.removeSubrange(...index)
+                isInsideArray = true
+            }
+        }
+        
+        guard isInsideArray else { return [] }
+        
+        // Try to find a complete JSON object { ... }
+        var searchRange = buffer.startIndex..<buffer.endIndex
+        while let start = buffer.range(of: "{", range: searchRange)?.lowerBound {
+            var braceCount = 0
+            var end: String.Index? = nil
+            
+            for index in buffer.indices[start...] {
+                if buffer[index] == "{" { braceCount += 1 }
+                else if buffer[index] == "}" {
+                    braceCount -= 1
+                    if braceCount == 0 {
+                        end = buffer.index(after: index)
+                        break
+                    }
+                }
+            }
+            
+            if let foundEnd = end {
+                let jsonObject = String(buffer[start..<foundEnd])
+                if let data = jsonObject.data(using: .utf8),
+                   let food = try? JSONDecoder().decode(AISuggestedFood.self, from: data) {
+                    results.append(food)
+                }
+                
+                // Move search range forward
+                searchRange = foundEnd..<buffer.endIndex
+                
+                // If this was the last object in the buffer, clear the processed part
+                if foundEnd == buffer.endIndex {
+                    buffer = ""
+                    break
+                }
+            } else {
+                // Incomplete object, keep it in buffer for next chunk
+                buffer = String(buffer[start...])
+                break
+            }
+        }
+        
+        return results
+    }
+
     /// Batch generate a day plan (Breakfast, Lunch, Dinner, Snack)
     func generateDayPlanBatched(
         mealTypes: [String], 
@@ -72,12 +181,15 @@ struct AIOrchestrator {
     }
     
     /// Batch generate a weekly plan (7 days)
-    func generateWeekPlanBatched(userContext: String) async throws -> [WeeklyDayPlan] {
+    func generateWeekPlanBatched(userContext: String, dates: [Date]) async throws -> [WeeklyDayPlan] {
         try await poolManager.loadKeys()
         let activeKeys = await poolManager.getKeys().filter { $0.isActive }
         if activeKeys.isEmpty { throw AIError.missingKey }
         
-        let days = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM"
+        
+        let dayNames = dates.map { formatter.string(from: $0) }
         
         // Priority: PAID keys first for heavy reasoning (weekly plans)
         let keysToUse = activeKeys.sorted { (k1, k2) -> Bool in
@@ -88,15 +200,15 @@ struct AIOrchestrator {
         }
         
         // Use as many keys as possible, capped only by number of tasks (7 days)
-        let parallelCount = min(keysToUse.count, days.count)
-        let taskGroups = splitWorkload(days, across: parallelCount)
+        let parallelCount = min(keysToUse.count, dates.count)
+        let taskGroups = splitWorkload(dates, across: parallelCount)
         var allResults: [WeeklyDayPlan] = []
         
         try await withThrowingTaskGroup(of: [WeeklyDayPlan].self) { group in
-            for (index, dayGroup) in taskGroups.enumerated() {
+            for (index, dateGroup) in taskGroups.enumerated() {
                 let key = keysToUse[index]
                 group.addTask {
-                    return try await self.executeWeekBatch(days: dayGroup, key: key, userContext: userContext)
+                    return try await self.executeWeekBatch(dates: dateGroup, key: key, userContext: userContext)
                 }
             }
             
@@ -106,8 +218,8 @@ struct AIOrchestrator {
         }
         
         return allResults.sorted { d1, d2 in
-            let order = ["Thứ 2": 0, "Thứ 3": 1, "Thứ 4": 2, "Thứ 5": 3, "Thứ 6": 4, "Thứ 7": 5, "Chủ Nhật": 6]
-            return (order[d1.day] ?? 0) < (order[d2.day] ?? 0)
+            guard let date1 = d1.date, let date2 = d2.date else { return false }
+            return date1 < date2
         }
     }
     
@@ -212,26 +324,41 @@ struct AIOrchestrator {
         return foods
     }
     
-    private func executeWeekBatch(days: [String], key: APIKeyModel, userContext: String) async throws -> [WeeklyDayPlan] {
-        let dayList = days.joined(separator: ", ")
+    private func executeWeekBatch(dates: [Date], key: APIKeyModel, userContext: String) async throws -> [WeeklyDayPlan] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM/yyyy"
+        let dayList = dates.map { formatter.string(from: $0) }.joined(separator: ", ")
+        
         let systemPrompt = """
-        Bạn là chuyên gia dinh dưỡng. Hãy lên kế hoạch ăn uống cho các ngày sau: \(dayList).
+        Bạn là chuyên gia dinh dưỡng. Hãy lên kế hoạch ăn uống chi tiết cho các ngày cụ thể sau: \(dayList).
         
         Dữ liệu người dùng:
         \(userContext)
         
-        YÊU CẦU:
-        1. Mỗi ngày đề xuất đủ các bữa: Sáng, Trưa, Tối, Ăn vặt.
-        2. Trả về JSON array phẳng chứa các đối tượng ngày.
+        YÊU CẦU QUAN TRỌNG:
+        1. Mỗi ngày đề xuất đủ 4 bữa: Bữa sáng, Bữa trưa, Bữa tối, Ăn vặt.
+        2. TỪNG MÓN ĂN PHẢI có đầy đủ:
+           - "ingredients": Danh sách nguyên liệu chi tiết (tên, khối lượng g, đơn vị).
+           - "instructions": Các bước nấu ăn ngắn gọn (array of strings).
+           - Macro: calories, protein, carbs, fat.
+        3. Phải đảm bảo thực đơn thực tế, phù hợp với người Việt Nam.
+        4. TRẢ VỀ ĐÚNG NGÀY TRONG JSON: Trường "date" phải là chuỗi định dạng "dd/MM/yyyy" khớp với danh sách trên.
         
         Định dạng JSON:
         [
           {
-            "day": "Thứ 2",
-            "breakfast": {"name": "...", "calories": 400, "protein": 20, "carbs": 50, "fat": 10, "servingSize": 1.0},
-            "lunch": {"name": "...", "calories": 600, "protein": 30, "carbs": 70, "fat": 15, "servingSize": 1.0},
-            "dinner": {"name": "...", "calories": 500, "protein": 25, "carbs": 60, "fat": 12, "servingSize": 1.0},
-            "snack": {"name": "...", "calories": 200, "protein": 10, "carbs": 30, "fat": 5, "servingSize": 1.0}
+            "day": "Thứ ...",
+            "date": "14/05/2026",
+            "breakfast": {
+              "name": "...", 
+              "calories": 400, "protein": 20, "carbs": 50, "fat": 10, "servingSize": 1.0,
+              "unit": "tô", "weightInGrams": 450,
+              "ingredients": [{"name": "...", "amount": 100, "unit": "g"}],
+              "instructions": ["Bước 1...", "Bước 2..."]
+            },
+            "lunch": { ... },
+            "dinner": { ... },
+            "snack": { ... }
           }
         ]
         """
@@ -239,15 +366,22 @@ struct AIOrchestrator {
         let response = try await aiService.generateText(
             prompt: systemPrompt,
             requestType: .weeklyPlan,
-            feature: "Kế hoạch: Gom \(days.count) ngày",
+            feature: "Kế hoạch: \(dates.count) ngày cụ thể",
             forcedKey: key,
-            subTasks: days.map { "Lập kế hoạch: \($0)" },
+            subTasks: dates.map { "Lập kế hoạch: \(formatter.string(from: $0))" },
             isInternal: true
         )
         
         let jsonStr = extractJSON(from: response)
         guard let data = jsonStr.data(using: .utf8) else { return [] }
-        return try JSONDecoder().decode([WeeklyDayPlan].self, from: data)
+        
+        // Custom decoder to handle date string
+        let decoder = JSONDecoder()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd/MM/yyyy"
+        decoder.dateDecodingStrategy = .formatted(dateFormatter)
+        
+        return try decoder.decode([WeeklyDayPlan].self, from: data)
     }
     
     private func extractJSON(from text: String) -> String {

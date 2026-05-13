@@ -32,7 +32,7 @@ class MealSuggestionViewModel {
         }
     }
     
-    func fetchSuggestions(remainingCalories: Double) async {
+    func fetchSuggestions(remainingCalories: Double, mealType: String? = nil) async {
         guard !isLoading else { return }
         
         await MainActor.run {
@@ -47,7 +47,7 @@ class MealSuggestionViewModel {
                 for: "Gợi ý món ăn",
                 strategy: .mealSuggestion,
                 remainingCalories: remainingCalories,
-                mealType: suggestedMealType
+                mealType: mealType ?? suggestedMealType
             )
             
             let message = try await aiService.sendChatMessage(history: [], systemPrompt: prompt, feature: "Gợi ý bữa ăn")
@@ -80,7 +80,7 @@ class MealSuggestionViewModel {
                         Trả về JSON duy nhất: {"action":"suggest_meal","items":[{"name":"...","calories":...,"protein":...,"carbs":...,"fat":...,"servingSize":1.0,"mealType":"\(originalItem.mealType ?? "")"}]}
                         """
                         
-                        if let newFoods = try? await aiService.quickReaskForFood(prompt: reaskPrompt), let newFood = newFoods.first {
+                        if let newFoods = try? await aiService.quickReaskForFood(prompt: reaskPrompt, isInternal: true), let newFood = newFoods.first {
                             // Validate the new food as well (max 1 retry)
                             let newViolations = FoodSafetyValidator.shared.validateFood(name: newFood.name, against: memory)
                             if newViolations.isEmpty {

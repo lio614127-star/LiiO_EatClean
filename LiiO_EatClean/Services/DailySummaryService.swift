@@ -13,6 +13,12 @@ struct DailySummary {
     let aiComment: String
     let aiSuggestion: String
     let isGoalMet: Bool
+    
+    // Journal Adherence
+    var adherenceScore: Double? = nil
+    var plannedCalories: Double? = nil
+    var plannedProtein: Double? = nil
+    var adherenceLabel: String? = nil
 }
 
 @Observable
@@ -22,20 +28,23 @@ class DailySummaryService {
     
     private let mealRepository: MealRepositoryProtocol
     private let userRepository: UserRepositoryProtocol
+    private let dailyPlanRepository: DailyPlanRepositoryProtocol
     private let insightDetector: InsightDetector
     private let aiService: AIService
     
     init(mealRepository: MealRepositoryProtocol = MealRepository(),
          userRepository: UserRepositoryProtocol = UserRepository(),
+         dailyPlanRepository: DailyPlanRepositoryProtocol = DailyPlanRepository(),
          insightDetector: InsightDetector = InsightDetector(),
          aiService: AIService = AIService.shared) {
         self.mealRepository = mealRepository
         self.userRepository = userRepository
+        self.dailyPlanRepository = dailyPlanRepository
         self.insightDetector = insightDetector
         self.aiService = aiService
     }
     
-    func generateSummary(for date: Date = Date()) async {
+    func generateSummary(for date: Date = Date(), isInternal: Bool = false) async {
         isLoading = true
         defer { isLoading = false }
         
@@ -100,7 +109,12 @@ class DailySummaryService {
             var aiSuggestion = "Uống đủ nước và cố gắng ăn nhiều rau xanh hơn vào ngày mai."
             
             if !meals.isEmpty {
-                let aiResponse = try await aiService.generateText(prompt: fullPrompt, requestType: .dailySummary, feature: "Tổng kết ngày")
+                let aiResponse = try await aiService.generateText(
+                    prompt: fullPrompt, 
+                    requestType: .dailySummary, 
+                    feature: "Tổng kết ngày",
+                    isInternal: isInternal
+                )
                 // Parse JSON block out of markdown response if it exists
                 let jsonString = extractJSON(from: aiResponse)
                 
@@ -114,7 +128,7 @@ class DailySummaryService {
                 aiSuggestion = "Đừng bỏ bữa, đặc biệt là bữa sáng rất quan trọng."
             }
             
-            let summary = DailySummary(
+            var summary = DailySummary(
                 date: date,
                 totalCalories: totalCalories,
                 targetCalories: targetCalories,
@@ -127,6 +141,20 @@ class DailySummaryService {
                 aiSuggestion: aiSuggestion,
                 isGoalMet: isGoalMet
             )
+            
+            // Integrate Journal Adherence
+            if let dailyPlan = try await dailyPlanRepository.fetchPlan(for: date) {
+                let adherence = MealAdherenceCalculator.shared.calculate(
+                    actualMeals: meals,
+                    plannedMeals: dailyPlan.plannedMeals,
+                    targetCalories: dailyPlan.targetCalories,
+                    targetProtein: dailyPlan.targetProtein
+                )
+                summary.adherenceScore = adherence.totalScore
+                summary.plannedCalories = dailyPlan.targetCalories
+                summary.plannedProtein = dailyPlan.targetProtein
+                summary.adherenceLabel = adherence.statusLabel
+            }
             
             self.currentSummary = summary
             

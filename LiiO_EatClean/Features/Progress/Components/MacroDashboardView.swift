@@ -85,6 +85,7 @@ struct MacroDashboardView: View {
         case .week: return "TB 7 ngày"
         case .month: return "TB 30 ngày"
         case .quarter: return "TB 3 tháng"
+        case .custom: return "Tùy chọn"
         }
     }
 }
@@ -163,7 +164,7 @@ struct TrendBadge: View {
             Image(systemName: direction.icon)
                 .font(.system(size: 10, weight: .bold))
                 .foregroundColor(color)
-            Text(direction.rawValue)
+            Text(direction.rawValueVN)
                 .font(.caption2)
                 .foregroundColor(.secondary)
         }
@@ -171,5 +172,70 @@ struct TrendBadge: View {
         .padding(.vertical, 4)
         .background(color.opacity(0.1))
         .cornerRadius(8)
+    }
+}
+
+struct MacroGoalRingsRow: View {
+    let aggregate: MacroAggregate
+    let target: MacroTarget
+    
+    var body: some View {
+        HStack(spacing: 20) {
+            MacroRing(
+                progress: aggregate.avgDailyProtein / max(target.proteinGrams, 1),
+                color: .blue,
+                label: "Protein"
+            )
+            MacroRing(
+                progress: aggregate.avgDailyCarbs / max(target.carbsGrams, 1),
+                color: .purple,
+                label: "Carbs"
+            )
+            MacroRing(
+                progress: aggregate.avgDailyFat / max(target.fatGrams, 1),
+                color: .orange,
+                label: "Fat"
+            )
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+struct MacroRing: View {
+    let progress: Double
+    let color: Color
+    let label: String
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .stroke(color.opacity(0.15), lineWidth: 6)
+                
+                Circle()
+                    .trim(from: 0, to: CGFloat(min(progress, 1.0)))
+                    .stroke(
+                        AngularGradient(
+                            colors: [color.opacity(0.8), color],
+                            center: .center,
+                            startAngle: .degrees(0),
+                            endAngle: .degrees(360)
+                        ),
+                        style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                
+                Text(String(format: "%.1f%%", progress * 100).replacingOccurrences(of: ".0", with: ""))
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                    .padding(.horizontal, 4)
+            }
+            .frame(width: 50, height: 50)
+            
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.secondary)
+        }
     }
 }

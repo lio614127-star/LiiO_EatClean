@@ -8,51 +8,129 @@ struct MealPlanSheet: View {
     @State private var showConfirmDialog = false
     @State private var showWeeklyPlan = false
     @State private var showOfflineToast = false
+    @State private var showFoodSearch = false
+    @State private var selectedMealType: String = "Bữa sáng"
     private var isOffline: Bool { !NetworkMonitor.shared.isConnected }
     
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
-                    // Header summary
-                    if !viewModel.planItems.isEmpty {
-                        VStack(spacing: 4) {
-                            Text("Kế hoạch hôm nay")
-                                .font(.title2.bold())
-                            Text("Tổng: \(Int(viewModel.totalPlanCalories)) / \(Int(targetCalories)) kcal")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                VStack(spacing: 0) {
+                    // Date Navigation (Phase 25)
+                    HorizontalDateStrip(selectedDate: $viewModel.selectedDate)
+                        .onChange(of: viewModel.selectedDate) { _, newDate in
+                            Task {
+                                await viewModel.loadExistingPlan(for: newDate)
+                            }
                         }
-                        .padding(.top, 8)
+                        .padding(.bottom, 8)
+                    
+                    Divider()
+                    
+                    // Header summary
+                    HStack(alignment: .center) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(Calendar.current.isDateInToday(viewModel.selectedDate) ? "Kế hoạch hôm nay" : "Kế hoạch ngày")
+                                .font(.title2.bold())
+                            if !Calendar.current.isDateInToday(viewModel.selectedDate) {
+                                Text(formatDate(viewModel.selectedDate))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        if !Calendar.current.isDateInToday(viewModel.selectedDate) {
+                            Button {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    viewModel.selectedDate = Date()
+                                }
+                            } label: {
+                                Text("Hôm nay")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.green)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(Color.green.opacity(0.5), lineWidth: 1.5)
+                                    )
+                            }
+                            .transition(.scale.combined(with: .opacity))
+                        }
+                    }
+                    Text("Tổng: \(Int(viewModel.totalPlanCalories)) / \(Int(targetCalories)) kcal")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 4)
+                    
+                    // Model Indicator (Local UX)
+                    if viewModel.isLoading {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Gemini đang thiết kế thực đơn cho bạn...")
+                                .font(.caption.bold())
+                                .foregroundColor(.purple)
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                        .background(Color.purple.opacity(0.1))
+                        .clipShape(Capsule())
+                        .padding(.bottom, 4)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
                     
-                    // Meal cards
-                    if viewModel.isLoading {
-                        VStack(spacing: 12) {
-                            // Real-time model transparency rows for parallel tasks
-                            let mealOrder = ["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"]
-                            let planningActivities = AIActivityCenter.shared.activities.filter { 
-                                ($0.featureSource.contains("Kế hoạch:") || 
-                                 $0.featureSource.contains("Bữa") || 
-                                 $0.featureSource.contains("Master")) && 
-                                $0.status != .completed 
-                            }.sorted { a1, a2 in
-                                let o1 = mealOrder.firstIndex(where: { a1.featureSource.contains($0) }) ?? 99
-                                let o2 = mealOrder.firstIndex(where: { a2.featureSource.contains($0) }) ?? 99
-                                return o1 < o2
-                            }
+                    // Meal cards with Unified Timeline
+                    VStack(spacing: 16) {
+                        if let record = viewModel.dailyRecord {
+                            let isPastDate = Calendar.current.startOfDay(for: viewModel.selectedDate) < Calendar.current.startOfDay(for: Date())
                             
-                            ForEach(planningActivities) { activity in
-                                ActivityRow(activity: activity)
-                                    .frame(maxWidth: 320)
-                                    .transition(.opacity.combined(with: .scale))
+                            ForEach(record.timelineItems) { item in
+                                MealPlanCard(
+                                    item: item,
+                                    pendingLinks: viewModel.pendingLinks,
+                                    isViewOnly: isPastDate,
+                                    onMarkEaten: { planned in
+                                        Task { await viewModel.markPlannedMealAsEaten(plannedMeal: planned) }
+                                    },
+                                    onSkip: { planned in
+                                        Task { await viewModel.skipPlannedMeal(plannedMeal: planned) }
+                                    },
+                                    onLink: { meal, plannedId in
+                                        Task { await viewModel.linkMealToPlan(meal: meal, plannedMealId: plannedId) }
+                                    },
+                                    onSwap: { food in
+                                        Task { await viewModel.swapMeal(item: food) }
+                                    },
+                                    onDelete: { food in
+                                        viewModel.removeFoodFromPlan(id: food.id)
+                                    },
+                                    onAddFood: {
+                                        selectedMealType = item.type
+                                        showFoodSearch = true
+                                    }
+                                )
+                                .id("journal-\(item.type)-\(item.actuals.count)-\(item.planned != nil)")
                             }
+                        } else if viewModel.isLoading {
+                            ForEach(MealPlanViewModel.mealTypes, id: \.self) { mealType in
+                                SkeletonMealCard(mealType: mealType)
+                            }
+                        } else {
+                            ContentUnavailableView(
+                                "Chưa có kế hoạch",
+                                systemImage: "calendar.badge.plus",
+                                description: Text("Hãy để AI thiết kế thực đơn phù hợp cho bạn")
+                            )
+                            .padding(.top, 40)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 60)
-                        .padding(.horizontal)
-                        .animation(.spring(), value: AIActivityCenter.shared.activities)
-                    } else if let error = viewModel.errorMessage {
+                    }
+                    // ⚡ Removed per-value animation that caused jittering during streaming
+                    
+                    if let error = viewModel.errorMessage {
                         VStack(spacing: 12) {
                             Image(systemName: "exclamationmark.triangle")
                                 .font(.largeTitle)
@@ -69,29 +147,14 @@ struct MealPlanSheet: View {
                         }
                         .padding(40)
                     } else {
-                        // 4 meal cards (D-04: Cards xếp dọc)
-                        ForEach(MealPlanViewModel.mealTypes, id: \.self) { mealType in
-                            let foods = viewModel.items(for: mealType)
-                            if !foods.isEmpty {
-                                MealPlanCard(
-                                    mealType: mealType,
-                                    foods: foods,
-                                    isLogged: viewModel.loggedMealTypes.contains(mealType),
-                                    onLog: {
-                                        Task { await viewModel.logMeal(type: mealType) }
-                                    }
-                                )
-                            }
-                        }
-                        
                         // "Áp dụng tất cả" button (D-06)
-                        if !viewModel.planItems.isEmpty && !viewModel.allMealsLogged {
+                        if !viewModel.planItems.isEmpty && !viewModel.allMealsConfirmed {
                             Button {
                                 showConfirmDialog = true
                             } label: {
                                 HStack {
-                                    Image(systemName: "checkmark.circle.fill")
-                                    Text("Áp dụng toàn bộ kế hoạch")
+                                    Image(systemName: "lock.fill")
+                                    Text("Chốt kế hoạch hôm nay")
                                         .fontWeight(.bold)
                                 }
                                 .foregroundColor(.white)
@@ -130,17 +193,9 @@ struct MealPlanSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        isPresented = false
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                ToolbarItem(placement: .topBarTrailing) {
-                    if !viewModel.planItems.isEmpty {
+                    let isPastDate = Calendar.current.startOfDay(for: viewModel.selectedDate) < Calendar.current.startOfDay(for: Date())
+                    
+                    if !viewModel.isLoading && !viewModel.planItems.isEmpty && !isPastDate {
                         Button {
                             if isOffline {
                                 showOfflineToast = true
@@ -151,41 +206,67 @@ struct MealPlanSheet: View {
                             Image(systemName: "arrow.clockwise")
                                 .font(.subheadline)
                         }
-                        .opacity(isOffline ? 0.45 : 1.0)
                     }
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Đóng") { isPresented = false }
                 }
             }
             // Confirm dialog for bulk log (D-06)
             .alert(
-                "Áp dụng toàn bộ kế hoạch?",
+                "Chốt kế hoạch hôm nay?",
                 isPresented: $showConfirmDialog
             ) {
                 Button("Xác nhận") {
                     Task {
-                        await viewModel.logAllMeals(targetCalories: targetCalories)
+                        await viewModel.confirmDailyPlan()
                     }
                 }
                 Button("Huỷ", role: .cancel) {}
             } message: {
-                Text("Hành động này sẽ lưu toàn bộ 4 bữa ăn của kế hoạch hôm nay vào lịch sử của bạn.")
+                Text("Hành động này sẽ lưu thực đơn đã thiết kế cho hôm nay. Bạn có thể thay đổi hoặc ghi nhận thực tế sau.")
             }
             .sheet(isPresented: $showWeeklyPlan) {
                 WeeklyPlanView(viewModel: viewModel, targetCalories: targetCalories)
             }
-        }
-        .task {
-            if viewModel.planItems.isEmpty {
-                await viewModel.generateDayPlan(targetCalories: targetCalories)
-            }
-        }
-        // Auto-dismiss when all meals logged (D-08: ~1s delay + haptic)
-        .onChange(of: viewModel.allMealsLogged) { _, allLogged in
-            if allLogged {
-                HapticManager.interaction()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    isPresented = false
+            .sheet(isPresented: $showFoodSearch) {
+                NavigationStack {
+                    FoodSearchView(onFoodSelected: { food in
+                        Task {
+                            await viewModel.logSingleFood(food, type: selectedMealType, date: viewModel.selectedDate)
+                            showFoodSearch = false
+                        }
+                    })
+                    .navigationTitle("Thêm vào \(selectedMealType)")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Hủy") { showFoodSearch = false }
+                        }
+                    }
                 }
             }
         }
+        .onAppear {
+            Task {
+                await viewModel.loadExistingPlan()
+            }
+        }
+        .task {
+            // Check for existing plan for selected date
+            if !(await viewModel.loadExistingPlan()) {
+                // Only auto-generate if it's today and empty
+                if Calendar.current.isDateInToday(viewModel.selectedDate) {
+                    viewModel.generateDayPlan(targetCalories: targetCalories)
+                }
+            }
+        }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM"
+        return formatter.string(from: date)
     }
 }

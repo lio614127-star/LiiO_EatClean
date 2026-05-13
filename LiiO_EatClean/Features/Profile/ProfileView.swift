@@ -198,8 +198,10 @@ struct ProfileView: View {
         .fullScreenCover(isPresented: $viewModel.showingKeyManager) {
             APIKeyManagerView()
         }
-        .task {
-            await viewModel.loadData()
+        .onAppear {
+            Task {
+                await viewModel.loadData()
+            }
         }
     }
 }

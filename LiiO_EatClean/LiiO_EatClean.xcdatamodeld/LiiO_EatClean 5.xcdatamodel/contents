@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21815" systemVersion="22A380" minimumToolsVersion="Xcode 9.0" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="APIKey" representedClassName="APIKey" codeGenerationType="class" syncable="YES">
+        <attribute name="cooldownUntil" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="healthScore" optional="YES" attributeType="Integer 16" defaultValueString="100" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isActive" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="key" optional="YES" attributeType="String"/>
+        <attribute name="lastUsed" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="priority" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="provider" optional="YES" attributeType="String"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="apiVersion" optional="YES" attributeType="String"/>
+        <attribute name="isPaid" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+    </entity>
+    <entity name="DailyLog" representedClassName="DailyLog" codeGenerationType="class" syncable="YES">
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="notes" optional="YES" attributeType="String"/>
+        <attribute name="waterIntake" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <relationship name="meals" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Meal" inverseName="dailyLog" inverseEntity="Meal"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="User" inverseName="dailyLogs" inverseEntity="User"/>
+    </entity>
+    <entity name="FoodItem" representedClassName="FoodItem" codeGenerationType="class" syncable="YES">
+        <attribute name="apiId" optional="YES" attributeType="String"/>
+        <attribute name="calories" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="carbs" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="fat" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isCustom" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lastUsed" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="protein" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="servingSize" optional="YES" attributeType="Double" defaultValueString="100.0" usesScalarValueType="YES"/>
+        <attribute name="source" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="unit" optional="YES" attributeType="String"/>
+        <attribute name="weightInGrams" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="ingredientsJson" optional="YES" attributeType="String"/>
+        <attribute name="instructionsJson" optional="YES" attributeType="String"/>
+        <relationship name="mealFoods" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="MealFood" inverseName="foodItem" inverseEntity="MealFood"/>
+    </entity>
+    <entity name="Meal" representedClassName="Meal" codeGenerationType="class" syncable="YES">
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="mealType" optional="YES" attributeType="String"/>
+        <relationship name="dailyLog" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="DailyLog" inverseName="meals" inverseEntity="DailyLog"/>
+        <relationship name="mealFoods" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="MealFood" inverseName="meal" inverseEntity="MealFood"/>
+    </entity>
+    <entity name="MealFood" representedClassName="MealFood" codeGenerationType="class" syncable="YES">
+        <attribute name="caloriesSnapshot" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="carbsSnapshot" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="fatSnapshot" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="proteinSnapshot" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="quantity" optional="YES" attributeType="Double" defaultValueString="1.0" usesScalarValueType="YES"/>
+        <relationship name="foodItem" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FoodItem" inverseName="mealFoods" inverseEntity="FoodItem"/>
+        <relationship name="meal" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Meal" inverseName="mealFoods" inverseEntity="Meal"/>
+    </entity>
+    <entity name="User" representedClassName="User" codeGenerationType="class" syncable="YES">
+        <attribute name="age" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="dailyCalorieTarget" optional="YES" attributeType="Double" defaultValueString="2000.0" usesScalarValueType="YES"/>
+        <attribute name="gender" optional="YES" attributeType="String"/>
+        <attribute name="goalType" optional="YES" attributeType="String"/>
+        <attribute name="height" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="weight" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <relationship name="dailyLogs" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="DailyLog" inverseName="user" inverseEntity="DailyLog"/>
+        <relationship name="weightEntries" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="WeightEntry" inverseName="user" inverseEntity="WeightEntry"/>
+        <relationship name="metabolicProfile" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="MetabolicProfile" inverseName="user" inverseEntity="MetabolicProfile"/>
+    </entity>
+    <entity name="WeightEntry" representedClassName="WeightEntry" codeGenerationType="class" syncable="YES">
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="weight" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="User" inverseName="weightEntries" inverseEntity="User"/>
+    </entity>
+    <entity name="StreakRecord" representedClassName="StreakRecord" codeGenerationType="class" syncable="YES">
+        <attribute name="calorieConditionMet" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="currentStreak" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="lastActiveDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="longestStreak" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="mealConditionMet" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="waterConditionMet" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+    </entity>
+    <entity name="AIInsight" representedClassName="AIInsight" codeGenerationType="class" syncable="YES">
+        <attribute name="content" optional="YES" attributeType="String"/>
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="memory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AIMemory" inverseName="insights" inverseEntity="AIMemory"/>
+    </entity>
+    <entity name="AIMemory" representedClassName="AIMemory" codeGenerationType="class" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="personalityTone" optional="YES" attributeType="String" defaultValueString="friendly"/>
+        <relationship name="avoidFoods" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="AvoidFood" inverseName="memory" inverseEntity="AvoidFood"/>
+        <relationship name="dietaryNotes" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="DietaryNote" inverseName="memory" inverseEntity="DietaryNote"/>
+        <relationship name="foodPreferences" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="FoodPreference" inverseName="memory" inverseEntity="FoodPreference"/>
+        <relationship name="healthConditions" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="HealthCondition" inverseName="memory" inverseEntity="HealthCondition"/>
+        <relationship name="insights" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="AIInsight" inverseName="memory" inverseEntity="AIInsight"/>
+    </entity>
+    <entity name="AvoidFood" representedClassName="AvoidFood" codeGenerationType="class" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <relationship name="memory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AIMemory" inverseName="avoidFoods" inverseEntity="AIMemory"/>
+    </entity>
+    <entity name="DietaryNote" representedClassName="DietaryNote" codeGenerationType="class" syncable="YES">
+        <attribute name="content" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="memory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AIMemory" inverseName="dietaryNotes" inverseEntity="AIMemory"/>
+    </entity>
+    <entity name="FoodPreference" representedClassName="FoodPreference" codeGenerationType="class" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+        <relationship name="memory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AIMemory" inverseName="foodPreferences" inverseEntity="AIMemory"/>
+    </entity>
+    <entity name="HealthCondition" representedClassName="HealthCondition" codeGenerationType="class" syncable="YES">
+        <attribute name="dietaryNotes" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <relationship name="memory" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AIMemory" inverseName="healthConditions" inverseEntity="AIMemory"/>
+    </entity>
+    <entity name="PendingChatMessage" representedClassName="PendingChatMessage" codeGenerationType="class" syncable="YES">
+        <attribute name="conversationID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="status" optional="YES" attributeType="String" defaultValueString="pending"/>
+        <attribute name="text" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="MetabolicProfile" representedClassName="MetabolicProfile" codeGenerationType="class" syncable="YES">
+        <attribute name="adaptiveTDEE" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="calculationVersion" optional="YES" attributeType="Integer 32" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="confidenceScore" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="estimatedBMR" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="estimatedTDEE" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="lastCalculatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="metabolicAdaptationScore" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="onboardingSource" optional="YES" attributeType="String"/>
+        <relationship name="goalHistories" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="GoalHistory" inverseName="metabolicProfile" inverseEntity="GoalHistory"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="User" inverseName="metabolicProfile" inverseEntity="User"/>
+    </entity>
+    <entity name="GoalHistory" representedClassName="GoalHistory" codeGenerationType="class" syncable="YES">
+        <attribute name="adaptiveTDEE" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="adherenceScore" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="calorieTarget" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="carbTarget" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="confidenceScore" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="effectiveFrom" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="effectiveTo" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="estimatedTDEE" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="fatTarget" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="interventionCategory" optional="YES" attributeType="String"/>
+        <attribute name="interventionType" optional="YES" attributeType="String"/>
+        <attribute name="proteinTarget" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="reason" optional="YES" attributeType="String"/>
+        <attribute name="rollingWeightAvg14d" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="rollingWeightAvg7d" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="source" optional="YES" attributeType="String"/>
+        <attribute name="version" optional="YES" attributeType="Integer 32" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="weight" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <relationship name="metabolicProfile" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="MetabolicProfile" inverseName="goalHistories" inverseEntity="MetabolicProfile"/>
+    </entity>
+    <entity name="DailyPlan" representedClassName="DailyPlan" codeGenerationType="class" syncable="YES">
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="status" optional="YES" attributeType="String" defaultValueString="draft"/>
+        <attribute name="targetCalories" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="targetCarbs" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="targetFat" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="targetProtein" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <relationship name="plannedMeals" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="PlannedMeal" inverseName="dailyPlan" inverseEntity="PlannedMeal"/>
+    </entity>
+    <entity name="PlannedFoodItem" representedClassName="PlannedFoodItem" codeGenerationType="class" syncable="YES">
+        <attribute name="calories" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="carbs" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="fat" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="protein" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="servingSize" optional="YES" attributeType="Double" defaultValueString="1.0" usesScalarValueType="YES"/>
+        <relationship name="plannedMeal" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="PlannedMeal" inverseName="foodItems" inverseEntity="PlannedMeal"/>
+    </entity>
+    <entity name="PlannedMeal" representedClassName="PlannedMeal" codeGenerationType="class" syncable="YES">
+        <attribute name="convertedMealId" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+        <relationship name="dailyPlan" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="DailyPlan" inverseName="plannedMeals" inverseEntity="DailyPlan"/>
+        <relationship name="foodItems" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="PlannedFoodItem" inverseName="plannedMeal" inverseEntity="PlannedFoodItem"/>
+    </entity>
+    <elements>
+        <element name="AIInsight" positionX="-18" positionY="18" width="128" height="104"/>
+        <element name="AIMemory" positionX="-18" positionY="18" width="128" height="134"/>
+        <element name="APIKey" positionX="-18" positionY="18" width="128" height="119"/>
+        <element name="DailyLog" positionX="-18" positionY="18" width="128" height="119"/>
+        <element name="AvoidFood" positionX="-18" positionY="18" width="128" height="74"/>
+        <element name="DietaryNote" positionX="-18" positionY="18" width="128" height="74"/>
+        <element name="FoodItem" positionX="-18" positionY="18" width="128" height="239"/>
+        <element name="FoodPreference" positionX="-18" positionY="18" width="128" height="89"/>
+        <element name="HealthCondition" positionX="-18" positionY="18" width="128" height="89"/>
+        <element name="Meal" positionX="-18" positionY="18" width="128" height="104"/>
+        <element name="MealFood" positionX="-18" positionY="18" width="128" height="164"/>
+        <element name="User" positionX="-18" positionY="18" width="128" height="179"/>
+        <element name="WeightEntry" positionX="-18" positionY="18" width="128" height="89"/>
+        <element name="WeightEntry" positionX="-18" positionY="18" width="128" height="89"/>
+        <element name="StreakRecord" positionX="-18" positionY="18" width="128" height="134"/>
+        <element name="PendingChatMessage" positionX="-18" positionY="18" width="128" height="119"/>
+        <element name="MetabolicProfile" positionX="-18" positionY="18" width="128" height="179"/>
+        <element name="GoalHistory" positionX="-18" positionY="18" width="128" height="344"/>
+        <element name="DailyPlan" positionX="-18" positionY="18" width="128" height="134"/>
+        <element name="PlannedFoodItem" positionX="-18" positionY="18" width="128" height="134"/>
+        <element name="PlannedMeal" positionX="-18" positionY="18" width="128" height="89"/>
+    </elements>
+</model>

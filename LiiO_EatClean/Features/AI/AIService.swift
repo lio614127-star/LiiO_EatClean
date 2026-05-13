@@ -75,31 +75,74 @@ enum AIChatStreamResult {
 struct AISuggestedFood: Codable, Identifiable, Equatable {
     var id = UUID()
     let name: String
-    let calories: Double
-    let protein: Double
-    let carbs: Double
-    let fat: Double
+    var calories: Double
+    var protein: Double
+    var carbs: Double
+    var fat: Double
     var servingSize: Double
     var isEaten: Bool? = nil
     var mealType: String? = nil
     
-    enum CodingKeys: String, CodingKey {
-        case name, calories, protein, carbs, fat, servingSize, isEaten, mealType
-    }
+    // v1.3: Smart Units & Recipe Details
+    var unit: String? = nil
+    var weightInGrams: Double? = nil
+    var ingredients: [IngredientDTO]? = nil
+    var instructions: [String]? = nil
     
+    enum CodingKeys: String, CodingKey {
+        case name, calories, protein, carbs, fat, servingSize, isEaten, mealType, unit, weightInGrams, ingredients, instructions
+    }
+}
+
+struct IngredientDTO: Codable, Equatable {
+    let name: String
+    let amount: Double
+    let unit: String
+    let protein: Double?
+    let carbs: Double?
+    let fat: Double?
+    
+    init(name: String, amount: Double, unit: String, protein: Double? = nil, carbs: Double? = nil, fat: Double? = nil) {
+        self.name = name
+        self.amount = amount
+        self.unit = unit
+        self.protein = protein
+        self.carbs = carbs
+        self.fat = fat
+    }
+}
+
+extension AISuggestedFood {
     func toFoodItemModel() -> FoodItemModel {
         FoodItemModel(
-            id: UUID(),
+            id: id,
             name: name,
             calories: calories,
             protein: protein,
             carbs: carbs,
             fat: fat,
             servingSize: servingSize,
-            source: "local"
+            source: "local",
+            unit: unit,
+            weightInGrams: weightInGrams,
+            ingredients: ingredients?.map { IngredientModel(name: $0.name, amount: $0.amount, unit: $0.unit, protein: $0.protein, carbs: $0.carbs, fat: $0.fat) },
+            instructions: instructions,
+            isRecipeCached: instructions != nil
         )
     }
-    
+
+    func toPlannedFoodItemModel() -> PlannedFoodItemModel {
+        PlannedFoodItemModel(
+            id: id,
+            name: name,
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            servingSize: servingSize
+        )
+    }
+
     func toMealFoodModel() -> MealFoodModel {
         // AI suggestions are always treated as 1 single portion initially
         let qty = 1.0
@@ -107,7 +150,7 @@ struct AISuggestedFood: Codable, Identifiable, Equatable {
         
         // Store the food item with the AI-provided calories as the value for 1 portion
         let food = FoodItemModel(
-            id: UUID(),
+            id: id,
             name: name,
             calories: calories,
             protein: protein,
@@ -350,13 +393,105 @@ class AIService {
         }
     }
     
-    func suggestMeals(remainingCalories: Double, mealType: String, userGoal: String = "Duy trì cân nặng") async throws -> [AISuggestedFood] {
-        return try await executeWithRetry(task: .mealSuggestion, feature: "Gợi ý món ăn", subTasks: ["Gợi ý: \(mealType)"]) { key, config in
+    func generateDayPlanStream(targetCalories: Double, userContext: String, completedMealTypes: [String] = [], isInternal: Bool = false) -> AsyncThrowingStream<AIChatStreamResult, Error> {
+        let allMealTypes = ["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"]
+        let mealsToPlan = allMealTypes.filter { !completedMealTypes.contains($0) }
+        let mealsToPlanText = mealsToPlan.joined(separator: ", ")
+        let completedText = completedMealTypes.isEmpty ? "Chưa có bữa nào được ăn." : "Các bữa đã ăn: \(completedMealTypes.joined(separator: ", "))."
+
+        let prompt = """
+        Bạn là chuyên gia dinh dưỡng chuyên về ẩm thực Việt Nam.
+        Nhiệm vụ: Lên kế hoạch ăn uống ĐẦY ĐỦ cho ngày hôm nay.
+        
+        [Dữ liệu người dùng]
+        \(userContext)
+        
+        YÊU CẦU:
+        1. Bạn BẮT BUỘC phải đề xuất ĐỦ 4 BỮA: Bữa sáng, Bữa trưa, Bữa tối, Ăn vặt.
+        2. Tổng ngân sách calo cả ngày: ~\(Int(targetCalories)) kcal.
+        3. Hãy chia đều calo hợp lý: Sáng (25%), Trưa (35%), Tối (30%), Ăn vặt (10%).
+        4. Mỗi bữa đề xuất 1 món chính kèm món phụ đặc trưng Việt Nam.
+        5. Cung cấp chi tiết nguyên liệu, hướng dẫn nấu, đơn vị (unit) và khối lượng (weightInGrams) cho mỗi món.
+        
+        PHẢI TRẢ VỀ JSON ARRAY PHẲNG gồm đúng 4 đối tượng. Mỗi đối tượng có "mealType" là một trong: Bữa sáng, Bữa trưa, Bữa tối, Ăn vặt.
+        
+        Định dạng JSON:
+        ```json
+        [
+          {
+            "name": "Tên món",
+            "calories": 350,
+            "protein": 25,
+            "carbs": 40,
+            "fat": 8,
+            "servingSize": 1.0,
+            "mealType": "Bữa sáng",
+            "unit": "tô",
+            "weightInGrams": 450,
+            "ingredients": [
+              {"name": "Bánh canh", "amount": 150, "unit": "g", "protein": 5, "carbs": 30, "fat": 1},
+              {"name": "Thịt heo", "amount": 50, "unit": "g", "protein": 10, "carbs": 0, "fat": 5}
+            ],
+            "instructions": [
+              "Đun sôi nước dùng...",
+              "Cho bánh canh vào..."
+            ]
+          }
+        ]
+        ```
+        """
+        
+        return executeWithRetryStream(task: .mealPlanDay, feature: "Lập kế hoạch siêu tốc", subTasks: ["Tối ưu \(mealsToPlan.count) bữa ăn"], isInternal: isInternal) { key, config in
+            self.callGeminiChatStream(apiKey: key.key, history: [], systemPrompt: prompt, config: config)
+        }
+    }
+    
+    func suggestMeals(remainingCalories: Double, mealType: String, userGoal: String = "Duy trì cân nặng", isInternal: Bool = false) async throws -> [AISuggestedFood] {
+        return try await executeWithRetry(task: .mealSuggestion, feature: "Gợi ý món ăn", subTasks: ["Gợi ý: \(mealType)"], isInternal: isInternal) { key, config in
             if config.provider == "gemini" {
                 return try await self.callGemini(apiKey: key.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal, config: config)
             } else {
                 return try await self.callOpenAI(apiKey: key.key, remainingCalories: remainingCalories, mealType: mealType, userGoal: userGoal, config: config)
             }
+        }
+    }
+    
+    func enrichFoodItem(name: String, calories: Double, isInternal: Bool = true) async throws -> AISuggestedFood? {
+        return try await executeWithRetry(task: .formatting, feature: "Phân tích món ăn", subTasks: ["Bóc tách: \(name)"], isInternal: isInternal) { key, config in
+            let prompt = """
+            Bạn là chuyên gia dinh dưỡng. Hãy bóc tách chi tiết nguyên liệu và hướng dẫn nấu ăn cho món sau:
+            Tên món: \(name)
+            Lượng calo ước tính: \(Int(calories)) kcal
+            
+            YÊU CẦU:
+            1. Bóc tách danh sách nguyên liệu (ingredients) với khối lượng (amount) và đơn vị (unit).
+            2. Sắp xếp nguyên liệu: các nguyên liệu chính (thịt, cá, rau, gạo...) lên đầu, các gia vị (muối, đường, mắm, dầu ăn...) xuống cuối danh sách.
+            3. Cung cấp hướng dẫn nấu ăn (instructions) ngắn gọn.
+            4. Trả về DUY NHẤT một đối tượng JSON.
+            
+            Định dạng JSON:
+            {
+              "name": "\(name)",
+              "calories": \(Int(calories)),
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "servingSize": 1.0,
+              "unit": "phần",
+              "ingredients": [{"name": "...", "amount": 100, "unit": "g", "protein": 10, "carbs": 20, "fat": 5}],
+              "instructions": ["Bước 1...", "Bước 2..."]
+            }
+            """
+            
+            let text = if config.provider == "gemini" {
+                try await self.executeGeminiRequest(version: config.endpoint, model: config.modelName, apiKey: key.key, prompt: prompt)
+            } else {
+                // OpenAI implementation similar to generateText
+                try await self.generateText(prompt: prompt, requestType: .formatting, feature: "Phân tích món ăn", forcedKey: key, isInternal: true)
+            }
+            
+            let msg = self.parseChatResponse(text)
+            return msg.suggestedFoods?.first
         }
     }
     
@@ -458,8 +593,8 @@ class AIService {
         return try await generateText(prompt: prompt, requestType: .chat, feature: "Re-ask An Toàn", isInternal: true)
     }
     
-    func quickReaskForFood(prompt: String) async throws -> [AISuggestedFood] {
-        let text = try await generateText(prompt: prompt, requestType: .chat, feature: "Re-ask An Toàn", isInternal: true)
+    func quickReaskForFood(prompt: String, isInternal: Bool = false) async throws -> [AISuggestedFood] {
+        let text = try await generateText(prompt: prompt, requestType: .chat, feature: "Re-ask An Toàn", isInternal: isInternal)
         let msg = parseChatResponse(text)
         return msg.suggestedFoods ?? []
     }
@@ -648,12 +783,33 @@ class AIService {
         Gợi ý 2 món ăn phù hợp cho \(mealType) với tổng lượng calo khoảng \(Int(remainingCalories)) kcal.
         Mục tiêu của người dùng: \(userGoal).
         
-        QUAN TRỌNG: Chỉ trả về JSON array hợp lệ. Không giải thích thêm. Không dùng markdown code block.
+        YÊU CẦU:
+        1. Món ăn phải PHÙ HỢP với thói quen ăn uống của người Việt theo \(mealType):
+           - Bữa sáng: Ưu tiên món nước (Phở, Bún, Hủ tiếu), Bánh mì, Xôi, các món nhanh.
+           - Bữa trưa/Bữa tối: Ưu tiên cơm gia đình (Món mặn + Canh + Rau), hoặc các món chính no lâu.
+           - Ăn vặt: Trái cây, sữa chua, hạt, hoặc các món ăn nhẹ.
+        2. Tự động nhận diện đơn vị phù hợp (chén, tô, dĩa, cái, gram) cho từng món.
+        3. Bóc tách nguyên liệu (ingredients) và hướng dẫn nấu ăn (instructions).
+        4. Sắp xếp nguyên liệu: các nguyên liệu chính (thịt, cá, rau, gạo...) lên đầu, các gia vị (muối, đường, mắm, dầu ăn...) xuống cuối danh sách.
+        5. CHỈ sử dụng tên món bằng tiếng Việt, không kèm tên tiếng Anh.
+        
+        QUAN TRỌNG: Trả về JSON array nằm trong khối mã ```json ... ```.
         
         Định dạng JSON:
-        [{"name":"Tên món","calories":350,"protein":25,"carbs":40,"fat":8,"servingSize":1.0}]
-        
-        Lưu ý: "servingSize" là số phần ăn (thường là 1.0). Calo và macros phải tính theo đúng số phần ăn này.
+        [
+          {
+            "name": "Tên món",
+            "calories": 350,
+            "protein": 25,
+            "carbs": 40,
+            "fat": 8,
+            "servingSize": 1.0,
+            "unit": "chén",
+            "weightInGrams": 200,
+            "ingredients": [{"name": "...", "amount": 100, "unit": "g", "protein": 10, "carbs": 20, "fat": 5}],
+            "instructions": ["Bước 1...", "Bước 2..."]
+          }
+        ]
         """
     }
     
@@ -992,11 +1148,18 @@ class AIService {
                 return wrapper.items
             }
         }
-        // Fallback: Try plain array (for batched plans)
+        // Fallback 1: Try plain array (for batched plans)
         if let plainItems = try? JSONDecoder().decode([AISuggestedFood].self, from: data) {
             return plainItems
         }
         
-        return nil
+        // Fallback 2: Try single object (for enrichment results)
+        do {
+            let singleItem = try JSONDecoder().decode(AISuggestedFood.self, from: data)
+            return [singleItem]
+        } catch {
+            print("❌ AISuggestedFood Decoding Error: \(error)")
+            return nil
+        }
     }
 }

@@ -8,6 +8,7 @@ class AddMealViewModel {
     
     // AI state
     var suggestedFoods: [AISuggestedFood] = []
+    var cachedSuggestions: [String: [AISuggestedFood]] = [:]
     var isLoadingAI = false
     var aiError: AIError? = nil
     var showingAISection = false
@@ -29,15 +30,20 @@ class AddMealViewModel {
         self.aiService = AIService(userRepository: userRepository)
     }
     
-    func addToCart(food: FoodItemModel, quantity: Double) {
-        // Since ViewModel now normalizes everything to 1 portion = base calories,
-        // we just multiply quantity directly by those calories.
-        let ratio = quantity
+    func addToCart(food: FoodItemModel, quantity: Double, unit: String? = nil) {
+        var processedFood = food
         
-        let caloriesSnapshot = food.calories * ratio
-        let proteinSnapshot = food.protein * ratio
-        let carbsSnapshot = food.carbs * ratio
-        let fatSnapshot = food.fat * ratio
+        // If a specific unit is provided, use the conversion engine
+        if let unit = unit, unit.lowercased() != "phần" {
+            processedFood = UnitConversionEngine.shared.convert(food: food, to: unit, newAmount: quantity)
+        }
+        
+        let ratio = (unit == nil || unit?.lowercased() == "phần") ? quantity : 1.0
+        
+        let caloriesSnapshot = processedFood.calories * ratio
+        let proteinSnapshot = processedFood.protein * ratio
+        let carbsSnapshot = processedFood.carbs * ratio
+        let fatSnapshot = processedFood.fat * ratio
         
         let mealFood = MealFoodModel(
             id: UUID(),
@@ -47,8 +53,8 @@ class AddMealViewModel {
             carbsSnapshot: carbsSnapshot,
             fatSnapshot: fatSnapshot,
             isEaten: true,
-            mealType: selectedMealType, // Capture the current meal type when adding to cart
-            foodItem: food
+            mealType: selectedMealType,
+            foodItem: processedFood
         )
         
         cartItems.append(mealFood)
@@ -56,9 +62,8 @@ class AddMealViewModel {
     
     func addSuggestedFood(_ suggested: AISuggestedFood) {
         let food = suggested.toFoodItemModel()
-        // Force quantity to 1.0 portion for AI suggestions
-        addToCart(food: food, quantity: 1.0)
-        // Remove from suggestions after logging
+        // Use the AI-provided unit and weight if available
+        addToCart(food: food, quantity: 1.0, unit: food.unit)
         suggestedFoods.removeAll { $0.id == suggested.id }
     }
     
@@ -82,6 +87,9 @@ class AddMealViewModel {
             
             do {
                 try await mealRepository.saveMeal(meal, for: date)
+                
+                // Background Enrichment: Fetch recipes for any items that don't have them
+                BackgroundEnrichmentManager.shared.enrich(foods: items.compactMap { $0.foodItem })
             } catch {
                 print("Failed to save meal (\(mealType)): \(error)")
             }
@@ -112,7 +120,13 @@ class AddMealViewModel {
         }
     }
     
-    func requestAISuggestions() async {
+    func requestAISuggestions(forceRefresh: Bool = false) async {
+        if !forceRefresh, let cached = cachedSuggestions[selectedMealType], !cached.isEmpty {
+            self.suggestedFoods = cached
+            self.showingAISection = true
+            return
+        }
+        
         aiError = nil
         isLoadingAI = true
         showingAISection = true
@@ -125,9 +139,11 @@ class AddMealViewModel {
             let results = try await aiService.suggestMeals(
                 remainingCalories: remainingCalories,
                 mealType: selectedMealType,
-                userGoal: goalType
+                userGoal: goalType,
+                isInternal: true
             )
-            suggestedFoods = results
+            self.cachedSuggestions[selectedMealType] = results
+            self.suggestedFoods = results
         } catch AIError.missingKey {
             needsAPIKey = true
             showingAISection = false

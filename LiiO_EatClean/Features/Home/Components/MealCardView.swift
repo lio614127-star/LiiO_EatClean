@@ -4,10 +4,12 @@ struct MealCardView: View {
     let mealType: String
     let icon: String
     let meals: [MealModel]
+    var pendingLinkSuggestion: (mealId: UUID, plannedMealType: String)? = nil
     var onAddTapped: (() -> Void)? = nil
     var onRowTapped: (() -> Void)? = nil
     var onDelete: ((UUID) -> Void)? = nil
     var onToggleEaten: ((UUID) -> Void)? = nil
+    var onLinkToPlan: ((UUID) -> Void)? = nil
     
     // Calculate total calories for this meal type
     private var totalCalories: Double {
@@ -21,7 +23,7 @@ struct MealCardView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header
+            // Header — NO tags here, just mealType + kcal + add button
             HStack {
                 Image(systemName: icon)
                     .foregroundColor(.green)
@@ -60,47 +62,95 @@ struct MealCardView: View {
                 .frame(minHeight: 32)
                 .padding(.top, 4)
             } else {
-                // Food list (Full list with inline delete instead of preview)
+                // Food items with inline tags per item
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(allFoods, id: \.id) { mealFood in
-                        HStack(spacing: 12) {
+                    ForEach(meals) { meal in
+                        ForEach(meal.mealFoods) { mealFood in
                             Button(action: {
-                                HapticManager.success()
-                                onToggleEaten?(mealFood.id)
+                                onRowTapped?()
                             }) {
-                                Image(systemName: mealFood.isEaten ? "checkmark.circle.fill" : "circle")
-                                    .foregroundColor(mealFood.isEaten ? .green : .secondary)
-                                    .font(.system(size: 18))
+                                HStack(spacing: 10) {
+                                    Button(action: {
+                                        HapticManager.success()
+                                        onToggleEaten?(mealFood.id)
+                                    }) {
+                                        Image(systemName: mealFood.isEaten ? "checkmark.circle.fill" : "circle")
+                                            .foregroundColor(mealFood.isEaten ? .green : .secondary)
+                                            .font(.system(size: 18))
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(mealFood.foodItem?.name ?? "Món ăn")
+                                            .font(.subheadline)
+                                            .foregroundColor(.primary)
+                                            .lineLimit(1)
+                                        
+                                        // Inline tag — only one tag per item
+                                        if meal.linkedPlannedMealId != nil {
+                                            Text("Theo kế hoạch")
+                                                .font(.system(size: 9, weight: .bold))
+                                                .padding(.horizontal, 5)
+                                                .padding(.vertical, 1)
+                                                .background(Color.blue.opacity(0.1))
+                                                .foregroundColor(.blue)
+                                                .cornerRadius(3)
+                                        } else {
+                                            Text("Ngoài kế hoạch")
+                                                .font(.system(size: 9, weight: .bold))
+                                                .padding(.horizontal, 5)
+                                                .padding(.vertical, 1)
+                                                .background(Color.orange.opacity(0.1))
+                                                .foregroundColor(.orange)
+                                                .cornerRadius(3)
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Text("\(Int(mealFood.caloriesSnapshot)) kcal")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+
+                                    Button(action: {
+                                        onDelete?(mealFood.id)
+                                    }) {
+                                        Image(systemName: "trash")
+                                            .foregroundColor(.red.opacity(0.7))
+                                            .font(.caption)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            
-                            Text(mealFood.foodItem?.name ?? "Món ăn")
-                                .font(.subheadline)
-                                .foregroundColor(.primary)
-                                .lineLimit(1)
-                            
-                            Spacer()
-                            
-                            Text("\(Int(mealFood.caloriesSnapshot)) kcal")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            if let onDelete = onDelete {
-                                Button(action: {
-                                    HapticManager.success()
-                                    onDelete(mealFood.id)
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(Color(.systemGray4))
-                                        .font(.caption)
-                                }
-                            }
                         }
-                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
-                        Divider()
+                        
+                        // Suggestion chip: show when this unlinked meal matches a plan
+                        if meal.linkedPlannedMealId == nil,
+                           let suggestion = pendingLinkSuggestion,
+                           suggestion.mealId == meal.id {
+                            Button(action: { onLinkToPlan?(meal.id) }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "sparkles")
+                                        .font(.caption2)
+                                    Text("Khớp với \(suggestion.plannedMealType) trong kế hoạch · Gắn")
+                                        .font(.caption2.bold())
+                                    Spacer()
+                                    Image(systemName: "arrow.right")
+                                        .font(.caption2)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.purple.opacity(0.08))
+                                .foregroundColor(.purple)
+                                .cornerRadius(8)
+                            }
+                            .padding(.leading, 30)
+                        }
                     }
                 }
-                .animation(.easeInOut(duration: 0.3), value: allFoods.count)
+                .animation(.easeInOut(duration: 0.3), value: meals.count)
                 .padding(.top, 4)
             }
         }

@@ -29,7 +29,7 @@ class AIMemoryRepository: AIMemoryRepositoryProtocol {
     
     func fetchMemory() async throws -> UserProfileMemory {
         return try await context.perform {
-            let request: NSFetchRequest<AIMemory> = AIMemory.fetchRequest()
+            let request = NSFetchRequest<NSManagedObject>(entityName: "AIMemory")
             request.fetchLimit = 1
             let results = try self.context.fetch(request)
             
@@ -44,7 +44,7 @@ class AIMemoryRepository: AIMemoryRepositoryProtocol {
     func updatePersonalityTone(_ tone: AIPersonalityTone) async throws {
         try await context.perform {
             let entity = try self.fetchOrCreateEntity()
-            entity.personalityTone = tone.rawValue
+            entity.setValue(tone.rawValue, forKey: "personalityTone")
             try self.context.save()
             self.context.processPendingChanges()
         }
@@ -57,64 +57,59 @@ class AIMemoryRepository: AIMemoryRepositoryProtocol {
         try await context.perform {
             let entity = try self.fetchOrCreateEntity()
             
-            entity.personalityTone = memory.personalityTone.rawValue
+            entity.setValue(memory.personalityTone.rawValue, forKey: "personalityTone")
             
             // Health conditions
-            if let existing = entity.healthConditions as? Set<NSManagedObject> {
+            if let existing = entity.value(forKey: "healthConditions") as? Set<NSManagedObject> {
                 for obj in existing { self.context.delete(obj) }
             }
             for hc in memory.healthConditions {
-                let hcEntity = HealthCondition(context: self.context)
-                hcEntity.id = hc.id
-                hcEntity.name = hc.name
-                hcEntity.dietaryNotes = hc.dietaryNotes
-                hcEntity.memory = entity
-                entity.addToHealthConditions(hcEntity)
+                let hcEntity = NSEntityDescription.insertNewObject(forEntityName: "HealthCondition", into: self.context)
+                hcEntity.setValue(hc.id, forKey: "id")
+                hcEntity.setValue(hc.name, forKey: "name")
+                hcEntity.setValue(hc.dietaryNotes, forKey: "dietaryNotes")
+                hcEntity.setValue(entity, forKey: "memory")
             }
             
             // Avoid Foods
-            if let existing = entity.avoidFoods as? Set<NSManagedObject> {
+            if let existing = entity.value(forKey: "avoidFoods") as? Set<NSManagedObject> {
                 for obj in existing { self.context.delete(obj) }
             }
             for af in memory.avoidFoods {
-                let afEntity = AvoidFood(context: self.context)
-                afEntity.id = UUID()
-                afEntity.name = af
-                afEntity.memory = entity
-                entity.addToAvoidFoods(afEntity)
+                let afEntity = NSEntityDescription.insertNewObject(forEntityName: "AvoidFood", into: self.context)
+                afEntity.setValue(UUID(), forKey: "id")
+                afEntity.setValue(af, forKey: "name")
+                afEntity.setValue(entity, forKey: "memory")
             }
             
             // Preferences (Likes/Dislikes)
-            if let existing = entity.foodPreferences as? Set<NSManagedObject> {
+            if let existing = entity.value(forKey: "foodPreferences") as? Set<NSManagedObject> {
                 for obj in existing { self.context.delete(obj) }
             }
             for like in memory.likes {
-                let fpEntity = FoodPreference(context: self.context)
-                fpEntity.id = UUID()
-                fpEntity.name = like
-                fpEntity.type = "like"
-                fpEntity.memory = entity
-                entity.addToFoodPreferences(fpEntity)
+                let fpEntity = NSEntityDescription.insertNewObject(forEntityName: "FoodPreference", into: self.context)
+                fpEntity.setValue(UUID(), forKey: "id")
+                fpEntity.setValue(like, forKey: "name")
+                fpEntity.setValue("like", forKey: "type")
+                fpEntity.setValue(entity, forKey: "memory")
             }
             for dislike in memory.dislikes {
-                let fpEntity = FoodPreference(context: self.context)
-                fpEntity.id = UUID()
-                fpEntity.name = dislike
-                fpEntity.type = "dislike"
-                fpEntity.memory = entity
-                entity.addToFoodPreferences(fpEntity)
+                let fpEntity = NSEntityDescription.insertNewObject(forEntityName: "FoodPreference", into: self.context)
+                fpEntity.setValue(UUID(), forKey: "id")
+                fpEntity.setValue(dislike, forKey: "name")
+                fpEntity.setValue("dislike", forKey: "type")
+                fpEntity.setValue(entity, forKey: "memory")
             }
             
             // Dietary Notes
-            if let existing = entity.dietaryNotes as? Set<NSManagedObject> {
+            if let existing = entity.value(forKey: "dietaryNotes") as? Set<NSManagedObject> {
                 for obj in existing { self.context.delete(obj) }
             }
             for note in memory.dietaryNotes {
-                let dnEntity = DietaryNote(context: self.context)
-                dnEntity.id = UUID()
-                dnEntity.content = note
-                dnEntity.memory = entity
-                entity.addToDietaryNotes(dnEntity)
+                let dnEntity = NSEntityDescription.insertNewObject(forEntityName: "DietaryNote", into: self.context)
+                dnEntity.setValue(UUID(), forKey: "id")
+                dnEntity.setValue(note, forKey: "content")
+                dnEntity.setValue(entity, forKey: "memory")
             }
             
             try self.context.save()
@@ -125,42 +120,46 @@ class AIMemoryRepository: AIMemoryRepositoryProtocol {
         }
     }
     
-    private func fetchOrCreateEntity() throws -> AIMemory {
-        let request: NSFetchRequest<AIMemory> = AIMemory.fetchRequest()
+    private func fetchOrCreateEntity() throws -> NSManagedObject {
+        let request = NSFetchRequest<NSManagedObject>(entityName: "AIMemory")
         request.fetchLimit = 1
         if let existing = try context.fetch(request).first {
             return existing
         }
-        let newEntity = AIMemory(context: context)
-        newEntity.id = UUID()
-        newEntity.personalityTone = AIPersonalityTone.friendly.rawValue
+        let newEntity = NSEntityDescription.insertNewObject(forEntityName: "AIMemory", into: context)
+        newEntity.setValue(UUID(), forKey: "id")
+        newEntity.setValue(AIPersonalityTone.friendly.rawValue, forKey: "personalityTone")
         return newEntity
     }
     
-    private func mapToModel(_ entity: AIMemory) -> UserProfileMemory {
+    private func mapToModel(_ entity: NSManagedObject) -> UserProfileMemory {
         var model = UserProfileMemory()
         
-        if let toneString = entity.personalityTone, let tone = AIPersonalityTone(rawValue: toneString) {
+        if let toneString = entity.value(forKey: "personalityTone") as? String, let tone = AIPersonalityTone(rawValue: toneString) {
             model.personalityTone = tone
         }
         
-        if let conditionsSet = entity.healthConditions as? Set<HealthCondition> {
+        if let conditionsSet = entity.value(forKey: "healthConditions") as? Set<NSManagedObject> {
             model.healthConditions = conditionsSet.map {
-                HealthConditionModel(id: $0.id ?? UUID(), name: $0.name ?? "", dietaryNotes: $0.dietaryNotes ?? "")
+                HealthConditionModel(
+                    id: $0.value(forKey: "id") as? UUID ?? UUID(),
+                    name: $0.value(forKey: "name") as? String ?? "",
+                    dietaryNotes: $0.value(forKey: "dietaryNotes") as? String ?? ""
+                )
             }
         }
         
-        if let avoidFoodsSet = entity.avoidFoods as? Set<AvoidFood> {
-            model.avoidFoods = avoidFoodsSet.compactMap { $0.name }
+        if let avoidFoodsSet = entity.value(forKey: "avoidFoods") as? Set<NSManagedObject> {
+            model.avoidFoods = avoidFoodsSet.compactMap { $0.value(forKey: "name") as? String }
         }
         
-        if let prefsSet = entity.foodPreferences as? Set<FoodPreference> {
-            model.likes = prefsSet.filter { $0.type == "like" }.compactMap { $0.name }
-            model.dislikes = prefsSet.filter { $0.type == "dislike" }.compactMap { $0.name }
+        if let prefsSet = entity.value(forKey: "foodPreferences") as? Set<NSManagedObject> {
+            model.likes = prefsSet.filter { ($0.value(forKey: "type") as? String) == "like" }.compactMap { $0.value(forKey: "name") as? String }
+            model.dislikes = prefsSet.filter { ($0.value(forKey: "type") as? String) == "dislike" }.compactMap { $0.value(forKey: "name") as? String }
         }
         
-        if let notesSet = entity.dietaryNotes as? Set<DietaryNote> {
-            model.dietaryNotes = notesSet.compactMap { $0.content }
+        if let notesSet = entity.value(forKey: "dietaryNotes") as? Set<NSManagedObject> {
+            model.dietaryNotes = notesSet.compactMap { $0.value(forKey: "content") as? String }
         }
         
         return model

@@ -35,6 +35,7 @@ struct UserProfileMemory: Codable {
     var likes: [String] = []           // Foods user enjoys
     var dislikes: [String] = []        // Foods user avoids (personal preference)
     var dietaryNotes: [String] = []    // General dietary notes
+    var recentSwaps: [String] = []     // Variety Memory: names of recently swapped foods
     
     /// Check if a food should be avoided (health or preference)
     func shouldAvoid(_ foodName: String) -> Bool {
@@ -46,5 +47,12 @@ struct UserProfileMemory: Codable {
     /// Check if memory has any meaningful content
     var hasContent: Bool {
         !healthConditions.isEmpty || !likes.isEmpty || !dislikes.isEmpty || !dietaryNotes.isEmpty
+    }
+    
+    mutating func addRecentSwap(_ foodName: String) {
+        recentSwaps.insert(foodName, at: 0)
+        if recentSwaps.count > 10 {
+            recentSwaps.removeLast()
+        }
     }
 }

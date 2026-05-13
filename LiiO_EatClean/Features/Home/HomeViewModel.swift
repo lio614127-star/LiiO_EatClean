@@ -16,21 +16,47 @@ class HomeViewModel {
     var showMilestonePopup = false
     var milestoneValue = 0
     
+    // Today Dashboard (v1.5 Two-Layer Execution)
+    var dashboard = TodayDashboard(date: Date())
+    
+    // Smart Link Suggestions: [mealType: (mealId, plannedMealType)]
+    var pendingLinkSuggestions: [String: (mealId: UUID, plannedMealType: String)] = [:]
+    
     // Proactive AI
     var dailySummary: DailySummary?
     var insights: [DailyInsight]?
-    private let summaryService = DailySummaryService()
+    var coachingInsight: CoachingInsight?
+    let summaryService = DailySummaryService()
     
     private let mealRepository: MealRepositoryProtocol
     private let userRepository: UserRepositoryProtocol
+    private let dailyPlanRepository: DailyPlanRepositoryProtocol
     private let streakService: StreakService
+    private let metabolicRepo: MetabolicRepositoryProtocol
+    private let goalOrchestrator: GoalOrchestrator
     
     init(mealRepository: MealRepositoryProtocol = MealRepository(),
          userRepository: UserRepositoryProtocol = UserRepository(),
-         streakService: StreakService = StreakService()) {
+         dailyPlanRepository: DailyPlanRepositoryProtocol = DailyPlanRepository(),
+         streakService: StreakService = StreakService(),
+         metabolicRepo: MetabolicRepositoryProtocol = MetabolicRepository()) {
         self.mealRepository = mealRepository
         self.userRepository = userRepository
+        self.dailyPlanRepository = dailyPlanRepository
         self.streakService = streakService
+        self.metabolicRepo = metabolicRepo
+        self.goalOrchestrator = GoalOrchestrator(metabolicRepo: metabolicRepo)
+        
+        setupNotificationListeners()
+    }
+    
+    private func setupNotificationListeners() {
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("dailyPlanDidConfirm"), object: nil, queue: .main) { _ in
+            Task { await self.loadDashboard() }
+        }
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("mealLogDidUpdate"), object: nil, queue: .main) { _ in
+            Task { await self.loadDashboard() }
+        }
     }
     
     func loadDashboard() async {
@@ -39,32 +65,49 @@ class HomeViewModel {
         }
         do {
             user = try await userRepository.fetchUser()
-            todayMeals = try await mealRepository.fetchMeals(by: Date())
-            waterConsumed = try await userRepository.fetchWaterLog(for: Date())
+            if let user = user {
+                try await metabolicRepo.bootstrapMetabolicData(for: user)
+            }
             
-            let previousIsOverTarget = isOverTarget
+            let date = Date()
+            let meals = try await mealRepository.fetchMeals(by: date)
+            let confirmedPlan = try await dailyPlanRepository.fetchPlan(for: date)
+            let water = try await userRepository.fetchWaterLog(for: date)
             
-            streak = await streakService.evaluateToday(
-                meals: todayMeals,
-                totalCalories: totalCalories,
-                dailyTarget: dailyTarget,
-                waterConsumed: waterConsumed,
-                waterTarget: waterTarget
+            // Calculate totals locally for streak evaluation
+            let eatenFoods = meals.flatMap { $0.mealFoods }.filter { $0.isEaten }
+            let totalCals = eatenFoods.reduce(0) { $0 + $1.caloriesSnapshot }
+            let targetCals = user?.dailyCalorieTarget ?? 2000.0
+            
+            let streak = await streakService.evaluateToday(
+                meals: meals,
+                totalCalories: totalCals,
+                dailyTarget: targetCals,
+                waterConsumed: water,
+                waterTarget: 2000.0
             )
             
-            if let streak = streak, [7, 14, 30].contains(streak.currentStreak) {
-                // Determine if we just hit it today
-                let calendar = Calendar.current
-                if calendar.isDateInToday(streak.lastActiveDate) && streak.conditionsMet == 3 {
-                    milestoneValue = streak.currentStreak
-                    showMilestonePopup = true
+            await MainActor.run {
+                self.todayMeals = meals
+                self.waterConsumed = water
+                self.buildDashboard(date: date, meals: meals, confirmedPlan: confirmedPlan)
+                self.checkAutoLinks(meals: meals, plan: confirmedPlan)
+                
+                let previousIsOverTarget = isOverTarget
+                self.streak = streak
+                
+                if let streak = self.streak, [7, 14, 30].contains(streak.currentStreak) {
+                    let calendar = Calendar.current
+                    if calendar.isDateInToday(streak.lastActiveDate) && streak.conditionsMet == 3 {
+                        self.milestoneValue = streak.currentStreak
+                        self.showMilestonePopup = true
+                    }
+                }
+                
+                if !previousIsOverTarget && self.isOverTarget {
+                    HapticManager.warning()
                 }
             }
-            
-            if !previousIsOverTarget && isOverTarget {
-                HapticManager.warning()
-            }
-            
         } catch {
             print("Error loading dashboard data: \(error)")
         }
@@ -75,9 +118,17 @@ class HomeViewModel {
         
         let insightDetector = InsightDetector()
         insights = await insightDetector.detectInsights()
+        
+        // Load Metabolic Coaching Insight
+        await loadCoachingInsight()
+        
+        // Mandatory Background Enrichment safety trigger
+        let allFoods = todayMeals.flatMap { $0.mealFoods }.compactMap { $0.foodItem }
+        BackgroundEnrichmentManager.shared.enrich(foods: allFoods)
     }
     
     private var lastSummaryMealCount: Int = -1
+    private var summaryDebounceTask: Task<Void, Never>?
     
     private func loadDailySummaryIfNeeded() async {
         // Only regenerate if meal data changed (avoid re-calling AI on every tab switch)
@@ -85,8 +136,76 @@ class HomeViewModel {
         guard currentMealCount != lastSummaryMealCount else { return }
         lastSummaryMealCount = currentMealCount
         
-        await summaryService.generateSummary()
-        dailySummary = summaryService.currentSummary
+        // 10s Debounce Logic: Cancel existing task and start a new one
+        summaryDebounceTask?.cancel()
+        summaryDebounceTask = Task {
+            do {
+                // Wait for 10 seconds of inactivity
+                try await Task.sleep(nanoseconds: 10 * 1_000_000_000)
+                if Task.isCancelled { return }
+                
+                print("✨ Daily Summary: Debounce finished, generating summary...")
+                await summaryService.generateSummary(isInternal: true)
+                
+                await MainActor.run {
+                    self.dailySummary = summaryService.currentSummary
+                }
+            } catch {
+                // Task was cancelled or failed
+            }
+        }
+    }
+    
+    private func loadCoachingInsight() async {
+        do {
+            if let proposal = try await goalOrchestrator.generateProposal() {
+                await MainActor.run {
+                    self.coachingInsight = AICoachCommunicator.generateCoachingInsight(from: proposal)
+                }
+            } else {
+                await MainActor.run {
+                    self.coachingInsight = AICoachCommunicator.generateFallbackInsight()
+                }
+            }
+        } catch {
+            print("Failed to load coaching insight: \(error)")
+        }
+    }
+    
+    func applyGoalAdjustment(_ proposal: GoalAdjustmentProposal) async {
+        do {
+            // 1. Close previous version
+            try await metabolicRepo.closePreviousGoalVersion(at: Date())
+            
+            // 2. Save new history entry
+            let newGoal = GoalHistoryModel(
+                calorieTarget: proposal.newCalorieTarget,
+                proteinTarget: proposal.newProteinTarget,
+                carbTarget: proposal.newCalorieTarget * 0.4 / 4.0,
+                fatTarget: proposal.newCalorieTarget * 0.3 / 9.0,
+                weight: user?.weight ?? 0,
+                interventionType: proposal.intervention.severity.rawValue,
+                interventionCategory: proposal.intervention.category.rawValue,
+                reason: proposal.intervention.reason,
+                source: "aiSuggestion",
+                effectiveFrom: Date(),
+                version: 2
+            )
+            try await metabolicRepo.saveGoalHistory(newGoal)
+            
+            // 3. Update User Profile for backward compatibility
+            if var currentUser = user {
+                currentUser.dailyCalorieTarget = proposal.newCalorieTarget
+                try await userRepository.saveUser(currentUser)
+                self.user = currentUser
+            }
+            
+            // 4. Refresh Dashboard
+            await loadDashboard()
+            HapticManager.success()
+        } catch {
+            print("Failed to apply goal adjustment: \(error)")
+        }
     }
     
     func addWater(amount: Double) async {
@@ -110,13 +229,138 @@ class HomeViewModel {
     }
     
     private func refreshStreak() async {
-        streak = await streakService.evaluateToday(
+        let newStreak = await streakService.evaluateToday(
             meals: todayMeals,
             totalCalories: totalCalories,
             dailyTarget: dailyTarget,
             waterConsumed: waterConsumed,
             waterTarget: waterTarget
         )
+        await MainActor.run {
+            self.streak = newStreak
+        }
+    }
+    
+    private func buildDashboard(date: Date, meals: [MealModel], confirmedPlan: DailyPlanModel?) {
+        var newDashboard = TodayDashboard(date: date)
+        
+        if let plan = confirmedPlan, plan.status == "confirmed" || plan.status == "active" {
+            newDashboard.confirmedDailyPlan = plan
+            newDashboard.plannedCalories = plan.targetCalories
+            newDashboard.plannedProtein = plan.targetProtein
+            
+            // Sort planned meals by type
+            let sortedPlanned = plan.plannedMeals.sorted { 
+                self.mealTypeOrder($0.type) < self.mealTypeOrder($1.type)
+            }
+            
+            for pm in sortedPlanned {
+                switch pm.status {
+                case "eaten":
+                    newDashboard.eatenPlannedMeals.append(pm)
+                case "skipped":
+                    newDashboard.skippedPlannedMeals.append(pm)
+                default:
+                    newDashboard.pendingPlannedMeals.append(pm)
+                }
+            }
+        }
+        
+        newDashboard.actualMealLogs = meals.sorted { 
+            self.mealTypeOrder($0.mealType) < self.mealTypeOrder($1.mealType)
+        }
+        
+        // Unplanned meals: logs that are not linked to a planned meal in the current plan
+        let linkedIdsInPlan = Set(newDashboard.confirmedDailyPlan?.plannedMeals.map { $0.id } ?? [])
+        newDashboard.unplannedMealLogs = meals.filter { meal in
+            if let linkedId = meal.linkedPlannedMealId {
+                return !linkedIdsInPlan.contains(linkedId)
+            }
+            return true
+        }
+        
+        // Calculate Actual Totals
+        let eatenFoods = meals.flatMap { $0.mealFoods }.filter { $0.isEaten }
+        newDashboard.actualCalories = eatenFoods.reduce(0) { $0 + $1.caloriesSnapshot }
+        newDashboard.actualProtein = eatenFoods.reduce(0) { $0 + $1.proteinSnapshot }
+        newDashboard.actualCarbs = eatenFoods.reduce(0) { $0 + $1.carbsSnapshot }
+        newDashboard.actualFat = eatenFoods.reduce(0) { $0 + $1.fatSnapshot }
+        
+        self.dashboard = newDashboard
+    }
+    
+    // MARK: - Actions
+    
+    func markAsEaten(plannedMeal: PlannedMealModel) async {
+        guard plannedMeal.actualMealLogId == nil else { return }
+        
+        let date = Date()
+        let mealFoods = plannedMeal.foodItems.map { food in
+            MealFoodModel(
+                quantity: 1.0,
+                caloriesSnapshot: food.calories,
+                proteinSnapshot: food.protein,
+                carbsSnapshot: food.carbs,
+                fatSnapshot: food.fat,
+                isEaten: true,
+                foodItem: FoodItemModel(
+                    id: food.id,
+                    name: food.name,
+                    calories: food.calories,
+                    protein: food.protein,
+                    carbs: food.carbs,
+                    fat: food.fat,
+                    servingSize: food.servingSize,
+                    source: "plan"
+                )
+            )
+        }
+        
+        let actualMeal = MealModel(
+            date: date,
+            mealType: plannedMeal.type,
+            source: "plannedMeal",
+            linkedPlannedMealId: plannedMeal.id,
+            mealFoods: mealFoods
+        )
+        
+        do {
+            try await mealRepository.saveMeal(actualMeal, for: date)
+            
+            // Update PlannedMeal status
+            if var plan = dashboard.confirmedDailyPlan {
+                if let idx = plan.plannedMeals.firstIndex(where: { $0.id == plannedMeal.id }) {
+                    plan.plannedMeals[idx].status = "eaten"
+                    plan.plannedMeals[idx].actualMealLogId = actualMeal.id
+                    plan.plannedMeals[idx].eatenAt = date
+                    try await dailyPlanRepository.savePlan(plan, status: plan.status)
+                }
+            }
+            
+            HapticManager.success()
+            await loadDashboard()
+            
+            // Background enrichment
+            BackgroundEnrichmentManager.shared.enrich(foods: actualMeal.mealFoods.compactMap { $0.foodItem })
+            
+        } catch {
+            print("Failed to mark planned meal as eaten: \(error)")
+        }
+    }
+    
+    func skipPlannedMeal(plannedMeal: PlannedMealModel) async {
+        guard var plan = dashboard.confirmedDailyPlan else { return }
+        
+        if let idx = plan.plannedMeals.firstIndex(where: { $0.id == plannedMeal.id }) {
+            plan.plannedMeals[idx].status = "skipped"
+            do {
+                try await dailyPlanRepository.savePlan(plan, status: plan.status)
+                HapticManager.success()
+                await loadDashboard()
+            } catch {
+                print("Failed to skip planned meal: \(error)")
+            }
+        }
     }
     
     func deleteMealFood(id: UUID) async {
@@ -133,35 +377,19 @@ class HomeViewModel {
     private var validMealTypes: [String] { ["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"] }
     
     var totalCalories: Double {
-        todayMeals
-            .filter { meal in validMealTypes.contains { $0.lowercased() == meal.mealType.lowercased() } }
-            .flatMap { $0.mealFoods }
-            .filter { $0.isEaten }
-            .reduce(0) { $0 + $1.caloriesSnapshot }
+        dashboard.actualCalories
     }
     
     var totalProtein: Double {
-        todayMeals
-            .filter { meal in validMealTypes.contains { $0.lowercased() == meal.mealType.lowercased() } }
-            .flatMap { $0.mealFoods }
-            .filter { $0.isEaten }
-            .reduce(0) { $0 + $1.proteinSnapshot }
+        dashboard.actualProtein
     }
     
     var totalCarbs: Double {
-        todayMeals
-            .filter { meal in validMealTypes.contains { $0.lowercased() == meal.mealType.lowercased() } }
-            .flatMap { $0.mealFoods }
-            .filter { $0.isEaten }
-            .reduce(0) { $0 + $1.carbsSnapshot }
+        dashboard.actualCarbs
     }
     
     var totalFat: Double {
-        todayMeals
-            .filter { meal in validMealTypes.contains { $0.lowercased() == meal.mealType.lowercased() } }
-            .flatMap { $0.mealFoods }
-            .filter { $0.isEaten }
-            .reduce(0) { $0 + $1.fatSnapshot }
+        dashboard.actualFat
     }
     
     var dailyTarget: Double {
@@ -200,6 +428,76 @@ class HomeViewModel {
             await loadDashboard()
         } catch {
             print("Failed to toggle meal food status: \(error)")
+        }
+    }
+    
+    private func mealTypeOrder(_ mealType: String) -> Int {
+        let normalized = mealType.lowercased().trimmingCharacters(in: .whitespaces)
+        switch normalized {
+        case "breakfast", "sang", "bữa sáng": return 0
+        case "lunch", "trua", "bữa trưa": return 1
+        case "dinner", "toi", "bữa tối": return 2
+        case "snack", "an vat", "ăn vặt": return 3
+        default: return 4
+        }
+    }
+    
+    // MARK: - Smart Auto-Link
+    
+    private func checkAutoLinks(meals: [MealModel], plan: DailyPlanModel?) {
+        guard let plan = plan else {
+            pendingLinkSuggestions = [:]
+            return
+        }
+        
+        let unlinkedMeals = meals.filter { $0.linkedPlannedMealId == nil }
+        var suggestions: [String: (mealId: UUID, plannedMealType: String)] = [:]
+        
+        for meal in unlinkedMeals {
+            let candidates = MealPlanLinkingService.shared.findCandidateLinks(for: meal, in: plan)
+            if let best = candidates.first {
+                if best.confidence >= 0.90 {
+                    // Auto-link in background
+                    Task {
+                        let result = await MealPlanLinkingService.shared.tryAutoLink(
+                            mealLog: meal,
+                            dailyPlan: plan,
+                            mealRepository: mealRepository,
+                            dailyPlanRepository: dailyPlanRepository
+                        )
+                        if case .linked = result {
+                            await loadDashboard()
+                        }
+                    }
+                } else if best.confidence >= 0.70 {
+                    // Show suggestion chip
+                    suggestions[meal.mealType] = (mealId: meal.id, plannedMealType: best.plannedMeal.type)
+                }
+            }
+        }
+        
+        pendingLinkSuggestions = suggestions
+    }
+    
+    func linkMealToPlan(mealId: UUID) async {
+        guard let meal = todayMeals.first(where: { $0.id == mealId }),
+              let plan = dashboard.confirmedDailyPlan,
+              let suggestion = pendingLinkSuggestions[meal.mealType] else { return }
+        
+        // Find the planned meal ID by type
+        guard let plannedMeal = plan.plannedMeals.first(where: { $0.type.lowercased().trimmingCharacters(in: .whitespaces) == suggestion.plannedMealType.lowercased().trimmingCharacters(in: .whitespaces) && $0.status == "planned" && $0.actualMealLogId == nil }) else { return }
+        
+        let success = await MealPlanLinkingService.shared.forceLink(
+            mealLog: meal,
+            dailyPlan: plan,
+            plannedMealId: plannedMeal.id,
+            mealRepository: mealRepository,
+            dailyPlanRepository: dailyPlanRepository
+        )
+        
+        if success {
+            HapticManager.success()
+            await loadDashboard()
         }
     }
 }

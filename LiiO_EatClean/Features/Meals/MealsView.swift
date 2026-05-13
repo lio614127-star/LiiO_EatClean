@@ -91,9 +91,10 @@ struct MealsView: View {
                 Task { await viewModel.loadTodayMeals() }
             }) { item in
                 AddMealView(selectedMealType: item.id)
+                    .id(item.id)
             }
             .sheet(item: $activeDetailMealType) { item in
-                MealDetailSheet(
+                MealCategorySummarySheet(
                     mealType: item.id,
                     initialMeals: viewModel.meals(for: item.id),
                     onUpdate: {
@@ -103,8 +104,11 @@ struct MealsView: View {
                 .id(item.id + "-\(viewModel.todayMeals.flatMap { $0.mealFoods }.count)")
             }
             .fullScreenCover(isPresented: $showMealPlanSheet, onDismiss: {
-                mealPlanViewModel.reset()
-                Task { await viewModel.loadTodayMeals() }
+                // ⚡ Delay refresh to avoid transition glitch with fullScreenCover
+                Task {
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                    await viewModel.loadTodayMeals(forceSilent: true)
+                }
             }) {
                 MealPlanSheet(
                     viewModel: mealPlanViewModel,
@@ -113,8 +117,11 @@ struct MealsView: View {
                 )
             }
             .fullScreenCover(isPresented: $showWeeklyPlanSheet, onDismiss: {
-                mealPlanViewModel.reset()
-                Task { await viewModel.loadTodayMeals() }
+                // ⚡ Delay refresh to avoid transition glitch with fullScreenCover
+                Task {
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                    await viewModel.loadTodayMeals(forceSilent: true)
+                }
             }) {
                 WeeklyPlanView(
                     viewModel: mealPlanViewModel,
@@ -125,8 +132,10 @@ struct MealsView: View {
                 MemoryHubView()
             }
         }
-        .task {
-            await viewModel.loadTodayMeals()
+        .onAppear {
+            Task {
+                await viewModel.loadTodayMeals()
+            }
         }
     }
     
@@ -158,7 +167,12 @@ struct MealsView: View {
                         }
                         .buttonStyle(.plain)
                         
-                        MealItemRow(mealFood: food)
+                        NavigationLink {
+                            MealDetailSheet(food: food.foodItem ?? FoodItemModel(id: UUID(), name: food.foodItem?.name ?? "Món ăn", calories: food.caloriesSnapshot, protein: food.proteinSnapshot, carbs: food.carbsSnapshot, fat: food.fatSnapshot, servingSize: 1))
+                        } label: {
+                            MealItemRow(mealFood: food)
+                        }
+                        .buttonStyle(.plain)
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {

@@ -1,88 +1,86 @@
-# Roadmap: LiiO EatClean
+# Roadmap
+
+## Vision
+Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi với từng thay đổi nhỏ của người dùng.
 
 ## Milestones
 
-- ✅ **v1.0 MVP Calorie Tracker** — Phases 1-10 (shipped 2026-05-04)
-- ✅ **v1.1 Trải Nghiệm Nhanh & AI Chủ Động** — Phases 11-14 (shipped 2026-05-06)
-- ✅ **v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện** — Phases 15-20 (shipped 2026-05-09)
-- ✅ **v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi** — Phases 21-22 (shipped 2026-05-10)
-- 🚧 **v1.4 Nâng cấp Phân tích & Trải nghiệm** — Phases 23+ (in progress)
-
-## Phases
-
 <details>
-<summary>✅ v1.0 MVP Calorie Tracker (Phases 1-10) — SHIPPED 2026-05-04</summary>
-
-- [x] Phase 1: Project Foundation & Data Layer
-- [x] Phase 2: Splash + Onboarding + Goal Setup
-- [x] Phase 3: Home Dashboard
-- [x] Phase 4: Food Database (Hybrid Search)
-- [x] Phase 5: Meal Logging (Core Loop)
-- [x] Phase 6: Progress & Weight Tracking
-- [x] Phase 7: Profile + AI Meal Suggestions
-- [x] Phase 8: Water Tracking + Smart Reminders + Polish
-- [x] Phase 9: AI Nutritionist Chatbox
-- [x] Phase 10: AI-Powered Meals Tab — Smart Suggestions, Memory & Actionable AI
-
-*See `.planning/milestones/v1.0-ROADMAP.md` for full details.*
+<summary>✅ v1.0 - v1.2 Foundation & AI Assistant (Phases 1-20) — SHIPPED</summary>
+*See previous milestone archives.*
 </details>
 
 <details>
-<summary>✅ v1.1 Trải Nghiệm Nhanh & AI Chủ Động (Phases 11-14) — SHIPPED 2026-05-06</summary>
-
-- [x] Phase 11: Gamification & UI Polish (Streak, Haptic, Micro-interactions)
-- [x] Phase 12: Advanced Data Inputs (Voice Input & Barcode Scan)
-- [x] Phase 13: Proactive AI (Daily Summary & Memory Insights)
-- [x] Phase 14: AI Meal Planning Engine
-
-*See `.planning/milestones/v1.1-ROADMAP.md` for full details.*
+<summary>✅ v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi (Phases 21-22) — SHIPPED</summary>
+*See previous milestone archives.*
 </details>
 
 <details>
-<summary>✅ v1.2 Cá nhân hoá sâu & Trợ lý ảo toàn diện (Phases 15-20) — SHIPPED 2026-05-09</summary>
-
-- [x] Phase 15: AI Memory Hub & Personality
-- [x] Phase 16: API Infrastructure & Context Compression
-- [x] Phase 17: Voice Chat
-- [x] Phase 18: Advanced Insights & Health-Aware AI
-- [x] Phase 19: Offline Mode & Custom Foods
-- [x] Phase 20: Pro Chart UX & Data Visualization
-
-*See `.planning/milestones/v1.2-ROADMAP.md` for full details.*
+<summary>✅ v1.4 Nâng cấp Phân tích & Trải nghiệm (Phases 23-24) — SHIPPED</summary>
+*See previous milestone archives.*
 </details>
 
-### ✅ v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi
+### 🚀 v1.5 Trợ lý AI Toàn diện (Voice, Heatmap & Rebalance)
 
-- [x] **Phase 21: Next-Gen Nutrition & AI Planning Update**
-  - Wave 1: Turbo Daily Planning & All-in-one AI Orchestration
-  - Wave 2: Smart Unit Recognition & Composed Food Schema Updates
-  - Wave 3: Recipe Detail View & Ingredient Breakdown UI
-<details>
-<summary>✅ v1.3 Trợ lý Dinh dưỡng Toàn năng & Tiện lợi (Phases 21-22) — SHIPPED 2026-05-10</summary>
+- [ ] **Phase 25: Date-Aware Planning Foundation**
+  - Goal: Cấu trúc lại hệ thống lập kế hoạch để lưu trữ an toàn theo ngày và không ghi đè dữ liệu lịch sử.
+  - Requirements: PLAN-04, PLAN-05, PLAN-06, PLAN-07
+  - Success Criteria:
+    1. DailyPlan sinh ra gắn chặt với startOfDay và tồn tại trong CoreData.
+    2. Chọn ngày cũ xem được Plan cũ.
+    3. Weekly Plan tạo ra 7 bản ghi DailyPlan tách biệt.
 
-- [x] Phase 21: Next-Gen Nutrition & AI Planning Update
-- [x] Phase 22: Macro Dashboard & Nutrition Insights
+- [ ] **Phase 26: Two-Layer Execution (Home integration)**
+  - Goal: Đưa kế hoạch vào đời thực thông qua Home tab mà không gây cản trở việc log món tự do.
+  - Requirements: UI-01, UI-04, UI-05, PLAN-08
+  - Success Criteria:
+    1. Home hiển thị card "Next Planned Meal" với nút "Đã ăn".
+    2. Log món khớp plan tự động link (Smart Linking).
+    3. Log món khác cùng mealType gợi ý "Thay thế" (replaced status).
+    4. Calories thực tế chỉ tính từ Actual MealLogs, không double count với Plan.
 
-*See `.planning/milestones/v1.3-ROADMAP.md` for full details.*
-</details>
+- [ ] **Phase 27: Calendar Heatmap & Adherence**
+  - Goal: Cung cấp góc nhìn toàn cảnh về kỷ luật ăn uống thông qua biểu đồ nhiệt.
+  - Requirements: HEAT-01, HEAT-02, HEAT-03
+  - Success Criteria:
+    1. Lịch tháng hiển thị màu sắc dựa trên Adherence Score.
+    2. Tap vào ngày để mở chi tiết lịch sử (Journal).
 
-<details>
-<summary>✅ v1.4 Nâng cấp Phân tích & Trải nghiệm (Phases 23-24) — SHIPPED 2026-05-12</summary>
+- [ ] **Phase 28: AI Rebalance & Smart Correction**
+  - Goal: Tái cấu trúc tự động các bữa chưa ăn dựa trên độ lệch thực tế.
+  - Requirements: REBAL-01, REBAL-02, REBAL-03
+  - Success Criteria:
+    1. AI nhận diện các bữa status "replaced" hoặc "skipped" để cân đối lại macro.
+    2. Nút "Tái cấu trúc" hoạt động mượt mà chỉ cho các bữa chưa ăn.
 
-- [x] Phase 23: Advanced Chart Visualization & Custom Date Range
-- [x] Phase 24: AI Goal Setting
+- [ ] **Phase 29: Chat Persistence Fix**
+  - Goal: Đảm bảo lịch sử trò chuyện AI Coach không bị mất khi thoát ứng dụng.
+  - Requirements: VOICE-06
+  - Success Criteria:
+    1. ChatSession và ChatMessage hoạt động ổn định trên CoreData.
+    2. Mở app lên giữ nguyên phiên chat cũ.
 
-*See `.planning/milestones/v1.4-ROADMAP.md` for full details.*
-</details>
+- [ ] **Phase 30: In-App Voice Assistant & Global Wake Phrase**
+  - Goal: Trải nghiệm Hands-free đích thực, nói là hiểu.
+  - Requirements: VOICE-01, VOICE-02, VOICE-03, VOICE-04
+  - Success Criteria:
+    1. Nói "Hey LiiO" trong app thì AI lắng nghe.
+    2. Auto-send khi dừng nói.
+    3. Đổi tên AI hoạt động hoàn hảo.
+
+- [ ] **Phase 31: Global Context Builder cho AI Coach**
+  - Goal: AI Coach đọc và hiểu mọi dữ liệu người dùng để tư vấn như một con người thực sự.
+  - Requirements: VOICE-05
+  - Success Criteria:
+    1. AI trả lời chính xác số calo còn thiếu và món đang chờ trong Plan.
+    2. Không bịa dữ liệu và tuân thủ ràng buộc dị ứng.
 
 ## Progress
 
-| Phase | Milestone | Status | Completed |
-|-------|-----------|--------|-----------|
-| 1-10 | v1.0 | Complete | 2026-05-04 |
-| 11-14 | v1.1 | Complete | 2026-05-06 |
-| 15-20 | v1.2 | Complete | 2026-05-09 |
-| 21. Next-Gen Nutrition AI | v1.3 | Complete | 2026-05-10 |
-| 22. Macro Dashboard | v1.3 | Complete | 2026-05-10 |
-| 23. Advanced Chart UX | v1.4 | Complete | 2026-05-10 |
-| 24. AI Goal Setting | v1.4 | Complete | 2026-05-12 |
+- **Phases Complete:** 24
+- **Phases Active:** 0
+- **Phases Pending:** 7
+- **Completion:** 77% (24/31)
+
+---
+*Last updated: 2026-05-12 for Milestone v1.5*

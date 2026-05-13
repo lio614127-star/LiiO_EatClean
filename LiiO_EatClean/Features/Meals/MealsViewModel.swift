@@ -16,21 +16,38 @@ class MealsViewModel {
         self.userRepository = userRepository
     }
     
-    func loadTodayMeals() async {
-        isLoading = true
+    func loadTodayMeals(forceSilent: Bool = false) async {
+        let isInitialLoad = todayMeals.isEmpty && !forceSilent
+        
+        if isInitialLoad {
+            isLoading = true
+        }
+        
         do {
             user = try await userRepository.fetchUser()
-            todayMeals = try await mealRepository.fetchMeals(by: Date())
+            let fetchedMeals = try await mealRepository.fetchMeals(by: Date())
             
-            // CoreData sync fallback
-            if todayMeals.isEmpty {
-                try await Task.sleep(nanoseconds: 500_000_000)
+            // ⚡ Update only if data actually changed to avoid unnecessary List flashes
+            if fetchedMeals != todayMeals {
+                todayMeals = fetchedMeals
+            }
+            
+            // ⚡ Handle sync delays only on initial empty state
+            if todayMeals.isEmpty && isInitialLoad {
+                try await Task.sleep(nanoseconds: 200_000_000)
                 todayMeals = try await mealRepository.fetchMeals(by: Date())
             }
         } catch {
             print("Error loading today meals: \(error)")
         }
-        isLoading = false
+        
+        if isInitialLoad {
+            isLoading = false
+        }
+        
+        // Background Enrichment
+        let allFoods = todayMeals.flatMap { $0.mealFoods }.compactMap { $0.foodItem }
+        BackgroundEnrichmentManager.shared.enrich(foods: allFoods)
     }
     
     func deleteMealFood(id: UUID) async {

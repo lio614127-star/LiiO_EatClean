@@ -182,6 +182,12 @@ struct ChatView: View {
                 generator.notificationOccurred(.success)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AskAICoachAboutMeal"))) { notification in
+            if let food = notification.object as? FoodItemModel {
+                let prompt = "Tôi muốn hỏi về món '\(food.name)' (\(Int(food.calories)) kcal). Bạn có lời khuyên gì về dinh dưỡng hoặc cách chế biến món này không?"
+                viewModel.sendMessage(prompt)
+            }
+        }
         .overlay(alignment: .bottom) {
             if showVoiceSheet {
                 VoiceRecordingSheet(

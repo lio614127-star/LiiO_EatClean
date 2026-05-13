@@ -134,6 +134,11 @@ struct AddMealView: View {
         .task {
             await viewModel.loadRemainingCalories()
         }
+        .onChange(of: viewModel.selectedMealType) { _, _ in
+            Task {
+                await viewModel.loadRemainingCalories()
+            }
+        }
     }
     
     // MARK: - AI Button Bar
@@ -183,7 +188,7 @@ struct AddMealView: View {
                         withAnimation { showOfflineToast = true }
                         return
                     }
-                    Task { await viewModel.requestAISuggestions() }
+                    Task { await viewModel.requestAISuggestions(forceRefresh: true) }
                 }) {
                     Text(viewModel.isLoadingAI ? "AI..." : "✨ Hỏi AI")
                         .font(.subheadline.bold())
@@ -257,7 +262,21 @@ struct AddMealView: View {
                         Text("AI gợi ý cho \(viewModel.selectedMealType)")
                             .font(.caption.bold())
                             .foregroundColor(.green)
+                        
+                        Button(action: {
+                            Task { await viewModel.requestAISuggestions(forceRefresh: true) }
+                        }) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.green)
+                                .padding(4)
+                                .background(Color.green.opacity(0.1))
+                                .clipShape(Circle())
+                        }
+                        .disabled(viewModel.isLoadingAI)
+                        
                         Spacer()
+                        
                         Button("Ẩn") {
                             viewModel.showingAISection = false
                         }
@@ -289,6 +308,16 @@ struct AddMealView: View {
                     .font(.subheadline.bold())
                 
                 HStack(spacing: 8) {
+                    if let unit = suggestion.unit {
+                        Text(UnitConversionEngine.shared.formatDisplayUnit(unit: unit, weight: suggestion.weightInGrams))
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.green.opacity(0.1))
+                            .foregroundColor(.green)
+                            .clipShape(Capsule())
+                    }
+                    
                     Text("\(Int(suggestion.calories)) kcal")
                         .font(.caption)
                         .foregroundColor(.orange)

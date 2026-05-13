@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUI
 
+// 
+
 enum ProgressTab: String, CaseIterable {
     case calories = "Calo"
     case weight = "Cân nặng"
@@ -10,6 +12,7 @@ enum TimeRange: String, CaseIterable {
     case week = "7N"
     case month = "30N"
     case quarter = "3T"
+    case custom = "Tùy chọn"
 }
 
 struct CalorieDailyTotal: Identifiable {
@@ -32,11 +35,54 @@ class ProgressViewModel {
     var calorieData: [CalorieDailyTotal] = []
     var weightData: [WeightEntryModel] = []
     var weeklyData: [WeeklyAggregate] = []
+    var monthlyData: [MonthlyAggregate] = []
     var isLoading = false
+    
+    var periodOffset: Int = 0
+    var customStartDate: Date = Calendar.current.date(byAdding: .day, value: -6, to: Date())!
+    var customEndDate: Date = Date()
+    
+    var currentDateRange: (start: Date, end: Date) {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        var start: Date
+        var end: Date
+        
+        switch selectedTimeRange {
+        case .week:
+            let anchor = calendar.startOfDay(for: today)
+            let offset = periodOffset * 7
+            let currentAnchor = calendar.date(byAdding: .day, value: offset, to: anchor)!
+            start = calendar.date(byAdding: .day, value: -6, to: currentAnchor)!
+            end = currentAnchor
+        case .month:
+            let anchor = calendar.date(byAdding: .day, value: periodOffset * 30, to: today)!
+            start = calendar.date(byAdding: .day, value: -29, to: anchor)!
+            end = anchor
+        case .quarter:
+            let anchor = calendar.date(byAdding: .day, value: periodOffset * 90, to: today)!
+            start = calendar.date(byAdding: .day, value: -89, to: anchor)!
+            end = anchor
+        case .custom:
+            let duration = calendar.dateComponents([.day], from: customStartDate, to: customEndDate).day ?? 1
+            let offsetDays = periodOffset * (duration + 1)
+            start = calendar.date(byAdding: .day, value: offsetDays, to: customStartDate)!
+            end = calendar.date(byAdding: .day, value: offsetDays, to: customEndDate)!
+        }
+        
+        let finalEnd = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: end) ?? end
+        return (calendar.startOfDay(for: start), finalEnd)
+    }
     
     var macroAggregate: MacroAggregate?
     var macroTarget: MacroTarget?
     var macroTrend: MacroTrend?
+    
+    // Weekly Flex Budget
+    var weeklyRemainingCalories: Double = 0
+    var weeklyAverageCalories: Double = 0
+    var weeklyAdherenceScore: Double = 0
     
     private let mealRepository: MealRepositoryProtocol
     private let userRepository: UserRepositoryProtocol
@@ -54,17 +100,12 @@ class ProgressViewModel {
             dailyTarget = user?.dailyCalorieTarget ?? 2000.0
             
             // Calculate start and end date
-            let calendar = Calendar.current
-            let today = calendar.startOfDay(for: Date())
-            let daysToSubtract: Int
-            switch selectedTimeRange {
-            case .week: daysToSubtract = 6
-            case .month: daysToSubtract = 29
-            case .quarter: daysToSubtract = 89 // 90 days total for 12+ weeks
-            }
-            guard let startDate = calendar.date(byAdding: .day, value: -daysToSubtract, to: today) else { return }
+            let range = currentDateRange
+            let startDate = range.start
+            let endOfDay = range.end
             
-            let endOfDay = calendar.date(byAdding: .day, value: 1, to: today)!
+            let calendar = Calendar.current
+            let daysInRange = calendar.dateComponents([.day], from: startDate, to: endOfDay).day ?? 1
             
             // Load and aggregate meals
             let meals = try await mealRepository.fetchMeals(from: startDate, to: endOfDay)
@@ -76,7 +117,7 @@ class ProgressViewModel {
             var dailyCalories: [Date: Double] = [:]
             
             // Initialize all days in range with 0
-            for i in 0...daysToSubtract {
+            for i in 0...daysInRange {
                 if let day = calendar.date(byAdding: .day, value: i, to: startDate) {
                     dailyCalories[calendar.startOfDay(for: day)] = 0.0
                 }
@@ -110,11 +151,22 @@ class ProgressViewModel {
                 daysCount: max(activeDays, 1)
             )
             
+            // Calculate Weekly Remainder (Current week only)
+            if selectedTimeRange == .week && periodOffset == 0 {
+                let weekCals = dailyCalories.values.reduce(0, +)
+                let daysSoFar = calendar.dateComponents([.day], from: startDate, to: calendar.startOfDay(for: Date())).day ?? 0
+                let elapsedDays = daysSoFar + 1
+                let totalWeekTarget = dailyTarget * 7.0
+                weeklyRemainingCalories = max(0, totalWeekTarget - weekCals)
+                weeklyAverageCalories = weekCals / Double(elapsedDays)
+                weeklyAdherenceScore = 1.0 - (abs(weeklyAverageCalories - dailyTarget) / dailyTarget)
+            }
+            
             macroTarget = MacroTarget.default(calories: dailyTarget)
             
-            // Calculate Macro Trend (30N and 3T only)
-            if selectedTimeRange != .week && meals.count > 7 {
-                let midPoint = calendar.date(byAdding: .day, value: -daysToSubtract / 2, to: today)!
+            // Calculate Macro Trend (aggregated views only)
+            if daysInRange >= 7 && meals.count > 0 {
+                let midPoint = calendar.date(byAdding: .day, value: daysInRange / 2, to: startDate)!
                 
                 let firstHalfMeals = meals.filter { $0.date < midPoint }
                 let secondHalfMeals = meals.filter { $0.date >= midPoint }
@@ -155,11 +207,15 @@ class ProgressViewModel {
             
             // Load weights
             let allWeights = try await userRepository.fetchWeightEntries()
-            // Filter weights by date range
-            weightData = allWeights.filter { $0.date >= startDate && $0.date < endOfDay }
+            weightData = allWeights.filter { $0.date >= startDate && $0.date <= endOfDay }
             
-            // Calculate Weekly Aggregates if quarter is selected
-            if selectedTimeRange == .quarter {
+            // Smart Aggregation
+            if daysInRange <= 31 {
+                self.weeklyData = []
+                self.monthlyData = []
+            } else if daysInRange <= 120 {
+                // Weekly Aggregation
+                self.monthlyData = []
                 var newWeeklyData: [WeeklyAggregate] = []
                 var currentStart = startDate
                 var weekNum = 1
@@ -171,18 +227,16 @@ class ProgressViewModel {
                     let mealsInWeek = meals.filter { $0.date >= currentStart && $0.date < chunkEnd }
                     let weightsInWeek = allWeights.filter { $0.date >= currentStart && $0.date < chunkEnd }.sorted { $0.date < $1.date }
                     
-                    // Sum up calories from meals in the week
-                    let totalCaloriesInWeek = mealsInWeek.reduce(0.0) { sum, meal in
-                        sum + meal.mealFoods.reduce(0) { $0 + $1.caloriesSnapshot }
-                    }
-                    
-                    // Find unique days with logged meals to avoid punishing if they just didn't use the app,
-                    // OR simple average by 7. We'll average by 7 to show daily average intake across the week.
-                    let avgCals = totalCaloriesInWeek / 7.0
+                    let dailyCalsInWeek = dailyCalories.filter { $0.key >= currentStart && $0.key < chunkEnd }.values
+                    let avgCals = dailyCalsInWeek.isEmpty ? 0 : dailyCalsInWeek.reduce(0, +) / Double(dailyCalsInWeek.count)
+                    let minCals = dailyCalsInWeek.min() ?? 0
+                    let maxCals = dailyCalsInWeek.max() ?? 0
                     
                     newWeeklyData.append(WeeklyAggregate(
                         weekNumber: weekNum,
                         averageCalories: avgCals,
+                        minCalories: minCals,
+                        maxCalories: maxCals,
                         lastWeight: weightsInWeek.last?.weight,
                         startDate: currentStart,
                         endDate: chunkEnd
@@ -193,7 +247,40 @@ class ProgressViewModel {
                 }
                 self.weeklyData = newWeeklyData
             } else {
+                // Monthly Aggregation
                 self.weeklyData = []
+                var newMonthlyData: [MonthlyAggregate] = []
+                var currentStart = startDate
+                
+                while currentStart < endOfDay {
+                    guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentStart) else { break }
+                    let chunkEnd = self.startOfMonth(for: nextMonth)
+                    
+                    let actualEnd = Swift.min(chunkEnd, endOfDay)
+                    if currentStart >= actualEnd { break }
+                    
+                    let weightsInMonth = allWeights.filter { $0.date >= currentStart && $0.date < actualEnd }.sorted { $0.date < $1.date }
+                    let dailyCalsInMonth = dailyCalories.filter { $0.key >= currentStart && $0.key < actualEnd }.values
+                    let avgCals = dailyCalsInMonth.isEmpty ? 0 : dailyCalsInMonth.reduce(0, +) / Double(dailyCalsInMonth.count)
+                    let minCals = dailyCalsInMonth.min() ?? 0
+                    let maxCals = dailyCalsInMonth.max() ?? 0
+                    
+                    let components = calendar.dateComponents([.month, .year], from: currentStart)
+                    
+                    newMonthlyData.append(MonthlyAggregate(
+                        month: components.month ?? 0,
+                        year: components.year ?? 0,
+                        averageCalories: avgCals,
+                        minCalories: minCals,
+                        maxCalories: maxCals,
+                        lastWeight: weightsInMonth.last?.weight,
+                        startDate: currentStart,
+                        endDate: actualEnd
+                    ))
+                    
+                    currentStart = actualEnd
+                }
+                self.monthlyData = newMonthlyData
             }
             
         } catch {
@@ -210,5 +297,11 @@ class ProgressViewModel {
         } catch {
             print("Error saving weight: \(error)")
         }
+    }
+    
+    private func startOfMonth(for date: Date) -> Date {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month], from: date)
+        return calendar.date(from: components)!
     }
 }

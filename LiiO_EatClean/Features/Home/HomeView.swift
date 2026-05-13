@@ -21,65 +21,114 @@ struct HomeView: View {
                 if viewModel.isLoading {
                     ProgressView()
                 } else {
-                    ScrollView {
-                        VStack(spacing: 24) {
-                            // Header
-                            headerSection
-                            
-                            // Progress Ring with sweep animation
-                            CalorieRingView(
-                                consumed: viewModel.totalCalories,
-                                target: viewModel.dailyTarget
-                            )
-                            .frame(width: 240, height: 240)
-                            .animation(.easeInOut(duration: 0.6), value: viewModel.totalCalories)
-                            
-                            // Macro Bars
-                            macroBarsSection
-                            
-                            if let streak = viewModel.streak {
-                                StreakCardView(streak: streak, onTap: { })
+                    GeometryReader { geometry in
+                        ScrollView(.vertical, showsIndicators: false) {
+                            VStack(spacing: 24) {
+                                // Header
+                                headerSection
+                                
+                                // Progress Ring with sweep animation
+                                CalorieRingView(
+                                    consumed: viewModel.totalCalories,
+                                    target: viewModel.dailyTarget
+                                )
+                                .frame(width: 240, height: 240)
+                                .animation(.easeInOut(duration: 0.6), value: viewModel.totalCalories)
+                                
+                                // Macro Bars
+                                macroBarsSection
+                                
+                                if let insight = viewModel.coachingInsight {
+                                    AICoachingCardView(insight: insight, onApply: { proposal in
+                                        Task {
+                                            await viewModel.applyGoalAdjustment(proposal)
+                                        }
+                                    })
+                                    .padding(.horizontal, 24)
+                                    .transition(.move(edge: .top).combined(with: .opacity))
+                                }
+                                
+                                if let streak = viewModel.streak {
+                                    StreakCardView(streak: streak, onTap: { })
+                                        .padding(.horizontal, 24)
+                                        .transition(.asymmetric(insertion: .slide.combined(with: .opacity), removal: .opacity))
+                                }
+                                
+                                // Proactive AI Daily Summary
+                                if viewModel.dailySummary != nil || !viewModel.todayMeals.isEmpty {
+                                    DailySummaryCardView(
+                                        summary: viewModel.dailySummary,
+                                        isLoading: viewModel.summaryService.isLoading
+                                    )
                                     .padding(.horizontal, 24)
                                     .transition(.asymmetric(insertion: .slide.combined(with: .opacity), removal: .opacity))
-                            }
-                            
-                            // Proactive AI Daily Summary
-                            if viewModel.dailySummary != nil || !viewModel.todayMeals.isEmpty {
-                                DailySummaryCardView(summary: viewModel.dailySummary)
-                                    .padding(.horizontal, 24)
-                                    .transition(.asymmetric(insertion: .slide.combined(with: .opacity), removal: .opacity))
-                            }
-                            
-                            // Water Card (Daily Control Center)
-                            WaterCardView(
-                                consumed: viewModel.waterConsumed,
-                                target: viewModel.waterTarget,
-                                onAdd: { amount in
-                                    Task {
-                                        await viewModel.addWater(amount: amount)
+                                }
+                                
+                                // Water Card (Daily Control Center)
+                                WaterCardView(
+                                    consumed: viewModel.waterConsumed,
+                                    target: viewModel.waterTarget,
+                                    onAdd: { amount in
+                                        Task {
+                                            await viewModel.addWater(amount: amount)
+                                        }
+                                    },
+                                    onReset: {
+                                        Task {
+                                            await viewModel.resetWater()
+                                        }
                                     }
-                                },
-                                onReset: {
-                                    Task {
-                                        await viewModel.resetWater()
+                                )
+                                .padding(.horizontal, 24)
+                                .animation(.easeInOut(duration: 0.4), value: viewModel.waterConsumed)
+                                
+                                // Planned Meals Section
+                                if !viewModel.dashboard.pendingPlannedMeals.isEmpty {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("Kế hoạch hôm nay")
+                                            .font(.headline)
+                                            .padding(.horizontal, 24)
+                                        
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack(spacing: 16) {
+                                                ForEach(viewModel.dashboard.pendingPlannedMeals) { plannedMeal in
+                                                    PendingPlannedMealCard(
+                                                        plannedMeal: plannedMeal,
+                                                        onMarkAsEaten: {
+                                                            Task { await viewModel.markAsEaten(plannedMeal: plannedMeal) }
+                                                        },
+                                                        onSkip: {
+                                                            Task { await viewModel.skipPlannedMeal(plannedMeal: plannedMeal) }
+                                                        },
+                                                        onReplace: {
+                                                            // Placeholder: just show message or navigate
+                                                            HapticManager.warning()
+                                                        }
+                                                    )
+                                                    .frame(width: 300)
+                                                }
+                                            }
+                                            .padding(.horizontal, 24)
+                                            .padding(.bottom, 8)
+                                        }
                                     }
                                 }
-                            )
-                            .padding(.horizontal, 24)
-                            .animation(.easeInOut(duration: 0.4), value: viewModel.waterConsumed)
-                            
-                            // Meal Cards
-                            mealsSection
-                                .animation(.easeInOut(duration: 0.3), value: viewModel.todayMeals)
-                            
-                            // Add Meal Button (Fallback)
-                            addMealButton
-                                .padding(.bottom, 24)
+                                
+                                // Meal Cards
+                                mealsSection
+                                    .animation(.easeInOut(duration: 0.3), value: viewModel.todayMeals)
+                                
+                                // Add Meal Button (Fallback)
+                                addMealButton
+                                    .padding(.bottom, 24)
+                            }
+                            .padding(.vertical, 16)
+                            .frame(width: geometry.size.width) // ⚡ FORCE exact width to prevent horizontal panning
                         }
-                        .padding(.vertical, 16)
-                    }
-                    .refreshable {
-                        await viewModel.loadDashboard()
+                        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+                        .refreshable {
+                            await viewModel.loadDashboard()
+                        }
                     }
                 }
             }
@@ -91,9 +140,10 @@ struct HomeView: View {
                 }
             }) { item in
                 AddMealView(selectedMealType: item.id)
+                    .id(item.id)
             }
             .sheet(item: $activeDetailMealType) { item in
-                MealDetailSheet(
+                MealCategorySummarySheet(
                     mealType: item.id,
                     initialMeals: viewModel.meals(for: item.id),
                     onUpdate: {
@@ -116,9 +166,11 @@ struct HomeView: View {
                 }
             }
         }
-        .task {
-            print("🚀 HomeView: Loading dashboard data...")
-            await viewModel.loadDashboard()
+        .onAppear {
+            print("🚀 HomeView: Refreshing dashboard data...")
+            Task {
+                await viewModel.loadDashboard()
+            }
         }
     }
     
@@ -128,7 +180,11 @@ struct HomeView: View {
                 Text("Xin chào, \(viewModel.user?.name.isEmpty == false ? viewModel.user!.name : "bạn")!")
                     .font(.title2.bold())
                 
-                if viewModel.isOverTarget {
+                if viewModel.dashboard.confirmedDailyPlan != nil {
+                    Text("Còn \(Int(viewModel.dashboard.remainingPlannedCalories)) kcal theo plan")
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
+                } else if viewModel.isOverTarget {
                     Text("Đã vượt \(Int(viewModel.totalCalories - viewModel.dailyTarget)) kcal hôm nay")
                         .font(.subheadline)
                         .foregroundColor(.orange)
@@ -168,40 +224,48 @@ struct HomeView: View {
                 mealType: "Bữa sáng",
                 icon: "sunrise.fill",
                 meals: viewModel.meals(for: "Bữa sáng"),
+                pendingLinkSuggestion: viewModel.pendingLinkSuggestions["Bữa sáng"],
                 onAddTapped: { showAddMealSheet(for: "Bữa sáng") },
                 onRowTapped: { showMealDetailSheet(for: "Bữa sáng") },
                 onDelete: deleteMealFood,
-                onToggleEaten: { id in Task { await viewModel.toggleMealFoodStatus(id: id) } }
+                onToggleEaten: { id in Task { await viewModel.toggleMealFoodStatus(id: id) } },
+                onLinkToPlan: { mealId in Task { await viewModel.linkMealToPlan(mealId: mealId) } }
             )
             
             MealCardView(
                 mealType: "Bữa trưa",
                 icon: "sun.max.fill",
                 meals: viewModel.meals(for: "Bữa trưa"),
+                pendingLinkSuggestion: viewModel.pendingLinkSuggestions["Bữa trưa"],
                 onAddTapped: { showAddMealSheet(for: "Bữa trưa") },
                 onRowTapped: { showMealDetailSheet(for: "Bữa trưa") },
                 onDelete: deleteMealFood,
-                onToggleEaten: { id in Task { await viewModel.toggleMealFoodStatus(id: id) } }
+                onToggleEaten: { id in Task { await viewModel.toggleMealFoodStatus(id: id) } },
+                onLinkToPlan: { mealId in Task { await viewModel.linkMealToPlan(mealId: mealId) } }
             )
             
             MealCardView(
                 mealType: "Bữa tối",
                 icon: "moon.fill",
                 meals: viewModel.meals(for: "Bữa tối"),
+                pendingLinkSuggestion: viewModel.pendingLinkSuggestions["Bữa tối"],
                 onAddTapped: { showAddMealSheet(for: "Bữa tối") },
                 onRowTapped: { showMealDetailSheet(for: "Bữa tối") },
                 onDelete: deleteMealFood,
-                onToggleEaten: { id in Task { await viewModel.toggleMealFoodStatus(id: id) } }
+                onToggleEaten: { id in Task { await viewModel.toggleMealFoodStatus(id: id) } },
+                onLinkToPlan: { mealId in Task { await viewModel.linkMealToPlan(mealId: mealId) } }
             )
             
             MealCardView(
                 mealType: "Ăn vặt",
                 icon: "leaf.fill",
                 meals: viewModel.meals(for: "Ăn vặt"),
+                pendingLinkSuggestion: viewModel.pendingLinkSuggestions["Ăn vặt"],
                 onAddTapped: { showAddMealSheet(for: "Ăn vặt") },
                 onRowTapped: { showMealDetailSheet(for: "Ăn vặt") },
                 onDelete: deleteMealFood,
-                onToggleEaten: { id in Task { await viewModel.toggleMealFoodStatus(id: id) } }
+                onToggleEaten: { id in Task { await viewModel.toggleMealFoodStatus(id: id) } },
+                onLinkToPlan: { mealId in Task { await viewModel.linkMealToPlan(mealId: mealId) } }
             )
         }
         .padding(.horizontal, 24)
@@ -209,7 +273,14 @@ struct HomeView: View {
     
     private var addMealButton: some View {
         Button(action: {
-            showAddMealSheet(for: "Bữa sáng")
+            let hour = Calendar.current.component(.hour, from: Date())
+            let currentType: String
+            if hour < 10 { currentType = "Bữa sáng" }
+            else if hour < 15 { currentType = "Bữa trưa" }
+            else if hour < 20 { currentType = "Bữa tối" }
+            else { currentType = "Ăn vặt" }
+            
+            showAddMealSheet(for: currentType)
         }) {
             HStack {
                 Image(systemName: "plus")

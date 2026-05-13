@@ -202,6 +202,7 @@ class ContextBuilder {
         ```
         
         Lưu ý: "servingSize" luôn là 1.0. Calo và macros tính cho đúng 1 phần ăn.
+        Sắp xếp nguyên liệu: các nguyên liệu chính (thịt, cá, rau, gạo...) lên đầu, các gia vị (muối, đường, mắm, dầu ăn...) xuống cuối danh sách.
         """
         
         return prompt
@@ -287,6 +288,7 @@ class ContextBuilder {
         
         Mỗi item PHẢI có mealType là 1 trong: "Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt".
         Mỗi bữa nên có 1-2 món chính. servingSize luôn = 1.0. Calo và macros tính cho đúng 1 phần ăn.
+        Sắp xếp nguyên liệu: các nguyên liệu chính (thịt, cá, rau, gạo...) lên đầu, các gia vị (muối, đường, mắm, dầu ăn...) xuống cuối danh sách.
         """
         
         return prompt

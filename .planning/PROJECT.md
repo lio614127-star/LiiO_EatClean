@@ -8,12 +8,17 @@ LiiO EatClean là app iOS theo dõi calories và bữa ăn hàng ngày, giúp ng
 
 User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — nhanh, đẹp, chính xác.
 
-## Current Milestone: v1.5 [TBD]
+## Current Milestone: v1.5 Trợ lý AI Toàn diện (Voice, Heatmap & Rebalance)
 
-**Goal:** [Mục tiêu sẽ được xác định qua /gsd-new-milestone]
+**Goal:** Chuyển đổi LiiO EatClean từ một ứng dụng theo dõi thông thường thành một Huấn luyện viên AI toàn diện có trí nhớ (Context Engine), điều khiển bằng giọng nói rảnh tay (Hands-free Voice Assistant), lịch trình thông minh (Date-aware Planning & Heatmap), và khả năng tự tái cấu trúc bữa ăn (AI Rebalance).
 
 **Target features:**
-- [Gợi ý: Tối ưu hóa hiệu năng, AI Coaching chuyên sâu, UI Analytics mở rộng]
+- **Date-aware Planning:** Quản lý Daily Plan và Weekly Plan theo lịch, không ghi đè dữ liệu.
+- **Planned vs Actual UI:** Tách bạch và so sánh chi tiết giữa mục tiêu kế hoạch và thực tế nạp vào.
+- **AI Rebalance:** Khả năng tự động cân đối lại các bữa ăn chưa ăn khi người dùng ăn lệch kế hoạch.
+- **Calendar Heatmap:** Biểu đồ nhiệt hiển thị điểm kỷ luật (Adherence Score) theo tháng.
+- **Hands-free Voice Assistant:** Gọi AI bằng wake phrase tùy chỉnh ("Hey LiiO") ngay trong app.
+- **Global Context Engine:** AI Coach hiểu rõ lịch sử ăn uống, tiến độ, và dữ liệu sức khỏe của người dùng.
 
 ## Requirements
 
@@ -112,6 +117,7 @@ User có thể log bữa ăn và xem calories hôm nay trong vòng 5 giây — n
 | Parallel API Calls | Giảm latency đáng kể cho AI Planning | ✓ Good |
 | Consolidated Insights | Giảm clutter cho Home screen | ✓ Good |
 | Metabolic Intelligence | Tự động thích ứng mục tiêu theo sinh lý | ✓ Good |
+| Two-Layer Execution | Tách biệt Plan (Intent) và Actual (Truth) | ✓ New |
 
 ## Evolution
 

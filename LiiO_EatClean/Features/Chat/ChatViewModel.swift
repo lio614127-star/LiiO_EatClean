@@ -205,6 +205,10 @@ class ChatViewModel {
         Task {
             do {
                 try await mealRepository.saveMeal(meal, for: date)
+                
+                // Background Enrichment: Fetch recipes for any items that don't have them
+                BackgroundEnrichmentManager.shared.enrich(foods: [food.toFoodItemModel()])
+                
                 await MainActor.run {
                     let statusSuffix = (food.isEaten ?? false) ? "đã ăn" : "vào danh sách chờ"
                     let successMsg = ChatMessage(role: .assistant, text: "Đã thêm **\(food.name)** \(statusSuffix)! 👍", suggestedFoods: nil)
