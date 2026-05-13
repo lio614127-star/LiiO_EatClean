@@ -46,7 +46,7 @@ Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi 
     1. Lịch tháng hiển thị màu sắc dựa trên Adherence Score.
     2. Tap vào ngày để mở chi tiết lịch sử (Journal).
 
-- [ ] **Phase 28: AI Rebalance & Smart Correction**
+- [x] **Phase 28: AI Rebalance & Smart Correction**
   - Goal: Tái cấu trúc tự động các bữa chưa ăn dựa trên độ lệch thực tế.
   - Requirements: REBAL-01, REBAL-02, REBAL-03
   - Success Criteria:
@@ -77,10 +77,10 @@ Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi 
 
 ## Progress
 
-- **Phases Complete:** 27
-- **Phases Active:** 0
-- **Phases Pending:** 4
-- **Completion:** 87% (27/31)
+- **Phases Complete:** 28
+- **Phases Active:** 29
+- **Phases Pending:** 2
+- **Completion:** 90% (28/31)
 
 ---
 *Last updated: 2026-05-12 for Milestone v1.5*

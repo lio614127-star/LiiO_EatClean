@@ -626,13 +626,13 @@ class AIService {
     }
     
     // MARK: - Chat API
-    func sendChatMessage(history: [ChatMessage], systemPrompt: String, task: AIRequestType = .chat, feature: String = "AI Coach", forcedKey: APIKeyModel? = nil, subTasks: [String] = [], isInternal: Bool = false) async throws -> ChatMessage {
+    func sendChatMessage(history: [ChatMessageModel], systemPrompt: String, task: AIRequestType = .chat, feature: String = "AI Coach", forcedKey: APIKeyModel? = nil, subTasks: [String] = [], isInternal: Bool = false) async throws -> ChatMessageModel {
         return try await executeWithRetry(task: task, feature: feature, forcedKey: forcedKey, subTasks: subTasks, isInternal: isInternal) { key, config in
             try await self.callGeminiChat(apiKey: key.key, history: history, systemPrompt: systemPrompt, config: config)
         }
     }
     
-    func sendChatMessageStream(history: [ChatMessage], systemPrompt: String, task: AIRequestType = .chat, feature: String = "AI Coach Chat", forcedKey: APIKeyModel? = nil, subTasks: [String] = [], isInternal: Bool = false) -> AsyncThrowingStream<AIChatStreamResult, Error> {
+    func sendChatMessageStream(history: [ChatMessageModel], systemPrompt: String, task: AIRequestType = .chat, feature: String = "AI Coach Chat", forcedKey: APIKeyModel? = nil, subTasks: [String] = [], isInternal: Bool = false) -> AsyncThrowingStream<AIChatStreamResult, Error> {
         return executeWithRetryStream(task: task, feature: feature, forcedKey: forcedKey, subTasks: subTasks, isInternal: isInternal) { key, config in
             self.callGeminiChatStream(apiKey: key.key, history: history, systemPrompt: systemPrompt, config: config)
         }
@@ -700,7 +700,7 @@ class AIService {
     }
     
     // MARK: - Chat API Implementations
-    private func callGeminiChat(apiKey: String, history: [ChatMessage], systemPrompt: String, config: AIModelConfig) async throws -> ChatMessage {
+    private func callGeminiChat(apiKey: String, history: [ChatMessageModel], systemPrompt: String, config: AIModelConfig) async throws -> ChatMessageModel {
         let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         let url = URL(string: "https://generativelanguage.googleapis.com/\(config.endpoint)/models/\(config.modelName):generateContent?key=\(cleanKey)")!
         
@@ -743,7 +743,7 @@ class AIService {
         return parseChatResponse(text)
     }
     
-    private func callOpenAIChat(apiKey: String, history: [ChatMessage], systemPrompt: String, config: AIModelConfig) async throws -> ChatMessage {
+    private func callOpenAIChat(apiKey: String, history: [ChatMessageModel], systemPrompt: String, config: AIModelConfig) async throws -> ChatMessageModel {
         let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         let url = URL(string: "https://api.openai.com/v1/chat/completions")!
         
@@ -893,7 +893,7 @@ class AIService {
     }
     
     // MARK: - Gemini Streaming Implementation
-    private func callGeminiChatStream(apiKey: String, history: [ChatMessage], systemPrompt: String, config: AIModelConfig) -> AsyncThrowingStream<AIChatStreamResult, Error> {
+    private func callGeminiChatStream(apiKey: String, history: [ChatMessageModel], systemPrompt: String, config: AIModelConfig) -> AsyncThrowingStream<AIChatStreamResult, Error> {
         return AsyncThrowingStream { continuation in
             Task {
                 let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -990,7 +990,7 @@ class AIService {
     }
     
     // MARK: - OpenAI Streaming Implementation
-    private func callOpenAIChatStream(apiKey: String, history: [ChatMessage], systemPrompt: String, config: AIModelConfig) -> AsyncThrowingStream<AIChatStreamResult, Error> {
+    private func callOpenAIChatStream(apiKey: String, history: [ChatMessageModel], systemPrompt: String, config: AIModelConfig) -> AsyncThrowingStream<AIChatStreamResult, Error> {
         return AsyncThrowingStream { continuation in
             Task {
                 let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1082,7 +1082,7 @@ class AIService {
         return (bytes, response)
     }
 
-    private func parseChatResponse(_ text: String) -> ChatMessage {
+    private func parseChatResponse(_ text: String) -> ChatMessageModel {
         // Strategy 1: Look for ```json ... ``` markdown code blocks
         let pattern = "```json(.*?)```"
         let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
@@ -1130,7 +1130,7 @@ class AIService {
         let newlineRegex = try? NSRegularExpression(pattern: "\n{3,}", options: [])
         cleanText = newlineRegex?.stringByReplacingMatches(in: cleanText, options: [], range: NSRange(location: 0, length: (cleanText as NSString).length), withTemplate: "\n\n") ?? cleanText
         
-        return ChatMessage(role: .assistant, text: cleanText.trimmingCharacters(in: .whitespacesAndNewlines), suggestedFoods: foods)
+        return ChatMessageModel(role: .assistant, text: cleanText.trimmingCharacters(in: .whitespacesAndNewlines), suggestedFoods: foods)
     }
     
     /// Shared JSON parsing for both code-block and raw JSON strategies

@@ -1,9 +1,15 @@
 ---
+gsd_state_version: 1.0
 milestone: v1.5
-status: planning
+milestone_name: Trợ lý AI Toàn diện
+status: Executing Phase 30
+last_updated: "2026-05-13T06:34:33.386Z"
 progress:
-  phases_completed: 3
-  phases_total: 7
+  total_phases: 10
+  completed_phases: 3
+  total_plans: 14
+  completed_plans: 5
+  percent: 36
 ---
 
 # Project State
@@ -35,21 +41,37 @@ progress:
     2. Tap vào ngày để mở chi tiết lịch sử (Journal).
   - Status: Completed (Heatmap & Adherence Snapshotting Implemented)
   - Last activity: Phase 27 verified.
-  - Resume file: .planning/phases/28-ai-rebalance/28-PLAN.md
+- [x] **Phase 28: AI Rebalance & Smart Correction**
+  - Goal: Triển khai hệ thống tự động tái cấu trúc bữa ăn khi người dùng ăn lệch kế hoạch.
+  - Success Criteria:
+    1. Tự động phát hiện lệch Calo (>10%) hoặc Protein (>15g) để kích hoạt gợi ý.
+    2. Proactive UI: Card trên Home và Banner trên Journal.
+    3. AI Rebalance: Chỉnh portion trước, swap sau, tôn trọng món đã ăn và món bị khóa (Locked).
+    4. Giao diện Preview so sánh "Trước & Sau" trực quan.
+  - Status: Completed (Service, UI & Core Rules Implemented)
 
-
-## Active Context
+- [x] **Phase 29: Chat Persistence & Model Refactoring**
+  - Goal: Đảm bảo lịch sử trò chuyện AI Coach không bị mất khi thoát ứng dụng.
+  - Success Criteria:
+    1. ChatSessionEntity và ChatMessageEntity hoạt động ổn định trên CoreData.
+    2. Model Logic (ChatMessageModel) được tách biệt hoàn toàn khỏi CoreData Entities.
+    3. Mở app lên giữ nguyên phiên chat cũ, hỗ trợ tạo Chat mới.
+  - Status: Completed (UAT Passed)
+  - Last activity: Phase 29 verified.
 
 ### Memory (Decisions & Workarounds)
+
 - `MealFoodModel.isEaten` is currently handled by `MealFoodStatusManager` (UserDefaults) rather than a persistent CoreData attribute. This needs to be synced carefully when we upgrade the UI to Planned vs Actual.
 - `MealType` string matching must be strictly adhered to across UI ("Sáng", "Trưa", "Tối", "Ăn vặt").
 - Calorie target updates reactively on weight logging via `UserRepository`.
 
 ### Known Blockers
+
 - CoreData currently lacks `DailyPlan`, `WeeklyPlan`, `ChatSession`, and `ChatMessage` entities. A lightweight migration/addition is required for Phase 25 and Phase 29.
 - Audio permissions must be requested before initializing the global Wake Phrase detector in Phase 30.
 
 ## Implementation Notes
+
 - **Local-first focus:** All new entities (`DailyPlan`, `ChatMessage`) MUST be added to CoreData.
 - **Do not overwrite plans:** We must check for existing plans via `startOfDay` normalized dates.
 - **Rebalance boundary:** Rebalance logic must strictly filter out meals where `isEaten == true`.

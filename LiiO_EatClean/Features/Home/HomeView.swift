@@ -27,7 +27,7 @@ struct HomeView: View {
                                 // Header
                                 headerSection
                                 
-                                // Progress Ring with sweep animation
+                                // Progress Ring
                                 CalorieRingView(
                                     consumed: viewModel.totalCalories,
                                     target: viewModel.dailyTarget
@@ -40,18 +40,22 @@ struct HomeView: View {
                                 
                                 if let insight = viewModel.coachingInsight {
                                     AICoachingCardView(insight: insight, onApply: { proposal in
-                                        Task {
-                                            await viewModel.applyGoalAdjustment(proposal)
-                                        }
+                                        Task { await viewModel.applyGoalAdjustment(proposal) }
                                     })
                                     .padding(.horizontal, 24)
-                                    .transition(.move(edge: .top).combined(with: .opacity))
                                 }
                                 
                                 if let streak = viewModel.streak {
                                     StreakCardView(streak: streak, onTap: { })
                                         .padding(.horizontal, 24)
-                                        .transition(.asymmetric(insertion: .slide.combined(with: .opacity), removal: .opacity))
+                                }
+                                
+                                // ⚡ Phase 28: Proactive AI Rebalance Card
+                                if let trigger = viewModel.rebalanceTrigger {
+                                    RebalanceSuggestionCard(trigger: trigger) {
+                                        Task { await viewModel.startRebalance() }
+                                    }
+                                    .padding(.horizontal, 24)
                                 }
                                 
                                 // Proactive AI Daily Summary
@@ -61,115 +65,109 @@ struct HomeView: View {
                                         isLoading: viewModel.summaryService.isLoading
                                     )
                                     .padding(.horizontal, 24)
-                                    .transition(.asymmetric(insertion: .slide.combined(with: .opacity), removal: .opacity))
                                 }
                                 
-                                // Water Card (Daily Control Center)
+                                // Water Card
                                 WaterCardView(
                                     consumed: viewModel.waterConsumed,
                                     target: viewModel.waterTarget,
-                                    onAdd: { amount in
-                                        Task {
-                                            await viewModel.addWater(amount: amount)
-                                        }
-                                    },
-                                    onReset: {
-                                        Task {
-                                            await viewModel.resetWater()
-                                        }
-                                    }
+                                    onAdd: { amount in Task { await viewModel.addWater(amount: amount) } },
+                                    onReset: { Task { await viewModel.resetWater() } }
                                 )
                                 .padding(.horizontal, 24)
-                                .animation(.easeInOut(duration: 0.4), value: viewModel.waterConsumed)
                                 
                                 // Planned Meals Section
                                 if !viewModel.dashboard.pendingPlannedMeals.isEmpty {
                                     VStack(alignment: .leading, spacing: 12) {
-                                        Text("Kế hoạch hôm nay")
-                                            .font(.headline)
-                                            .padding(.horizontal, 24)
-                                        
+                                        Text("Kế hoạch hôm nay").font(.headline).padding(.horizontal, 24)
                                         ScrollView(.horizontal, showsIndicators: false) {
                                             HStack(spacing: 16) {
                                                 ForEach(viewModel.dashboard.pendingPlannedMeals) { plannedMeal in
                                                     PendingPlannedMealCard(
                                                         plannedMeal: plannedMeal,
-                                                        onMarkAsEaten: {
-                                                            Task { await viewModel.markAsEaten(plannedMeal: plannedMeal) }
-                                                        },
-                                                        onSkip: {
-                                                            Task { await viewModel.skipPlannedMeal(plannedMeal: plannedMeal) }
-                                                        },
-                                                        onReplace: {
-                                                            // Placeholder: just show message or navigate
-                                                            HapticManager.warning()
-                                                        }
+                                                        onMarkAsEaten: { Task { await viewModel.markAsEaten(plannedMeal: plannedMeal) } },
+                                                        onSkip: { Task { await viewModel.skipPlannedMeal(plannedMeal: plannedMeal) } },
+                                                        onReplace: { HapticManager.warning() }
                                                     )
                                                     .frame(width: 300)
                                                 }
                                             }
                                             .padding(.horizontal, 24)
-                                            .padding(.bottom, 8)
                                         }
                                     }
                                 }
                                 
                                 // Meal Cards
                                 mealsSection
-                                    .animation(.easeInOut(duration: 0.3), value: viewModel.todayMeals)
                                 
-                                // Add Meal Button (Fallback)
-                                addMealButton
-                                    .padding(.bottom, 24)
+                                // Add Meal Button
+                                addMealButton.padding(.bottom, 24)
                             }
                             .padding(.vertical, 16)
-                            .frame(width: geometry.size.width) // ⚡ FORCE exact width to prevent horizontal panning
+                            .frame(width: geometry.size.width)
                         }
-                        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-                        .refreshable {
-                            await viewModel.loadDashboard()
-                        }
+                        .refreshable { await viewModel.loadDashboard() }
                     }
                 }
             }
             .navigationBarHidden(true)
             .sheet(item: $activeAddMealType, onDismiss: {
-                HapticManager.success()
-                Task {
-                    await viewModel.loadDashboard()
-                }
+                Task { await viewModel.loadDashboard() }
             }) { item in
-                AddMealView(selectedMealType: item.id)
-                    .id(item.id)
+                AddMealView(selectedMealType: item.id).id(item.id)
             }
             .sheet(item: $activeDetailMealType) { item in
                 MealCategorySummarySheet(
                     mealType: item.id,
                     initialMeals: viewModel.meals(for: item.id),
-                    onUpdate: {
-                        Task { await viewModel.loadDashboard() }
-                    }
+                    onUpdate: { Task { await viewModel.loadDashboard() } }
                 )
                 .id(item.id + "-\(viewModel.todayMeals.flatMap { $0.mealFoods }.count)")
+            }
+            .sheet(isPresented: $showVoiceInput) {
+                VoiceInputView(isPresented: $showVoiceInput) { foods in
+                    self.voiceParsedFoods = foods
+                    showAddMealSheet(for: "Bữa sáng")
+                }
+            }
+            .sheet(item: Binding(
+                get: { viewModel.rebalanceResult.map { IdentifiableResult(result: $0) } },
+                set: { _ in viewModel.rebalanceResult = nil }
+            )) { identifiable in
+                RebalancePreviewSheet(
+                    result: identifiable.result,
+                    onConfirm: { Task { await viewModel.confirmRebalance() } },
+                    onCancel: { viewModel.rebalanceResult = nil }
+                )
             }
             .overlay {
                 if viewModel.showMilestonePopup {
                     MilestonePopupView(milestone: viewModel.milestoneValue, isPresented: $viewModel.showMilestonePopup)
                 }
             }
-            .sheet(isPresented: $showVoiceInput) {
-                VoiceInputView(isPresented: $showVoiceInput) { foods in
-                    // When voice confirmed, open AddMealView with pre-filled items
-                    self.voiceParsedFoods = foods
-                    // Default to Breakfast or current time appropriate meal
-                    showAddMealSheet(for: "Bữa sáng") // TODO: could pass foods to AddMealView if we customize it
+            .overlay {
+                if viewModel.isRebalancing {
+                    ZStack {
+                        Color.black.opacity(0.3).ignoresSafeArea()
+                        VStack(spacing: 16) {
+                            ProgressView().scaleEffect(1.5).tint(.white)
+                            Text("AI đang cân đối lại thực đơn...").foregroundColor(.white).font(.system(size: 16, weight: .bold))
+                        }
+                    }
                 }
             }
-        }
-        .onAppear {
-            print("🚀 HomeView: Refreshing dashboard data...")
-            Task {
-                await viewModel.loadDashboard()
+            .onAppear {
+                Task { await viewModel.loadDashboard() }
+            }
+            .alert("Thông báo", isPresented: Binding(
+                get: { viewModel.rebalanceError != nil },
+                set: { if !$0 { viewModel.rebalanceError = nil } }
+            )) {
+                Button("Đồng ý", role: .cancel) { }
+            } message: {
+                if let error = viewModel.rebalanceError {
+                    Text(error)
+                }
             }
         }
     }
@@ -313,4 +311,66 @@ struct HomeView: View {
 
 #Preview {
     HomeView()
+}
+
+struct RebalanceSuggestionCard: View {
+    let trigger: RebalanceTrigger
+    let onAction: () -> Void
+    
+    var body: some View {
+        Button(action: onAction) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(iconColor.opacity(0.2))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: iconName)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(iconColor)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(trigger.reason)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.primary)
+                    
+                    Text("AI có thể cân đối lại các bữa còn lại giúp bạn.")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(UIColor.secondarySystemGroupedBackground))
+                    .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var iconName: String {
+        switch trigger.type {
+        case .overCalorie: return "flame.fill"
+        case .underProtein: return "bolt.fill"
+        case .lateNightUnderEating: return "moon.fill"
+        default: return "sparkles"
+        }
+    }
+    
+    private var iconColor: Color {
+        switch trigger.type {
+        case .overCalorie: return .orange
+        case .underProtein: return .blue
+        case .lateNightUnderEating: return .purple
+        default: return .mint
+        }
+    }
 }

@@ -287,6 +287,7 @@ struct WeeklyDayDetailView: View {
                             onDelete: { food in
                                 viewModel.removeFoodFromWeeklyPlan(id: food.id, day: dayPlan.day)
                             },
+                            onToggleLock: { _ in },
                             onAddFood: {}
                         )
                     }

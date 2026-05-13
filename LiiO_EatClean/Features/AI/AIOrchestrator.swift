@@ -398,4 +398,158 @@ struct AIOrchestrator {
         
         return cleaned
     }
+    
+    // MARK: - Phase 28: AI Rebalance
+    
+    func generateRebalancePlan(context: String) async throws -> RebalanceResult {
+        try await poolManager.loadKeys()
+        
+        let systemPrompt = """
+        Bạn là Senior Nutrition Coach. Nhiệm vụ: Tái cấu trúc (Rebalance) các bữa ăn còn lại của người dùng.
+        Dựa trên những gì họ đã thực tế ăn hôm nay và kế hoạch cũ, hãy điều chỉnh các bữa ăn 'planned' còn lại.
+        
+        QUY TẮC CỐT LÕI:
+        1. KHÔNG được thay đổi các bữa ăn đã ăn (actual) hoặc bữa đã bị khóa [LOCKED].
+        2. Ưu tiên chỉnh Portion (khối lượng) của món cũ trước. 
+        3. Chỉ đổi món (Swap) nếu portion mới quá nhỏ (< 250kcal bữa chính, < 100kcal snack) hoặc không thực tế.
+        4. ANTI-REPEAT: Không gợi ý lại món người dùng đã ăn hôm nay.
+        5. VIETNAMESE PRIORITY: Ưu tiên món Việt lành mạnh.
+        6. TIME-AWARE: Sau 20:00 không gợi ý snack lớn, ưu tiên món dễ tiêu.
+        7. MACRO BALANCE: Nếu cắt calo, hãy ưu tiên giảm Carbs/Fat, giữ Protein hợp lý.
+        8. BEST EFFORT: Nếu lượng calo đã nạp quá xa mục tiêu đến mức không thể cân đối hoàn toàn (VD: đã ăn vượt 2000kcal), hãy cố gắng điều chỉnh các bữa còn lại về mức tối thiểu (VD: 150-200kcal mỗi bữa) thay vì từ bỏ. Mục tiêu là GIẢM THIỂU độ lệch, không nhất thiết phải triệt tiêu nó.
+        
+        PHẢI TRẢ VỀ JSON DUY NHẤT TRONG KHỐI MÃ ```json ... ```:
+        {
+          "summary": "Tóm tắt ngắn gọn thay đổi (VD: Giảm 200kcal bữa tối)",
+          "reason": "Lý do tổng quát (VD: Bù đạm do bữa trưa thiếu)",
+          "oldExpectedTotals": {"calories": 2150, "protein": 110, "carbs": 250, "fat": 70},
+          "newExpectedTotals": {"calories": 1920, "protein": 125, "carbs": 210, "fat": 65},
+          "changedMeals": [
+            {
+              "plannedMealId": "UUID-CỦA-BỮA-CẦN-ĐỔI",
+              "mealType": "Bữa tối",
+              "oldName": "Tên món cũ",
+              "newName": "Tên món mới (nếu swap, nếu chỉ chỉnh portion thì để trùng tên cũ)",
+              "oldCalories": 600,
+              "newCalories": 420,
+              "oldProtein": 30,
+              "newProtein": 30,
+              "oldCarbs": 60,
+              "newCarbs": 40,
+              "oldFat": 25,
+              "newFat": 15,
+              "changeType": "portionAdjusted", // hoặc "swapped", "removed"
+              "reason": "Lý do cụ thể cho bữa này"
+            }
+          ],
+          "warnings": ["Nếu có cảnh báo gì đặc biệt"]
+        }
+        """
+        
+        let response = try await aiService.generateText(
+            prompt: "\(systemPrompt)\n\nNGỮ CẢNH HIỆN TẠI:\n\(context)",
+            requestType: .healthReasoning,
+            feature: "AI Rebalance: Cân đối lại bữa ăn",
+            isInternal: true
+        )
+        
+        let jsonStr = extractJSON(from: response)
+        guard let data = jsonStr.data(using: .utf8) else { 
+            print("AI Response was not valid JSON: \(response)")
+            throw AIError.invalidResponse 
+        }
+        
+        do {
+            return try JSONDecoder().decode(RebalanceResult.self, from: data)
+        } catch {
+            print("Failed to decode AI Rebalance JSON: \(error)")
+            print("Cleaned JSON: \(jsonStr)")
+            throw error
+        }
+    }
+}
+
+class AIRebalanceService {
+    static let shared = AIRebalanceService()
+    
+    private init() {}
+    
+    func checkRebalanceNeeded(record: DailyNutritionRecord) -> RebalanceTrigger? {
+        let actual = record.actualTotals
+        let plannedRemaining = record.remainingPlannedTotals
+        let target = record.targetTotals
+        
+        let expectedTotalCal = actual.calories + plannedRemaining.calories
+        
+        // 1. Over Calorie Trigger (> 10% or > 150 kcal)
+        if expectedTotalCal > target.calories * 1.10 || (expectedTotalCal - target.calories) > 150 {
+            let isAlreadyOver = actual.calories > target.calories
+            let reason = isAlreadyOver 
+                ? "Bạn đã vượt mục tiêu calo. Hãy cân đối lại các bữa còn lại để giảm thiểu độ lệch!"
+                : "Bạn đang có nguy cơ vượt mục tiêu calo hôm nay."
+            
+            return RebalanceTrigger(
+                type: .overCalorie,
+                deviation: expectedTotalCal - target.calories,
+                reason: reason
+            )
+        }
+        
+        // 2. Under Protein Trigger (< target - 15g)
+        let expectedTotalProtein = actual.protein + plannedRemaining.protein
+        if expectedTotalProtein < target.protein - 15 {
+            return RebalanceTrigger(
+                type: .underProtein,
+                deviation: target.protein - expectedTotalProtein,
+                reason: "Hôm nay bạn có thể thiếu protein trầm trọng."
+            )
+        }
+        
+        // 3. Late Night Under Eating
+        let hour = Calendar.current.component(.hour, from: Date())
+        if hour >= 18 {
+            if actual.calories < target.calories * 0.55 || expectedTotalCal < target.calories * 0.75 {
+                return RebalanceTrigger(
+                    type: .lateNightUnderEating,
+                    deviation: target.calories - expectedTotalCal,
+                    reason: "Bạn đang ăn khá ít. AI có thể gợi ý bữa tối nhẹ đủ chất."
+                )
+            }
+        }
+        
+        return nil
+    }
+    
+    func buildRebalanceContext(record: DailyNutritionRecord, preference: RebalancePreference) -> String {
+        let actualMeals = record.actualMeals.map { meal -> String in
+            let foods = meal.mealFoods.map { "\($0.foodItem?.name ?? "") (\(Int($0.caloriesSnapshot)) kcal)" }.joined(separator: ", ")
+            return "- \(meal.mealType): \(foods)"
+        }.joined(separator: "\n")
+        
+        let remainingPlan = record.dailyPlan?.plannedMeals.filter { $0.status == "planned" }.map { meal -> String in
+            let foods = meal.foodItems.map { "\($0.name) (\(Int($0.calories)) kcal)" }.joined(separator: ", ")
+            let lockStatus = meal.isLocked ? "[LOCKED]" : ""
+            return "- \(meal.type) \(lockStatus): \(foods) (ID: \(meal.id))"
+        }.joined(separator: "\n") ?? "Không có bữa ăn dự kiến còn lại."
+        
+        let context = """
+        Mục tiêu ngày: \(Int(record.targetTotals.calories)) kcal, \(Int(record.targetTotals.protein))g Protein.
+        Thực tế đã ăn:
+        \(actualMeals)
+        Tổng hiện tại: \(Int(record.actualTotals.calories)) kcal, \(Int(record.actualTotals.protein))g Protein.
+        
+        Kế hoạch các bữa còn lại:
+        \(remainingPlan)
+        
+        Chế độ tái cấu trúc: \(preference.rawValue)
+        Thời gian hiện tại: \(Date().formatted(date: .omitted, time: .shortened))
+        
+        Yêu cầu: Điều chỉnh các bữa 'planned' (không đụng bữa LOCKED) để đạt mục tiêu ngày (cả Calo và Protein). 
+        ĐẶC BIỆT: Nếu đang thiếu Protein, hãy tăng cường các món giàu đạm (ức gà, trứng, cá...) kể cả khi calo đã gần đủ.
+        Ưu tiên chỉnh portion trước, chỉ đổi món (swap) nếu portion mới quá vô lý hoặc chế độ là 'flexibleSwap'.
+        Trả về JSON RebalanceResult.
+        """
+        
+        return context
+    }
 }

@@ -10,6 +10,7 @@ struct MealPlanCard: View {
     let onLink: (MealModel, UUID) -> Void
     let onSwap: (AISuggestedFood) -> Void
     let onDelete: (AISuggestedFood) -> Void
+    let onToggleLock: (PlannedMealModel) -> Void
     let onAddFood: () -> Void
     
     private var icon: String {
@@ -50,15 +51,21 @@ struct MealPlanCard: View {
                     Text("\(Int(totalPlannedCalories)) kcal")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                        .padding(.leading, 8)
                 }
                 
-                if !isViewOnly {
-                    Button(action: onAddFood) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title3)
-                            .foregroundColor(.green)
+                if let planned = item.planned, !isViewOnly {
+                    Button(action: { 
+                        HapticManager.interaction()
+                        onToggleLock(planned) 
+                    }) {
+                        Image(systemName: planned.isLocked ? "lock.fill" : "lock.open")
+                            .font(.system(size: 16))
+                            .foregroundColor(planned.isLocked ? .orange : .secondary)
+                            .padding(8)
+                            .background(Circle().fill(planned.isLocked ? Color.orange.opacity(0.1) : Color.clear))
                     }
-                    .padding(.leading, 8)
+                    .padding(.leading, 4)
                 }
             }
             

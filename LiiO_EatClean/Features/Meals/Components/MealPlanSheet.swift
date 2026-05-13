@@ -108,6 +108,9 @@ struct MealPlanSheet: View {
                                     onDelete: { food in
                                         viewModel.removeFoodFromPlan(id: food.id)
                                     },
+                                    onToggleLock: { planned in
+                                        Task { await viewModel.toggleLockMeal(id: planned.id, locked: !planned.isLocked) }
+                                    },
                                     onAddFood: {
                                         selectedMealType = item.type
                                         showFoodSearch = true

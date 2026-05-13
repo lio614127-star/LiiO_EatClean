@@ -634,6 +634,15 @@ class MealPlanViewModel {
         }
     }
     
+    func toggleLockMeal(id: UUID, locked: Bool) async {
+        do {
+            try await dailyPlanRepository.lockMeal(id: id, locked: locked)
+            _ = await loadExistingPlan()
+        } catch {
+            print("Error locking meal: \(error)")
+        }
+    }
+    
     // MARK: - Weekly Plan (D-01, D-05: compact 7-row overview)
     
     func generateWeekPlan(targetCalories: Double) {

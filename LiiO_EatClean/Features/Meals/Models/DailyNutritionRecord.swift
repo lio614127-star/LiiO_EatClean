@@ -20,6 +20,45 @@ struct DailyNutritionRecord: Identifiable {
         }
     }
     
+    // ⚡ Phase 28: Rebalance Helpers
+    var actualTotals: RebalanceResult.MacroTotals {
+        let calories = actualCalories
+        let protein = actualProtein
+        let carbs = actualMeals.reduce(0) { sum, meal in
+            sum + meal.mealFoods.reduce(0) { $0 + ($1.carbsSnapshot * $1.quantity) }
+        }
+        let fat = actualMeals.reduce(0) { sum, meal in
+            sum + meal.mealFoods.reduce(0) { $0 + ($1.fatSnapshot * $1.quantity) }
+        }
+        return RebalanceResult.MacroTotals(calories: calories, protein: protein, carbs: carbs, fat: fat)
+    }
+    
+    var remainingPlannedTotals: RebalanceResult.MacroTotals {
+        guard let dailyPlan = dailyPlan else { return RebalanceResult.MacroTotals(calories: 0, protein: 0, carbs: 0, fat: 0) }
+        let planned = dailyPlan.plannedMeals.filter { $0.status == "planned" }
+        
+        let calories = planned.reduce(0) { $0 + $1.totalCalories }
+        let protein = planned.reduce(0) { sum, meal in
+            sum + meal.foodItems.reduce(0) { $0 + $1.protein }
+        }
+        let carbs = planned.reduce(0) { sum, meal in
+            sum + meal.foodItems.reduce(0) { $0 + $1.carbs }
+        }
+        let fat = planned.reduce(0) { sum, meal in
+            sum + meal.foodItems.reduce(0) { $0 + $1.fat }
+        }
+        return RebalanceResult.MacroTotals(calories: calories, protein: protein, carbs: carbs, fat: fat)
+    }
+    
+    var targetTotals: RebalanceResult.MacroTotals {
+        RebalanceResult.MacroTotals(
+            calories: dailyPlan?.targetCalories ?? 2000,
+            protein: dailyPlan?.targetProtein ?? 150,
+            carbs: dailyPlan?.targetCarbs ?? 200,
+            fat: dailyPlan?.targetFat ?? 60
+        )
+    }
+    
     // Grouped timeline items
     var timelineItems: [TimelineItem] {
         var items: [TimelineItem] = []

@@ -4,6 +4,7 @@ import CoreData
 protocol DailyPlanRepositoryProtocol {
     func fetchPlan(for date: Date) async throws -> DailyPlanModel?
     func savePlan(_ plan: DailyPlanModel, status: String) async throws
+    func lockMeal(id: UUID, locked: Bool) async throws
     func cleanupOldDrafts() async throws
 }
 
@@ -43,7 +44,11 @@ class DailyPlanRepository: DailyPlanRepositoryProtocol {
                 targetProtein: entity.value(forKey: "targetProtein") as? Double ?? 0,
                 targetCarbs: entity.value(forKey: "targetCarbs") as? Double ?? 0,
                 targetFat: entity.value(forKey: "targetFat") as? Double ?? 0,
-                plannedMeals: plannedMeals
+                plannedMeals: plannedMeals,
+                isRebalanced: entity.value(forKey: "isRebalanced") as? Bool ?? false,
+                rebalanceReason: entity.value(forKey: "rebalanceReason") as? String,
+                rebalancedAt: entity.value(forKey: "rebalancedAt") as? Date,
+                previousPlanSnapshot: entity.value(forKey: "previousPlanSnapshot") as? Data
             )
         }
     }
@@ -65,6 +70,7 @@ class DailyPlanRepository: DailyPlanRepositoryProtocol {
             status: entity.value(forKey: "status") as? String ?? "planned",
             actualMealLogId: entity.value(forKey: "actualMealLogId") as? UUID,
             eatenAt: entity.value(forKey: "eatenAt") as? Date,
+            isLocked: entity.value(forKey: "isLocked") as? Bool ?? false,
             foodItems: foodItems
         )
     }
@@ -115,6 +121,11 @@ class DailyPlanRepository: DailyPlanRepositoryProtocol {
             targetPlan.setValue(plan.targetCarbs, forKey: "targetCarbs")
             targetPlan.setValue(plan.targetFat, forKey: "targetFat")
             
+            targetPlan.setValue(plan.isRebalanced, forKey: "isRebalanced")
+            targetPlan.setValue(plan.rebalanceReason, forKey: "rebalanceReason")
+            targetPlan.setValue(plan.rebalancedAt, forKey: "rebalancedAt")
+            targetPlan.setValue(plan.previousPlanSnapshot, forKey: "previousPlanSnapshot")
+            
             for pm in plan.plannedMeals {
                 let mealEntity = NSEntityDescription.insertNewObject(forEntityName: "PlannedMeal", into: self.context)
                 mealEntity.setValue(pm.id, forKey: "id")
@@ -123,6 +134,7 @@ class DailyPlanRepository: DailyPlanRepositoryProtocol {
                 mealEntity.setValue(pm.status, forKey: "status")
                 mealEntity.setValue(pm.actualMealLogId, forKey: "actualMealLogId")
                 mealEntity.setValue(pm.eatenAt, forKey: "eatenAt")
+                mealEntity.setValue(pm.isLocked, forKey: "isLocked")
                 
                 mutableMeals.add(mealEntity)
                 
@@ -143,6 +155,20 @@ class DailyPlanRepository: DailyPlanRepositoryProtocol {
             
             try self.context.save()
             NotificationCenter.default.post(name: NSNotification.Name("mealPlanDidUpdate"), object: nil)
+        }
+    }
+    
+    func lockMeal(id: UUID, locked: Bool) async throws {
+        try await context.perform {
+            let request = NSFetchRequest<NSManagedObject>(entityName: "PlannedMeal")
+            request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+            
+            let results = try self.context.fetch(request)
+            if let entity = results.first {
+                entity.setValue(locked, forKey: "isLocked")
+                try self.context.save()
+                NotificationCenter.default.post(name: NSNotification.Name("mealPlanDidUpdate"), object: nil)
+            }
         }
     }
     

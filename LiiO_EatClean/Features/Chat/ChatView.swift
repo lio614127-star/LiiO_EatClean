@@ -141,9 +141,18 @@ struct ChatView: View {
                 }
                 .background(Color(UIColor.systemBackground))
             }
-            .navigationTitle("AI Coach")
+            .navigationTitle(viewModel.currentSession?.title ?? "AI Coach")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        Task { await viewModel.startNewChat() }
+                    }) {
+                        Image(systemName: "square.and.pencil")
+                            .foregroundColor(.green)
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         showMemoryHub = true

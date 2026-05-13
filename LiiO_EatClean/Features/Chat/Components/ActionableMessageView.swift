@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ActionableMessageView: View {
-    let message: ChatMessage
+    let message: ChatMessageModel
     let isStreaming: Bool
     let onLogMeal: (AISuggestedFood) -> Void
     

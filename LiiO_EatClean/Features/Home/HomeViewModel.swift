@@ -26,6 +26,10 @@ class HomeViewModel {
     var dailySummary: DailySummary?
     var insights: [DailyInsight]?
     var coachingInsight: CoachingInsight?
+    var rebalanceTrigger: RebalanceTrigger?
+    var rebalanceResult: RebalanceResult?
+    var isRebalancing = false
+    var rebalanceError: String? = nil
     let summaryService = DailySummaryService()
     
     private let mealRepository: MealRepositoryProtocol
@@ -107,6 +111,8 @@ class HomeViewModel {
                 if !previousIsOverTarget && self.isOverTarget {
                     HapticManager.warning()
                 }
+                
+                self.checkRebalanceTrigger(meals: meals, plan: confirmedPlan)
             }
         } catch {
             print("Error loading dashboard data: \(error)")
@@ -498,6 +504,131 @@ class HomeViewModel {
         if success {
             HapticManager.success()
             await loadDashboard()
+        }
+    }
+    
+    // MARK: - AI Rebalance
+    
+    private func checkRebalanceTrigger(meals: [MealModel], plan: DailyPlanModel?) {
+        guard let plan = plan, plan.status == "confirmed" else {
+            self.rebalanceTrigger = nil
+            return
+        }
+        
+        let record = DailyNutritionRecord(
+            date: Date(),
+            dailyPlan: plan,
+            actualMeals: meals,
+            adherence: MealAdherenceCalculator.shared.calculate(
+                actualMeals: meals,
+                plannedMeals: plan.plannedMeals,
+                targetCalories: plan.targetCalories,
+                targetProtein: plan.targetProtein
+            )
+        )
+        
+        self.rebalanceTrigger = AIRebalanceService.shared.checkRebalanceNeeded(record: record)
+    }
+    
+    func startRebalance(preference: RebalancePreference = .hybrid) async {
+        guard let plan = dashboard.confirmedDailyPlan else { return }
+        
+        await MainActor.run {
+            self.isRebalancing = true
+            self.rebalanceResult = nil
+        }
+        
+        do {
+            let record = DailyNutritionRecord(
+                date: Date(),
+                dailyPlan: plan,
+                actualMeals: todayMeals,
+                adherence: MealAdherenceCalculator.shared.calculate(
+                    actualMeals: todayMeals,
+                    plannedMeals: plan.plannedMeals,
+                    targetCalories: plan.targetCalories,
+                    targetProtein: plan.targetProtein
+                )
+            )
+            
+            let context = AIRebalanceService.shared.buildRebalanceContext(record: record, preference: preference)
+            let result = try await AIOrchestrator.shared.generateRebalancePlan(context: context)
+            
+            await MainActor.run {
+                self.rebalanceResult = result
+                self.isRebalancing = false
+                self.rebalanceError = nil
+            }
+        } catch {
+            print("Rebalance failed: \(error)")
+            await MainActor.run {
+                self.isRebalancing = false
+                self.rebalanceError = "Không thể kết nối với AI hoặc dữ liệu không hợp lệ. Vui lòng thử lại sau."
+            }
+        }
+    }
+    
+    func confirmRebalance() async {
+        guard let result = rebalanceResult else {
+            await MainActor.run { self.rebalanceError = "Không tìm thấy kết quả điều chỉnh để áp dụng." }
+            return 
+        }
+        
+        guard var plan = dashboard.confirmedDailyPlan else {
+            await MainActor.run { self.rebalanceError = "Không tìm thấy kế hoạch gốc để cập nhật." }
+            return
+        }
+        
+        do {
+            var updatedPlannedMeals = plan.plannedMeals
+            
+            for suggestion in result.changedMeals {
+                // Sử dụng case-insensitive matching cho ID
+                if let idx = updatedPlannedMeals.firstIndex(where: { $0.id.uuidString.lowercased() == suggestion.plannedMealId.lowercased() }) {
+                    // Update the meal
+                    updatedPlannedMeals[idx].status = suggestion.changeType == "removed" ? "skipped" : "planned"
+                    
+                    // Update food items if it was portionAdjusted or swapped
+                    if suggestion.changeType == "portionAdjusted" || suggestion.changeType == "swapped" {
+                        // For simplicity, we create a new food item model with the new cal/macros
+                        // In a real app, we might want to keep the same food ID if it's the same dish
+                        let newFood = PlannedFoodItemModel(
+                            name: suggestion.newName ?? suggestion.oldName,
+                            calories: suggestion.newCalories,
+                            protein: suggestion.newProtein,
+                            carbs: suggestion.newCarbs,
+                            fat: suggestion.newFat,
+                            servingSize: 1.0 // Simplified
+                        )
+                        updatedPlannedMeals[idx].foodItems = [newFood]
+                        
+                        if suggestion.changeType == "swapped" {
+                            updatedPlannedMeals[idx].type = suggestion.mealType
+                        }
+                    }
+                }
+            }
+            
+            plan.plannedMeals = updatedPlannedMeals
+            plan.isRebalanced = true
+            plan.rebalanceReason = result.reason
+            plan.rebalancedAt = Date()
+            
+            try await dailyPlanRepository.savePlan(plan, status: plan.status)
+            
+            await MainActor.run {
+                self.rebalanceResult = nil
+                self.rebalanceTrigger = nil
+                HapticManager.success()
+            }
+            
+            await loadDashboard()
+            
+        } catch {
+            print("Failed to confirm rebalance: \(error)")
+            await MainActor.run {
+                self.rebalanceError = "Không thể lưu kế hoạch mới: \(error.localizedDescription)"
+            }
         }
     }
 }

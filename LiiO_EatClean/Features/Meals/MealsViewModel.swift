@@ -7,14 +7,22 @@ class MealsViewModel {
     var selectedDate: Date = Date()
     var isLoading = false
     var user: UserModel?
+    var dailyPlan: DailyPlanModel?
+    var rebalanceTrigger: RebalanceTrigger?
+    var rebalanceResult: RebalanceResult?
+    var isRebalancing = false
+    var rebalanceError: String? = nil
     
     private let mealRepository: MealRepositoryProtocol
     private let userRepository: UserRepositoryProtocol
+    private let dailyPlanRepository: DailyPlanRepositoryProtocol
     
     init(mealRepository: MealRepositoryProtocol = MealRepository(),
-         userRepository: UserRepositoryProtocol = UserRepository()) {
+         userRepository: UserRepositoryProtocol = UserRepository(),
+         dailyPlanRepository: DailyPlanRepositoryProtocol = DailyPlanRepository()) {
         self.mealRepository = mealRepository
         self.userRepository = userRepository
+        self.dailyPlanRepository = dailyPlanRepository
     }
     
     func loadData(for date: Date? = nil, forceSilent: Bool = false) async {
@@ -33,10 +41,13 @@ class MealsViewModel {
                 meals = fetchedMeals
             }
             
+            dailyPlan = try await dailyPlanRepository.fetchPlan(for: targetDate)
+            
             if meals.isEmpty && isInitialLoad {
                 try await Task.sleep(nanoseconds: 200_000_000)
                 meals = try await mealRepository.fetchMeals(by: targetDate)
             }
+            
         } catch {
             print("Error loading meals for \(targetDate): \(error)")
         }
@@ -89,5 +100,122 @@ class MealsViewModel {
     
     var remainingCalories: Double {
         max(0, dailyTarget - totalCalories)
+    }
+    
+    // MARK: - AI Rebalance
+    
+    private func checkRebalanceTrigger() {
+        guard let plan = dailyPlan, plan.status == "confirmed" || plan.status == "active" else {
+            self.rebalanceTrigger = nil
+            return
+        }
+        
+        let record = DailyNutritionRecord(
+            date: selectedDate,
+            dailyPlan: plan,
+            actualMeals: meals,
+            adherence: MealAdherenceCalculator.shared.calculate(
+                actualMeals: meals,
+                plannedMeals: plan.plannedMeals,
+                targetCalories: plan.targetCalories,
+                targetProtein: plan.targetProtein
+            )
+        )
+        
+        self.rebalanceTrigger = AIRebalanceService.shared.checkRebalanceNeeded(record: record)
+    }
+    
+    func startRebalance(preference: RebalancePreference = .hybrid) async {
+        guard let plan = dailyPlan else { return }
+        
+        await MainActor.run {
+            self.isRebalancing = true
+            self.rebalanceResult = nil
+        }
+        
+        do {
+            let record = DailyNutritionRecord(
+                date: selectedDate,
+                dailyPlan: plan,
+                actualMeals: meals,
+                adherence: MealAdherenceCalculator.shared.calculate(
+                    actualMeals: meals,
+                    plannedMeals: plan.plannedMeals,
+                    targetCalories: plan.targetCalories,
+                    targetProtein: plan.targetProtein
+                )
+            )
+            
+            let context = AIRebalanceService.shared.buildRebalanceContext(record: record, preference: preference)
+            let result = try await AIOrchestrator.shared.generateRebalancePlan(context: context)
+            
+            await MainActor.run {
+                self.rebalanceResult = result
+                self.isRebalancing = false
+            }
+        } catch {
+            print("Rebalance failed: \(error)")
+            await MainActor.run {
+                self.isRebalancing = false
+            }
+        }
+    }
+    
+    func confirmRebalance() async {
+        guard let result = rebalanceResult else {
+            await MainActor.run { self.rebalanceError = "Không tìm thấy kết quả điều chỉnh để áp dụng." }
+            return
+        }
+        
+        guard var plan = dailyPlan else {
+            await MainActor.run { self.rebalanceError = "Không tìm thấy kế hoạch gốc để cập nhật." }
+            return
+        }
+        
+        do {
+            var updatedPlannedMeals = plan.plannedMeals
+            
+            for suggestion in result.changedMeals {
+                if let idx = updatedPlannedMeals.firstIndex(where: { $0.id.uuidString.lowercased() == suggestion.plannedMealId.lowercased() }) {
+                    updatedPlannedMeals[idx].status = suggestion.changeType == "removed" ? "skipped" : "planned"
+                    
+                    if suggestion.changeType == "portionAdjusted" || suggestion.changeType == "swapped" {
+                        let newFood = PlannedFoodItemModel(
+                            name: suggestion.newName ?? suggestion.oldName,
+                            calories: suggestion.newCalories,
+                            protein: suggestion.newProtein,
+                            carbs: suggestion.newCarbs,
+                            fat: suggestion.newFat,
+                            servingSize: 1.0
+                        )
+                        updatedPlannedMeals[idx].foodItems = [newFood]
+                        
+                        if suggestion.changeType == "swapped" {
+                            updatedPlannedMeals[idx].type = suggestion.mealType
+                        }
+                    }
+                }
+            }
+            
+            plan.plannedMeals = updatedPlannedMeals
+            plan.isRebalanced = true
+            plan.rebalanceReason = result.reason
+            plan.rebalancedAt = Date()
+            
+            try await dailyPlanRepository.savePlan(plan, status: plan.status)
+            
+            await MainActor.run {
+                self.rebalanceResult = nil
+                self.rebalanceTrigger = nil
+                HapticManager.success()
+            }
+            
+            await loadData()
+        } catch {
+            print("Failed to confirm rebalance: \(error)")
+            await MainActor.run {
+                self.rebalanceError = "Không thể lưu kế hoạch mới: \(error.localizedDescription)"
+            }
+        }
     }
 }

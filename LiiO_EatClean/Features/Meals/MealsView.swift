@@ -92,6 +92,7 @@ struct MealsView: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         
+                        
                         // Meal Sections
                         ForEach(["Bữa sáng", "Bữa trưa", "Bữa tối", "Ăn vặt"], id: \.self) { type in
                             mealSection(for: type)
@@ -150,10 +151,51 @@ struct MealsView: View {
             .fullScreenCover(isPresented: $showMemoryHub) {
                 MemoryHubView()
             }
+            .sheet(item: Binding(
+                get: { viewModel.rebalanceResult.map { IdentifiableResult(result: $0) } },
+                set: { _ in viewModel.rebalanceResult = nil }
+            )) { identifiable in
+                RebalancePreviewSheet(
+                    result: identifiable.result,
+                    onConfirm: {
+                        Task { await viewModel.confirmRebalance() }
+                    },
+                    onCancel: {
+                        viewModel.rebalanceResult = nil
+                    }
+                )
+            }
+            .overlay {
+                if viewModel.isRebalancing {
+                    ZStack {
+                        Color.black.opacity(0.3)
+                            .ignoresSafeArea()
+                        
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .tint(.white)
+                            Text("AI đang cân đối lại thực đơn...")
+                                .foregroundColor(.white)
+                                .font(.system(size: 16, weight: .bold))
+                        }
+                    }
+                }
+            }
         }
         .onAppear {
             Task {
                 await viewModel.loadData()
+            }
+        }
+        .alert("Thông báo", isPresented: Binding(
+            get: { viewModel.rebalanceError != nil },
+            set: { if !$0 { viewModel.rebalanceError = nil } }
+        )) {
+            Button("Đồng ý", role: .cancel) { }
+        } message: {
+            if let error = viewModel.rebalanceError {
+                Text(error)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("navigateToJournal"))) { notification in
@@ -251,4 +293,310 @@ struct MealsView: View {
 
 #Preview {
     MealsView()
+}
+
+// MARK: - Rebalance UI Components
+
+struct RebalanceBannerView: View {
+    let trigger: RebalanceTrigger
+    let onAction: () -> Void
+    
+    var body: some View {
+        Button(action: onAction) {
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.white)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(trigger.reason)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                    Text("Nhấn để AI tối ưu lại các bữa chưa ăn.")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                
+                Spacer()
+                
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.white)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                LinearGradient(colors: [.green, .mint], startPoint: .leading, endPoint: .trailing)
+            )
+            .cornerRadius(12)
+            .shadow(color: .green.opacity(0.3), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal)
+    }
+}
+
+struct RebalancePreviewSheet: View {
+    let result: RebalanceResult
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+    
+    var body: some View {
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                Color(.systemGroupedBackground).ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 28) {
+                        // Summary Header
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(result.summary)
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                            
+                            Text("Dựa trên những gì bạn đã ăn thực tế hôm nay.")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        // Macro Comparison Cards
+                        HStack(spacing: 16) {
+                            MacroCompareCard(label: "Calo", old: result.oldExpectedTotals.calories, new: result.newExpectedTotals.calories, unit: "kcal")
+                            MacroCompareCard(label: "Protein", old: result.oldExpectedTotals.protein, new: result.newExpectedTotals.protein, unit: "g")
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        // Changes List
+                        VStack(alignment: .leading, spacing: 18) {
+                            Text("Thay đổi đề xuất")
+                                .font(.system(size: 18, weight: .bold))
+                                .padding(.horizontal, 20)
+                            
+                            VStack(spacing: 12) {
+                                ForEach(result.changedMeals) { suggestion in
+                                    DiffMealCard(suggestion: suggestion)
+                                }
+                            }
+                        }
+                        
+                        // AI Insight Notice
+                        if let warnings = result.warnings, !warnings.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Label("Lưu ý từ AI", systemImage: "sparkles")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundColor(.orange)
+                                
+                                VStack(alignment: .leading, spacing: 6) {
+                                    ForEach(warnings, id: \.self) { warning in
+                                        Text("• \(warning)")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(3)
+                                    }
+                                }
+                            }
+                            .padding(16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.orange.opacity(0.08))
+                            .cornerRadius(16)
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        // Spacing for sticky button
+                        Color.clear.frame(height: 100)
+                    }
+                    .padding(.vertical, 20)
+                }
+                
+                // Sticky Action Bar
+                VStack(spacing: 0) {
+                    Divider()
+                    HStack(spacing: 16) {
+                        Button(action: onCancel) {
+                            Text("Hủy")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(Color(.secondarySystemGroupedBackground))
+                                .cornerRadius(12)
+                        }
+                        
+                        Button(action: {
+                            HapticManager.success()
+                            onConfirm()
+                        }) {
+                            Text("Áp dụng kế hoạch mới")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(Color.green)
+                                .cornerRadius(12)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 34) // Safe area
+                    .background(Color(.systemGroupedBackground).opacity(0.95))
+                }
+            }
+            .navigationTitle("AI Điều chỉnh")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Đóng") { onCancel() }
+                }
+            }
+        }
+    }
+}
+
+struct MacroCompareCard: View {
+    let label: String
+    let old: Double
+    let new: Double
+    let unit: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label.uppercased())
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(.secondary)
+                .tracking(0.5)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(Int(old))")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .strikethrough()
+                        .foregroundColor(.secondary.opacity(0.6))
+                    
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.secondary.opacity(0.4))
+                    
+                    Text("\(Int(new))")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(new <= old ? .green : .orange)
+                    
+                    Text(unit)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                
+                let delta = new - old
+                if delta != 0 {
+                    Text("\(delta > 0 ? "+" : "")\(Int(delta)) \(unit)")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(delta < 0 ? .green : .orange)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background((delta < 0 ? Color.green : Color.orange).opacity(0.1))
+                        .cornerRadius(4)
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
+    }
+}
+
+struct DiffMealCard: View {
+    let suggestion: ChangedMealSuggestion
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header: Meal Type & Badge
+            HStack {
+                Text(suggestion.mealType)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                changeTag
+            }
+            
+            // Comparison Content
+            HStack(alignment: .top, spacing: 12) {
+                // Before
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("TRƯỚC")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.secondary.opacity(0.8))
+                    
+                    Text(suggestion.oldName)
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                    
+                    Text("\(Int(suggestion.oldCalories)) kcal")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary.opacity(0.6))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.secondary.opacity(0.3))
+                    .padding(.top, 20)
+                
+                // After
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("SAU")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.green)
+                    
+                    Text(suggestion.newName ?? suggestion.oldName)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+                    
+                    Text("\(Int(suggestion.newCalories)) kcal")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.green)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            
+            // Reason
+            if let reason = suggestion.reason {
+                Text(reason)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .padding(.top, 4)
+                    .lineLimit(2)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(18)
+        .padding(.horizontal, 20)
+    }
+    
+    @ViewBuilder
+    private var changeTag: some View {
+        let (text, color) = switch suggestion.changeType {
+        case "portionAdjusted": ("Chỉnh khẩu phần", Color.blue)
+        case "swapped": ("Đổi món", Color.purple)
+        case "removed": ("Bỏ bữa", Color.red)
+        case "added": ("Thêm bữa", Color.green)
+        default: ("Cập nhật", Color.gray)
+        }
+        
+        Text(text.uppercased())
+            .font(.system(size: 10, weight: .bold))
+            .foregroundColor(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(color.opacity(0.12))
+            .cornerRadius(6)
+    }
 }

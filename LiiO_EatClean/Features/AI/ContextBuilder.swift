@@ -546,23 +546,23 @@ class ContextBuilder {
         return text.count / 4
     }
     
-    func compressHistory(messages: [ChatMessage]) -> [ChatMessage] {
+    func compressHistory(messages: [ChatMessageModel]) -> [ChatMessageModel] {
         // Keep the last 10 messages intact (Sliding Window)
         guard messages.count > 10 else { return messages }
         
         let recentMessages = Array(messages.suffix(10))
         let olderMessages = Array(messages.dropLast(10))
         
-        let olderText = olderMessages.map { "\($0.isUser ? "User" : "AI"): \($0.text)" }.joined(separator: "\n")
+        let olderText = olderMessages.map { "\($0.role == .user ? "User" : "AI"): \($0.text)" }.joined(separator: "\n")
         let summaryPrompt = "[Lịch sử chat cũ đã được nén]:\n" + olderText
         
-        var compressedMessages = [ChatMessage]()
+        var compressedMessages = [ChatMessageModel]()
         if estimateTokens(for: olderText) > maxTokens {
             // Truncate drastically if it exceeds budget
             let truncated = String(olderText.suffix(maxTokens * 4))
-            compressedMessages.append(ChatMessage(role: .assistant, text: "[Lịch sử chat cũ đã được nén]:\n" + truncated, suggestedFoods: nil))
+            compressedMessages.append(ChatMessageModel(role: .assistant, text: "[Lịch sử chat cũ đã được nén]:\n" + truncated, suggestedFoods: nil))
         } else {
-            compressedMessages.append(ChatMessage(role: .assistant, text: summaryPrompt, suggestedFoods: nil))
+            compressedMessages.append(ChatMessageModel(role: .assistant, text: summaryPrompt, suggestedFoods: nil))
         }
         
         compressedMessages.append(contentsOf: recentMessages)
