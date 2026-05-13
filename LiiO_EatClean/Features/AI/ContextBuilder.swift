@@ -30,7 +30,10 @@ class ContextBuilder {
         for userMessage: String,
         strategy: ContextStrategy = .chat,
         remainingCalories: Double? = nil,
-        mealType: String? = nil
+        mealType: String? = nil,
+        voiceMode: Bool = false,
+        responseStyle: AssistantResponseStyle? = nil,
+        responseLength: VoiceResponseLength? = nil
     ) async throws -> String {
         let user = try await userRepository.fetchUser()
         let memory = try await memoryRepository.fetchMemory()
@@ -73,13 +76,38 @@ class ContextBuilder {
                 targetCalories: targetCalories,
                 memory: memory
             )
-        case .mealPlan:
             return try await buildMealPlanContext(
                 targetCalories: effectiveRemaining,
                 memory: memory,
                 mealType: mealType
             )
         }
+        
+        var finalPrompt = prompt
+        
+        // Add voice-aware rules
+        if voiceMode {
+            finalPrompt += buildVoiceRules(style: responseStyle, length: responseLength)
+        }
+        
+        return finalPrompt
+    }
+    
+    private func buildVoiceRules(style: AssistantResponseStyle?, length: VoiceResponseLength?) -> String {
+        var rules = "\n\n[Chế độ Voice — Trả lời bằng giọng nói]\n"
+        rules += "- Ưu tiên câu ngắn hơn, tự nhiên hơn, không liệt kê quá dài.\n"
+        rules += "- Tuyệt đối KHÔNG dùng markdown format (**, ##, ```) trong phần văn bản trả lời chính (trừ khối JSON nếu có).\n"
+        rules += "- Không liệt kê dạng bullet points dài. Hãy tóm tắt ý chính.\n"
+        
+        if let style {
+            rules += "\n[Phong cách]\n\(style.promptInstruction)\n"
+        }
+        
+        if let length {
+            rules += "\n[Độ dài]\n\(length.promptInstruction)\n"
+        }
+        
+        return rules
     }
     
     func buildFullUserContext() async throws -> String {

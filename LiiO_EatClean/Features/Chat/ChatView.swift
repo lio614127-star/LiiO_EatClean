@@ -181,11 +181,19 @@ struct ChatView: View {
         }
         .onAppear {
             speechService.onSilenceTimeout = {
+                let settings = AssistantVoiceSettings()
+                let transcript = speechService.transcript
                 speechService.stopListening()
-                if !speechService.transcript.isEmpty {
-                    inputText = speechService.transcript
+                
+                if settings.autoSendAfterSpeech && !transcript.isEmpty {
+                    viewModel.sendMessage(transcript, inputMode: "voice")
+                    showVoiceSheet = false
+                } else if !transcript.isEmpty {
+                    inputText = transcript
+                    showVoiceSheet = false
+                } else {
+                    // Empty transcript, keep listening or dismiss if manually stopped
                 }
-                showVoiceSheet = false
                 
                 let generator = UINotificationFeedbackGenerator()
                 generator.notificationOccurred(.success)

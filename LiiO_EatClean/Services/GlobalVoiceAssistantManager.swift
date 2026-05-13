@@ -237,45 +237,59 @@ class GlobalVoiceAssistantManager: NSObject {
         
         Task {
             do {
-                // 1. Get system prompt with voice instructions
-                var systemPrompt = try await contextBuilder.buildSystemPrompt(for: text, strategy: .chat)
+                // 1. Get or create active session
+                let session = try await chatRepository.fetchLatestActiveSession()
+                    ?? (try await chatRepository.createSession(title: "Hội thoại giọng nói", source: "globalVoiceAssistant"))
                 
-                // Add voice-specific length and style constraints
-                let style = settings.defaultResponseStyle
-                let length = settings.voiceResponseLength
+                // 2. Save user message
+                let userMsg = ChatMessageModel(role: .user, text: text, inputMode: "voice")
+                try await chatRepository.saveMessage(userMsg, sessionId: session.id)
                 
-                if let styleEnum = AssistantResponseStyle(rawValue: style) {
-                    systemPrompt += "\n\nStyle: \(styleEnum.promptInstruction)"
-                }
+                // 3. Detect intent for style optimization
+                let intent = detectIntent(text)
+                let responseStyle = settings.getResponseStyle(for: intent)
+                let responseLength = VoiceResponseLength(rawValue: settings.voiceResponseLength) ?? .moderate
                 
-                if let lengthEnum = VoiceResponseLength(rawValue: length) {
-                    systemPrompt += "\n\nLength constraint: \(lengthEnum.promptInstruction)"
-                }
+                // 4. Build context with voice-aware settings
+                let systemPrompt = try await contextBuilder.buildSystemPrompt(
+                    for: text,
+                    strategy: .chat,
+                    voiceMode: true,
+                    responseStyle: responseStyle,
+                    responseLength: responseLength
+                )
                 
-                systemPrompt += "\n\nIMPORTANT: You are speaking via Voice Assistant. Keep it conversational and brief. Do not use Markdown bold/italic or long lists unless necessary."
+                // 5. Fetch history for context
+                let history = try await chatRepository.fetchMessages(sessionId: session.id, limit: 10)
                 
-                // 2. Fetch history
-                let sessions = try await chatRepository.fetchSessions()
-                let currentSession = sessions.first ?? (try await chatRepository.createSession())
-                let history = try await chatRepository.fetchMessages(for: currentSession.id)
-                
-                // 3. Send to AI
-                let responseMessage = try await aiService.sendChatMessage(
+                // 6. Send to AI
+                var responseMessage = try await aiService.sendChatMessage(
                     history: history,
                     systemPrompt: systemPrompt,
                     task: .chat,
                     feature: "Voice Assistant"
                 )
                 
-                // 4. Persistence
-                let userMsg = ChatMessageModel(role: .user, text: text, inputMode: "voice")
-                try await chatRepository.saveMessage(userMsg, to: currentSession.id)
-                try await chatRepository.saveMessage(responseMessage, to: currentSession.id)
+                // 7. Configure output mode and persistence
+                responseMessage.outputMode = settings.voiceReplyEnabled ? "voice" : "text"
+                try await chatRepository.saveMessage(responseMessage, sessionId: session.id)
+                try await chatRepository.updateSessionMetadata(sessionId: session.id, lastMessage: text)
                 
                 await MainActor.run {
                     self.lastResponse = responseMessage.text
                     self.lastSuggestedFoods = responseMessage.suggestedFoods
-                    self.speakResponse(responseMessage.text)
+                    
+                    if self.settings.voiceReplyEnabled {
+                        self.speakResponse(responseMessage.text)
+                    } else {
+                        self.state = .idle
+                        // Auto-dismiss after delay if not speaking
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                            if self.state == .idle {
+                                self.startListening()
+                            }
+                        }
+                    }
                     self.isProcessingCommand = false
                 }
             } catch {
@@ -284,13 +298,30 @@ class GlobalVoiceAssistantManager: NSObject {
                     self.state = .error
                     self.isProcessingCommand = false
                     
-                    // Auto-resume after 3s error display
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
                         self.startListening()
                     }
                 }
             }
         }
+    }
+    
+    private func detectIntent(_ text: String) -> String {
+        let lower = text.lowercased()
+        if lower.contains("vừa ăn") || lower.contains("đã ăn") || lower.contains("ăn rồi") || lower.contains("ghi lại") {
+            return "meal_logging"
+        } else if lower.contains("nên ăn") || lower.contains("ăn gì") || lower.contains("gợi ý") || lower.contains("thực đơn") {
+            return "plan_question"
+        } else if lower.contains("nấu") || lower.contains("chế biến") || lower.contains("làm") || lower.contains("công thức") {
+            return "cooking_advice"
+        } else if lower.contains("sức khỏe") || lower.contains("bệnh") || lower.contains("dị ứng") || lower.contains("kiêng") {
+            return "health_question"
+        } else if lower.contains("tiến độ") || lower.contains("tuần qua") || lower.contains("giảm cân") || lower.contains("cân nặng") {
+            return "progress_question"
+        } else if lower.contains("cân đối") || lower.contains("rebalance") || lower.contains("chỉnh lại") || lower.contains("nhiều quá") {
+            return "rebalance_request"
+        }
+        return "general_chat"
     }
     
     // MARK: - TTS

@@ -72,11 +72,11 @@ class ChatViewModel {
     var currentModelInfo: AIModelInfo?
     var isStreaming = false
     
-    func sendMessage(_ text: String, isRetry: Bool = false, pendingId: UUID? = nil) {
+    func sendMessage(_ text: String, isRetry: Bool = false, pendingId: UUID? = nil, inputMode: String = "text") {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         
-        let userMessage = ChatMessageModel(role: .user, text: trimmed, suggestedFoods: nil)
+        let userMessage = ChatMessageModel(role: .user, text: trimmed, suggestedFoods: nil, inputMode: inputMode)
         
         if !NetworkMonitor.shared.isConnected && !isRetry {
             messages.append(userMessage)
