@@ -137,8 +137,15 @@ class SpeechRecognitionService {
         var sum: Float = 0
         for i in 0..<Int(frames) { sum += channelData[i] * channelData[i] }
         let rms = sqrt(sum / Float(frames))
-        // Mapping RMS to 0...1 range for UI
-        let normalized = min(1.0, max(0.0, rms * 5.0)) // Boosted for visibility
+        
+        // Apply highly responsive Logarithmic Decibel Scale (dB) for premium visual bouncing
+        let minDb: Float = -50.0
+        let db = rms > 0.00001 ? 20 * log10(rms) : minDb
+        
+        // Normalize dB range [-50, -5] to [0, 1]
+        let clampedDb = max(minDb, min(-5.0, db))
+        let normalized = (clampedDb - minDb) / (-5.0 - minDb)
+        
         DispatchQueue.main.async {
             self.audioLevel = normalized
         }
