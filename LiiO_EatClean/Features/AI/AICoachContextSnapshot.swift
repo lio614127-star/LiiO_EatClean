@@ -28,7 +28,7 @@ enum ContextIntent: String, Codable, CaseIterable {
     case rebalanceRequest
 }
 
-enum ContextSection: String, CaseIterable {
+enum ContextSection: String, Codable, CaseIterable {
     case profileMinimal
     case healthConstraints
     case todayTargets
