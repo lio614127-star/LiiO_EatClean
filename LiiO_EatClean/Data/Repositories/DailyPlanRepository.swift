@@ -3,6 +3,7 @@ import CoreData
 
 protocol DailyPlanRepositoryProtocol {
     func fetchPlan(for date: Date) async throws -> DailyPlanModel?
+    func fetchPlans(from startDate: Date, to endDate: Date) async throws -> [DailyPlanModel]
     func savePlan(_ plan: DailyPlanModel, status: String) async throws
     func lockMeal(id: UUID, locked: Bool) async throws
     func cleanupOldDrafts() async throws
@@ -50,6 +51,47 @@ class DailyPlanRepository: DailyPlanRepositoryProtocol {
                 rebalancedAt: entity.value(forKey: "rebalancedAt") as? Date,
                 previousPlanSnapshot: entity.value(forKey: "previousPlanSnapshot") as? Data
             )
+        }
+    }
+    
+    func fetchPlans(from startDate: Date, to endDate: Date) async throws -> [DailyPlanModel] {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: startDate)
+        let end = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: endDate) ?? endDate
+        
+        return try await context.perform {
+            let request = NSFetchRequest<NSManagedObject>(entityName: "DailyPlan")
+            request.predicate = NSPredicate(format: "date >= %@ AND date <= %@", start as CVarArg, end as CVarArg)
+            request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: true)]
+            request.returnsObjectsAsFaults = false
+            
+            let results = try self.context.fetch(request)
+            return results.map { entity in
+                let planDate = entity.value(forKey: "date") as? Date ?? start
+                var plannedMeals: [PlannedMealModel] = []
+                if let pms = entity.value(forKey: "plannedMeals") {
+                    if let pmsSet = pms as? Set<NSManagedObject> {
+                        plannedMeals = pmsSet.map { self.mapPlannedMeal($0) }.sorted { $0.id.uuidString < $1.id.uuidString }
+                    } else if let pmsOrderedSet = pms as? NSOrderedSet {
+                        plannedMeals = pmsOrderedSet.array.compactMap { $0 as? NSManagedObject }.map { self.mapPlannedMeal($0) }.sorted { $0.id.uuidString < $1.id.uuidString }
+                    }
+                }
+                
+                return DailyPlanModel(
+                    id: entity.value(forKey: "id") as? UUID ?? UUID(),
+                    date: planDate,
+                    status: entity.value(forKey: "status") as? String ?? "draft",
+                    targetCalories: entity.value(forKey: "targetCalories") as? Double ?? 0,
+                    targetProtein: entity.value(forKey: "targetProtein") as? Double ?? 0,
+                    targetCarbs: entity.value(forKey: "targetCarbs") as? Double ?? 0,
+                    targetFat: entity.value(forKey: "targetFat") as? Double ?? 0,
+                    plannedMeals: plannedMeals,
+                    isRebalanced: entity.value(forKey: "isRebalanced") as? Bool ?? false,
+                    rebalanceReason: entity.value(forKey: "rebalanceReason") as? String,
+                    rebalancedAt: entity.value(forKey: "rebalancedAt") as? Date,
+                    previousPlanSnapshot: entity.value(forKey: "previousPlanSnapshot") as? Data
+                )
+            }
         }
     }
     

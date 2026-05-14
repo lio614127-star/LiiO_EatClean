@@ -10,10 +10,21 @@ struct ActionableMessageView: View {
             // Removed ModelHeader to keep UI clean as requested
             
             // Main Text Bubble
-            if !message.text.isEmpty || isStreaming {
+            if !message.text.isEmpty || isStreaming || message.status == .thinking {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .bottom, spacing: 0) {
-                        if message.text.isEmpty && isStreaming {
+                        if message.status == .thinking {
+                            // Premium AI Orchestrator thinking loader
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .tint(.primary)
+                                    .scaleEffect(0.8)
+                                Text("Đang phân tích...")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                        } else if message.text.isEmpty && isStreaming {
                             // Show clean "thinking" placeholder
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(message.modelInfo?.name ?? "gemini-2.5-flash")
@@ -24,8 +35,28 @@ struct ActionableMessageView: View {
                                     .foregroundColor(.secondary)
                             }
                         } else {
-                            Text(LocalizedStringKey(message.text))
-                                .fixedSize(horizontal: false, vertical: true)
+                            // Handle transcription text state with glowing badge
+                            HStack(alignment: .center, spacing: 6) {
+                                if message.status == .transcribing {
+                                    Image(systemName: "mic.fill")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.9))
+                                        .phaseAnimator([0.5, 1.0]) { content, phase in
+                                            content.opacity(phase)
+                                        } animation: { _ in
+                                            .easeInOut(duration: 0.6).repeatForever(autoreverses: true)
+                                        }
+                                }
+                                
+                                Text(LocalizedStringKey(message.text))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                
+                                if message.status == .transcribing {
+                                    Text("...")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                            }
                         }
                         
                         // Only show blinking cursor when text is actively streaming in

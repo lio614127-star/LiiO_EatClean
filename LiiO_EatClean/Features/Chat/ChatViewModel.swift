@@ -10,6 +10,31 @@ class ChatViewModel {
     var healthSafetyApplied = false
     var currentSession: ChatSessionModel?
     
+    var displayMessages: [ChatMessageModel] {
+        var combined = messages
+        
+        // 1. Insert active user voice draft
+        if let voiceDraft = ChatRealtimeStore.shared.activeVoiceDraftMessage,
+           voiceDraft.sessionId == currentSession?.id {
+            // Ensure we don't show a voice draft if we already received its official counterpart
+            let hasOfficial = messages.contains { $0.clientId == voiceDraft.clientId }
+            if !hasOfficial {
+                combined.append(voiceDraft)
+            }
+        }
+        
+        // 2. Insert active assistant response draft
+        if let assistantDraft = ChatRealtimeStore.shared.activeAssistantDraftMessage,
+           assistantDraft.sessionId == currentSession?.id {
+            let hasOfficial = messages.contains { $0.clientId == assistantDraft.clientId }
+            if !hasOfficial {
+                combined.append(assistantDraft)
+            }
+        }
+        
+        return combined
+    }
+    
     private let aiService = AIService.shared
     private let contextBuilder = ContextBuilder()
     private let mealRepository: MealRepositoryProtocol
@@ -24,6 +49,7 @@ class ChatViewModel {
             await loadInitialSession()
         }
         listenForRetries()
+        listenForExternalMessages()
     }
     
     @MainActor
@@ -61,12 +87,7 @@ class ChatViewModel {
     private func addWelcomeMessage() {
         let welcome = ChatMessageModel(role: .assistant, text: "Chào bạn! Mình là trợ lý dinh dưỡng cá nhân của bạn đây. Hôm nay bạn ăn uống thế nào rồi?", suggestedFoods: nil)
         messages.append(welcome)
-        
-        if let sessionId = currentSession?.id {
-            Task {
-                try? await chatRepository.saveMessage(welcome, sessionId: sessionId)
-            }
-        }
+        // Visual-only welcome: Do not persist into DB so voice/AI sessions remain clean
     }
     
     var currentModelInfo: AIModelInfo?
@@ -76,7 +97,7 @@ class ChatViewModel {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         
-        let userMessage = ChatMessageModel(role: .user, text: trimmed, suggestedFoods: nil, inputMode: inputMode)
+        let userMessage = ChatMessageModel(role: .user, text: trimmed, inputMode: inputMode, suggestedFoods: nil)
         
         if !NetworkMonitor.shared.isConnected && !isRetry {
             messages.append(userMessage)
@@ -285,6 +306,33 @@ class ChatViewModel {
         ) { [weak self] notification in
             guard let message = notification.userInfo?["message"] as? PendingMessage else { return }
             self?.sendMessage(message.text, isRetry: true, pendingId: message.id)
+        }
+    }
+    
+    // MARK: - Realtime Live Mirror Subscriptions
+    private func listenForExternalMessages() {
+        NotificationCenter.default.addObserver(
+            forName: .chatMessageSavedExternally,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            guard let incoming = notification.object as? ChatMessageModel else { return }
+            
+            // Verify session matches
+            guard incoming.sessionId == self.currentSession?.id else { return }
+            
+            // Deduplicate by clientId or id
+            let alreadyExists = self.messages.contains {
+                $0.id == incoming.id || ($0.clientId != nil && $0.clientId == incoming.clientId)
+            }
+            
+            if !alreadyExists {
+                print("[ChatRealtime] 🪞 Mirroring external message into active chat view: \(incoming.text.prefix(20))...")
+                withAnimation {
+                    self.messages.append(incoming)
+                }
+            }
         }
     }
 }

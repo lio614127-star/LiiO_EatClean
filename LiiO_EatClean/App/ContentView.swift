@@ -9,6 +9,7 @@ struct ContentView: View {
     @Environment(GlobalVoiceAssistantManager.self) var voiceManager
     
     var shouldShowVoiceOverlay: Bool {
+        // Only show overlay when actively interacting or when wake is detected
         [.wakeDetected, .commandListening, .processing, .speaking, .error].contains(voiceManager.state)
     }
     
@@ -56,19 +57,8 @@ struct ContentView: View {
                 .padding(.top, 60) // Offset for notch/status bar
                 .ignoresSafeArea(.all, edges: .bottom)
         }
-        .overlay(alignment: .bottom) {
-            if shouldShowVoiceOverlay {
-                FloatingVoiceOverlay(
-                    onNavigateToChat: {
-                        selectedTab = 4
-                        voiceManager.dismissOverlay()
-                    },
-                    onDismiss: {
-                        voiceManager.dismissOverlay()
-                    }
-                )
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
+        .overlay {
+            SiriStyleVoiceOverlayV4()
         }
         .animation(.spring(response: 0.4), value: voiceManager.state)
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("navigateToJournal"))) { _ in

@@ -204,6 +204,14 @@ struct MealsView: View {
                 Task { await viewModel.loadData() }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("openDailyPlanning"))) { _ in
+            viewModel.selectedDate = Date()
+            mealPlanViewModel.selectedDate = Date()
+            // Guard against presenting twice
+            if !showMealPlanSheet {
+                showMealPlanSheet = true
+            }
+        }
     }
     
     @ViewBuilder

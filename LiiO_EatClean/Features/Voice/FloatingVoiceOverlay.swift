@@ -12,6 +12,13 @@ struct FloatingVoiceOverlay: View {
                 if voiceManager.state == .processing {
                     ProgressView()
                         .scaleEffect(0.8)
+                } else if voiceManager.state == .voiceGateListening {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 8, height: 8)
+                        .opacity(0.6)
+                        .scaleEffect(1.2)
+                        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: voiceManager.state)
                 } else {
                     Image(systemName: "sparkles")
                         .foregroundColor(.green)
@@ -43,6 +50,8 @@ struct FloatingVoiceOverlay: View {
                     speakingView
                 case .error:
                     errorView
+                case .voiceGateListening, .wakeChecking:
+                    gateView
                 default:
                     doneView
                 }
@@ -58,7 +67,7 @@ struct FloatingVoiceOverlay: View {
                 // Done state or others
                 HStack {
                     Button(action: onNavigateToChat) {
-                        Label("Xem trong AI Coach", systemName: "message.fill")
+                        Label("Xem trong AI Coach", systemImage: "message.fill")
                             .font(.subheadline)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
@@ -90,6 +99,8 @@ struct FloatingVoiceOverlay: View {
     
     private var titleForState: String {
         switch voiceManager.state {
+        case .voiceGateListening: return "Đang lắng nghe"
+        case .wakeChecking: return "Đang nhận diện..."
         case .wakeDetected: return "Sẵn sàng"
         case .commandListening: return "Đang nghe"
         case .processing: return "Đang xử lý"
@@ -103,10 +114,10 @@ struct FloatingVoiceOverlay: View {
     
     private var wakeDetectedView: some View {
         VStack(spacing: 4) {
-            Text(voiceManager.settings.getWakeResponse())
+            Text(voiceManager.lastResponse.isEmpty ? voiceManager.settings.getWakeResponse() : voiceManager.lastResponse)
                 .font(.body)
                 .multilineTextAlignment(.center)
-            Text("Bạn nói đi...")
+            Text("Đang lắng nghe...")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -151,7 +162,7 @@ struct FloatingVoiceOverlay: View {
                 // Should stop TTS and go back to idle/listening
                 voiceManager.dismissOverlay()
             }) {
-                Label("Dừng đọc", systemName: "stop.fill")
+                Label("Dừng đọc", systemImage: "stop.fill")
                     .font(.caption)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
@@ -167,6 +178,15 @@ struct FloatingVoiceOverlay: View {
             .font(.body)
             .foregroundColor(.red)
             .multilineTextAlignment(.center)
+    }
+    
+    private var gateView: some View {
+        VStack(spacing: 4) {
+            Text("Nói \"\(voiceManager.settings.assistantName) ơi\"")
+                .font(.body)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 8)
     }
     
     private var doneView: some View {

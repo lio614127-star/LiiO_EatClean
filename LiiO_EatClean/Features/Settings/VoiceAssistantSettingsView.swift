@@ -2,158 +2,450 @@ import SwiftUI
 
 struct VoiceAssistantSettingsView: View {
     @Environment(AssistantVoiceSettings.self) var settings
-    @State private var showingCustomPhraseInput = false
-    @State private var newCustomPhrase = ""
+    @Environment(GlobalVoiceAssistantManager.self) var voiceManager
+    @Environment(\.dismiss) var dismiss
     
-    private var wakePhraseDetector: WakePhraseDetector {
-        WakePhraseDetector(assistantName: settings.assistantName)
-    }
+    @State private var showAddCustomResponse = false
+    @State private var newResponseText = ""
+    @State private var permissionMessage: String? = nil
+    
+    // UI State
+    @State private var isWakeResponseSectionExpanded: Bool = false
+    @State private var showDiagnostics: Bool = false
     
     var body: some View {
+        @Bindable var settings = settings
+        
         List {
-            // Section 1: Assistant Name
-            Section("Tên trợ lý AI") {
-                TextField("Tên", text: Binding(
-                    get: { settings.assistantName },
-                    set: { settings.assistantName = $0 }
-                ))
+            // MARK: - Activation
+            Section {
+                Toggle("Gọi AI bằng giọng nói trong app", isOn: wakeToggleBinding)
+                    .tint(.green)
                 
-                if wakePhraseDetector.isNameTooShort {
-                    Label("Tên quá ngắn", systemImage: "exclamationmark.triangle")
-                        .foregroundColor(.orange)
+                if let permissionMessage {
+                    Text(permissionMessage)
                         .font(.caption)
+                        .foregroundColor(.red)
                 }
-                if wakePhraseDetector.isNameTooCommon {
-                    Label("Tên này có thể dễ bị nhận nhầm", systemImage: "exclamationmark.triangle")
-                        .foregroundColor(.orange)
-                        .font(.caption)
+            } header: {
+                Text("Kích hoạt")
+            } footer: {
+                if settings.globalWakeEnabled {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Trợ lý sẽ lắng nghe khi app đang mở.")
+                        Text("Thử nói: \"\(settings.assistantName) ơi\" hoặc \"Hey \(settings.assistantName)\"")
+                            .fontWeight(.medium)
+                            .foregroundColor(.green)
+                    }
+                } else {
+                    Text("Cho phép bạn gọi trợ lý rảnh tay mà không cần nhấn nút.")
                 }
             }
             
-            // Section 2: Wake Phrases
-            Section("Câu gọi trợ lý") {
-                ForEach(wakePhraseDetector.generateWakePhrases(name: settings.assistantName), id: \.self) { phrase in
-                    Text("\"\(phrase)\"")
+            // MARK: - Assistant Profile
+            Section {
+                HStack {
+                    Text("Tên trợ lý")
+                    Spacer()
+                    TextField("Tên hiển thị", text: $settings.assistantName)
+                        .multilineTextAlignment(.trailing)
                         .foregroundColor(.secondary)
+                        .autocorrectionDisabled()
+                }
+                
+                HStack {
+                    Text("Cách đọc tên")
+                    Spacer()
+                    TextField("Phiên âm (optional)", text: $settings.assistantNamePronunciation)
+                        .multilineTextAlignment(.trailing)
+                        .foregroundColor(.secondary)
+                        .autocorrectionDisabled()
+                }
+                
+                if settings.assistantName.count < 2 {
+                    Text("Tên quá ngắn có thể gây nhầm lẫn khi nhận diện.")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+            } header: {
+                Text("Hồ sơ trợ lý")
+            } footer: {
+                Text("Dùng 'Cách đọc tên' nếu AI phát âm sai tên riêng (VD: LiiO -> Li ô).")
+            }
+            
+            // MARK: - Wake Response Style
+            Section {
+                DisclosureGroup(isExpanded: $isWakeResponseSectionExpanded) {
+                    VStack(spacing: 16) {
+                        Picker("Chế độ phản hồi", selection: $settings.wakeResponseMode) {
+                            Text("Cố định").tag("fixed")
+                            Text("Ngẫu nhiên").tag("random")
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.top, 8)
+                        
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(settings.allWakeResponses) { option in
+                                Button(action: {
+                                    handleResponseSelection(option)
+                                }) {
+                                    HStack {
+                                        Text(option.text)
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        if isSelected(option) {
+                                            Image(systemName: "checkmark")
+                                                .foregroundColor(.green)
+                                                .font(.system(size: 14, weight: .bold))
+                                        }
+                                    }
+                                    .padding(.vertical, 12)
+                                    .padding(.horizontal, 12)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                
+                                if option.id != settings.allWakeResponses.last?.id {
+                                    Divider().padding(.horizontal, 12)
+                                }
+                            }
+                        }
+                        .background(Color(UIColor.secondarySystemBackground).opacity(0.5))
+                        .cornerRadius(12)
+                        .padding(.top, 4)
+                        
+                        Button(action: { showAddCustomResponse = true }) {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                Text("Thêm câu trả lời riêng")
+                            }
+                            .foregroundColor(.green)
+                            .padding(.vertical, 4)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    
+                    Button("Test câu phản hồi") {
+                        voiceManager.startTestWakeResponse()
+                    }
+                    .font(.caption)
+                    .foregroundColor(.green)
+                    .padding(.top, 4)
+                } label: {
+                    HStack {
+                        Text("Câu trả lời khi được gọi")
+                        Spacer()
+                        Text(responseSubtitle)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            } header: {
+                Text("Phản hồi kích hoạt")
+            }
+            
+            // MARK: - AI Voice Selection
+            Section {
+                Picker("Giọng đọc AI", selection: $settings.selectedTTSVoice) {
+                    VStack(alignment: .leading) {
+                        Text("Hoài My (Nữ)")
+                        Text("vi-VN-HoaiMyNeural · Microsoft Neural").font(.caption2).foregroundColor(.secondary)
+                    }.tag("vi-VN-HoaiMyNeural")
+                    
+                    VStack(alignment: .leading) {
+                        Text("Nam Minh (Nam)")
+                        Text("vi-VN-NamMinhNeural · Microsoft Neural").font(.caption2).foregroundColor(.secondary)
+                    }.tag("vi-VN-NamMinhNeural")
+                }
+                .pickerStyle(.navigationLink)
+                
+                Picker("Chế độ giọng nói", selection: $settings.ttsEngineMode) {
+                    ForEach(TTSEngineMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode.rawValue)
+                    }
                 }
             } footer: {
-                Text("Những cụm từ này được tạo tự động từ tên trợ lý (không dấu).")
+                Text("Azure Neural cung cấp giọng đọc tự nhiên nhất nhưng cần kết nối mạng.")
             }
             
-            // Section 3: Wake Responses
-            Section("Câu trả lời khi được gọi") {
-                Picker("Chế độ trả lời", selection: $settings.wakeResponseMode) {
-                    Text("Cố định").tag("fixed")
-                    Text("Ngẫu nhiên").tag("random")
+            // MARK: - Voice Tuning
+            Section {
+                VStack(alignment: .leading) {
+                    HStack {
+                        Text("Tốc độ")
+                        Spacer()
+                        Text(rateLabel(settings.ttsRate))
+                            .font(.caption).foregroundColor(.secondary)
+                    }
+                    Slider(value: $settings.ttsRate, in: 0.85...1.15, step: 0.15)
                 }
-                .pickerStyle(.segmented)
                 
-                if settings.wakeResponseMode == "fixed" {
-                    Picker("Câu trả lời", selection: $settings.selectedWakeResponse) {
-                        ForEach(AssistantVoiceSettings.presetWakeResponses, id: \.self) { phrase in
-                            Text(phrase).tag(phrase)
+                VStack(alignment: .leading) {
+                    HStack {
+                        Text("Cao độ")
+                        Spacer()
+                        Text(pitchLabel(settings.ttsPitch))
+                            .font(.caption).foregroundColor(.secondary)
+                    }
+                    Slider(value: $settings.ttsPitch, in: 0.9...1.1, step: 0.1)
+                }
+                
+                VStack(alignment: .leading) {
+                    HStack {
+                        Text("Âm lượng")
+                        Spacer()
+                        Text("\(Int(settings.ttsVolume * 100))%")
+                            .font(.caption).foregroundColor(.secondary)
+                    }
+                    Slider(value: $settings.ttsVolume, in: 0.5...1.0, step: 0.1)
+                }
+            } header: {
+                Text("Tuỳ chỉnh giọng đọc")
+            }
+            
+            // MARK: - AI Response Behavior
+            Section {
+                Picker("Phong cách mặc định", selection: $settings.defaultResponseStyle) {
+                    ForEach(AssistantResponseStyle.allCases, id: \.self) { style in
+                        Text(style.displayName).tag(style.rawValue)
+                    }
+                }
+                
+                NavigationLink(destination: IntentResponseStylesListView()) {
+                    HStack {
+                        Text("Cách trả lời theo tình huống")
+                        Spacer()
+                        Text("\(settings.intentResponseStyles.count) tùy chỉnh")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Picker("Độ dài phản hồi", selection: $settings.voiceResponseLength) {
+                    ForEach(VoiceResponseLength.allCases, id: \.self) { length in
+                        Text(length.displayName).tag(length.rawValue)
+                    }
+                }
+            } header: {
+                Text("Cấu hình phản hồi AI")
+            }
+            
+            // MARK: - Audio Settings
+            Section {
+                Toggle("Tự động gửi sau khi nói", isOn: $settings.autoSendAfterSpeech)
+                Toggle("Trả lời bằng giọng nói (TTS)", isOn: $settings.voiceReplyEnabled)
+            } header: {
+                Text("Âm thanh & Điều khiển")
+            }
+            
+            // MARK: - Diagnostics (Senior Debug)
+            #if DEBUG
+            Section {
+                Toggle("Hiện chẩn đoán Voice", isOn: $showDiagnostics)
+                
+                if showDiagnostics {
+                    Group {
+                        DiagnosticRow(label: "AI Name", value: settings.assistantName)
+                        DiagnosticRow(label: "Audio Engine", value: voiceManager.audioEngineRunning ? "Running" : "Stopped", color: voiceManager.audioEngineRunning ? .green : .red)
+                        DiagnosticRow(label: "Current State", value: "\(voiceManager.state)")
+                        DiagnosticRow(label: "Audio Level", value: String(format: "%.4f", voiceManager.audioLevel))
+                        DiagnosticRow(label: "TTS Engine", value: voiceManager.activeTTSEngineName)
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Assistant Aliases:").font(.caption).bold()
+                            Text(voiceManager.activeAliases.joined(separator: ", "))
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            
+                            Text("Stable Wake Phrases:").font(.caption).bold()
+                            Text(voiceManager.activeWakePhrases.joined(separator: ", "))
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                         }
-                        ForEach(settings.customWakeResponses, id: \.self) { phrase in
-                            Text(phrase).tag(phrase)
+                        .padding(.vertical, 4)
+                        
+                        Divider()
+                        
+                        DiagnosticRow(label: "Raw Transcript", value: voiceManager.lastRawTranscript.isEmpty ? "None" : voiceManager.lastRawTranscript)
+                        DiagnosticRow(label: "Norm Transcript", value: voiceManager.lastNormalizedTranscript.isEmpty ? "None" : voiceManager.lastNormalizedTranscript)
+                        DiagnosticRow(label: "Match Result", value: voiceManager.lastWakeMatch ? "MATCHED" : "No Match", color: voiceManager.lastWakeMatch ? .green : .orange)
+                        DiagnosticRow(label: "Matched By", value: voiceManager.lastMatchedBy)
+                    }
+                    
+                    VStack(spacing: 12) {
+                        HStack {
+                            Button("Test Micro (Real Gate)") {
+                                voiceManager.startListening()
+                            }
+                            .buttonStyle(.bordered)
+                            .frame(maxWidth: .infinity)
+                            
+                            Button("Test Speech") {
+                                voiceManager.startSpeechTest()
+                            }
+                            .buttonStyle(.bordered)
+                            .frame(maxWidth: .infinity)
+                        }
+                        
+                        HStack {
+                            Button("Test Wake") {
+                                voiceManager.startWakeTest()
+                            }
+                            .buttonStyle(.bordered)
+                            .frame(maxWidth: .infinity)
+                            
+                            Button("Test Voice") {
+                                voiceManager.speakResponse("Xin chào, mình là \(settings.assistantSpokenName). Đây là giọng đọc bạn đang chọn.")
+                            }
+                            .buttonStyle(.bordered)
+                            .frame(maxWidth: .infinity)
+                        }
+                        
+                        HStack {
+                            Button("Test Overlay") {
+                                voiceManager.showTestOverlay()
+                            }
+                            .buttonStyle(.bordered)
+                            .frame(maxWidth: .infinity)
+                            
+                            Button("Stop & Reset") {
+                                voiceManager.stopListening()
+                                voiceManager.errorMessage = nil
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.red)
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+            } header: {
+                Text("Công cụ Chẩn đoán (Debug)")
+            }
+            #endif
+        }
+        .navigationTitle("Cài đặt Voice")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showAddCustomResponse) {
+            NavigationStack {
+                Form {
+                    TextField("Ví dụ: Dạ, mình đây!", text: $newResponseText)
+                        .autocorrectionDisabled()
+                }
+                .navigationTitle("Câu trả lời mới")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Hủy") { showAddCustomResponse = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Lưu") {
+                            if !newResponseText.isEmpty {
+                                settings.addCustomWakeResponse(newResponseText)
+                                newResponseText = ""
+                                showAddCustomResponse = false
+                            }
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.height(200)])
+        }
+        .task {
+            let result = await voiceManager.checkPermissions()
+            if !result.canUseVoiceAssistant && settings.globalWakeEnabled {
+                permissionMessage = result.message
+            }
+        }
+    }
+    
+    // MARK: - Logic Helpers
+    
+    private var responseSubtitle: String {
+        if settings.wakeResponseMode == "fixed" {
+            return settings.allWakeResponses.first(where: { $0.id == settings.selectedWakeResponseId })?.text ?? "Chưa chọn"
+        } else {
+            return "Ngẫu nhiên (\(settings.enabledRandomResponseIds.count))"
+        }
+    }
+    
+    private func isSelected(_ option: WakeResponseOption) -> Bool {
+        if settings.wakeResponseMode == "fixed" {
+            return settings.selectedWakeResponseId == option.id
+        } else {
+            return settings.enabledRandomResponseIds.contains(option.id)
+        }
+    }
+    
+    private func handleResponseSelection(_ option: WakeResponseOption) {
+        if settings.wakeResponseMode == "fixed" {
+            settings.selectedWakeResponseId = option.id
+        } else {
+            var enabled = settings.enabledRandomResponseIds
+            if enabled.contains(option.id) {
+                if enabled.count > 1 {
+                    enabled.remove(option.id)
+                }
+            } else {
+                enabled.insert(option.id)
+            }
+            settings.enabledRandomResponseIds = enabled
+        }
+    }
+    
+    // MARK: - Custom Binding for Activation
+    
+    private var wakeToggleBinding: Binding<Bool> {
+        Binding(
+            get: { settings.globalWakeEnabled },
+            set: { newValue in
+                if newValue {
+                    Task {
+                        let result = await voiceManager.requestPermissionsIfNeeded()
+                        await MainActor.run {
+                            if result.canUseVoiceAssistant {
+                                settings.globalWakeEnabled = true
+                                permissionMessage = nil
+                                voiceManager.startListening()
+                            } else {
+                                settings.globalWakeEnabled = false
+                                permissionMessage = result.message
+                            }
                         }
                     }
                 } else {
-                    Toggle("Bao gồm câu trả lời ngẫu nhiên", isOn: $settings.randomizeEnabled)
-                }
-                
-                Button("Thêm câu trả lời riêng") {
-                    showingCustomPhraseInput = true
-                }
-                .foregroundColor(.green)
-            }
-            
-            // Section 4: Global Wake
-            Section {
-                Toggle("Gọi AI bằng giọng nói trong app", isOn: $settings.globalWakeEnabled)
-            } footer: {
-                Text("Khi bật, bạn có thể gọi trợ lý bất cứ lúc nào khi app đang mở. LiiO chỉ lắng nghe tại chỗ, không gửi dữ liệu ra ngoài cho đến khi bạn bắt đầu nói lệnh.")
-            }
-            
-            // Section 5: Default Style
-            Section("Phong cách trả lời mặc định") {
-                ForEach(AssistantResponseStyle.allCases, id: \.self) { style in
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text(style.displayName)
-                                .font(.body)
-                            Text(style.description)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
-                        if settings.defaultResponseStyle == style.rawValue {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.green)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        settings.defaultResponseStyle = style.rawValue
-                    }
+                    settings.globalWakeEnabled = false
+                    voiceManager.stopListening()
+                    permissionMessage = nil
                 }
             }
-            
-            // Section 6: Per-Intent Styles
-            Section("Cách trả lời theo tình huống") {
-                NavigationLink(destination: IntentResponseStyleView(intentKey: "meal_logging", intentTitle: "Khi log món ăn")) {
-                    Label("Khi log món ăn", systemImage: "fork.knife")
-                }
-                NavigationLink(destination: IntentResponseStyleView(intentKey: "plan_question", intentTitle: "Khi hỏi nên ăn gì")) {
-                    Label("Khi hỏi nên ăn gì", systemImage: "calendar")
-                }
-                NavigationLink(destination: IntentResponseStyleView(intentKey: "cooking_advice", intentTitle: "Khi hỏi nấu ăn")) {
-                    Label("Khi hỏi nấu ăn", systemImage: "flame")
-                }
-                NavigationLink(destination: IntentResponseStyleView(intentKey: "health_question", intentTitle: "Khi hỏi sức khỏe")) {
-                    Label("Khi hỏi sức khỏe", systemImage: "heart")
-                }
-                NavigationLink(destination: IntentResponseStyleView(intentKey: "progress_question", intentTitle: "Khi hỏi tiến độ")) {
-                    Label("Khi hỏi tiến độ", systemImage: "chart.line.uptrend.xyaxis")
-                }
-                NavigationLink(destination: IntentResponseStyleView(intentKey: "rebalance_request", intentTitle: "Khi AI Rebalance")) {
-                    Label("Khi AI Rebalance", systemImage: "arrow.triangle.2.circlepath")
-                }
-            }
-            
-            // Section 7: Response Length
-            Section("Độ dài câu trả lời bằng giọng nói") {
-                ForEach(VoiceResponseLength.allCases, id: \.self) { length in
-                    HStack {
-                        Text(length.displayName)
-                        Spacer()
-                        if settings.voiceResponseLength == length.rawValue {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.green)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        settings.voiceResponseLength = length.rawValue
-                    }
-                }
-            }
-            
-            // Section 8: General Toggles
-            Section {
-                Toggle("Tự gửi sau khi nói xong", isOn: $settings.autoSendAfterSpeech)
-                Toggle("Trả lời bằng giọng nói (TTS)", isOn: $settings.voiceReplyEnabled)
-            }
-        }
-        .navigationTitle("Trợ lý giọng nói")
-        .alert("Thêm câu trả lời", isPresented: $showingCustomPhraseInput) {
-            TextField("Nhập câu trả lời...", text: $newCustomPhrase)
-            Button("Hủy", role: .cancel) { newCustomPhrase = "" }
-            Button("Thêm") {
-                if !newCustomPhrase.isEmpty {
-                    settings.customWakeResponses.append(newCustomPhrase)
-                    newCustomPhrase = ""
-                }
-            }
+        )
+    }
+    
+    private func pitchLabel(_ val: Double) -> String {
+        if val > 1.0 { return "Cao" }
+        if val < 1.0 { return "Trầm" }
+        return "Tự nhiên"
+    }
+    
+    private func rateLabel(_ val: Double) -> String {
+        if val > 1.0 { return "Nhanh" }
+        if val < 1.0 { return "Chậm" }
+        return "Vừa"
+    }
+}
+
+struct DiagnosticRow: View {
+    let label: String
+    let value: String
+    var color: Color = .primary
+    
+    var body: some View {
+        HStack {
+            Text(label).font(.caption)
+            Spacer()
+            Text(value).font(.caption).monospaced().foregroundColor(color)
         }
     }
 }

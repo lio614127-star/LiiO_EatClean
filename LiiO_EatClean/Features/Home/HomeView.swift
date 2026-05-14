@@ -9,9 +9,7 @@ struct HomeView: View {
     // Meal Detail Sheet
     @State private var activeDetailMealType: MealSheetItem?
     
-    // Voice Input State
-    @State private var showVoiceInput = false
-    @State private var voiceParsedFoods: [AISuggestedFood] = []
+    @Environment(GlobalVoiceAssistantManager.self) var voiceManager
     
     var body: some View {
         NavigationStack {
@@ -124,12 +122,6 @@ struct HomeView: View {
                 )
                 .id(item.id + "-\(viewModel.todayMeals.flatMap { $0.mealFoods }.count)")
             }
-            .sheet(isPresented: $showVoiceInput) {
-                VoiceInputView(isPresented: $showVoiceInput) { foods in
-                    self.voiceParsedFoods = foods
-                    showAddMealSheet(for: "Bữa sáng")
-                }
-            }
             .sheet(item: Binding(
                 get: { viewModel.rebalanceResult.map { IdentifiableResult(result: $0) } },
                 set: { _ in viewModel.rebalanceResult = nil }
@@ -195,7 +187,7 @@ struct HomeView: View {
             
             Spacer()
             
-            Button(action: { showVoiceInput = true }) {
+            Button(action: { voiceManager.startListening() }) {
                 Image(systemName: "mic.fill")
                     .font(.title3)
                     .foregroundColor(.white)
