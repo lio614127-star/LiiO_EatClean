@@ -41,6 +41,7 @@ class UserRepository: UserRepositoryProtocol {
             coreDataUser.setValue(user.goalType, forKey: "goalType")
             coreDataUser.setValue(user.dailyCalorieTarget, forKey: "dailyCalorieTarget")
             
+            NotificationCenter.default.post(name: NSNotification.Name("userProfileDidUpdate"), object: nil)
             try self.context.save()
         }
     }
@@ -104,6 +105,7 @@ class UserRepository: UserRepositoryProtocol {
                 user.setValue(newTarget, forKey: "dailyCalorieTarget")
             }
             
+            NotificationCenter.default.post(name: NSNotification.Name("weightDidUpdate"), object: nil)
             try self.context.save()
         }
     }
