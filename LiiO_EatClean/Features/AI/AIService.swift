@@ -976,10 +976,8 @@ class AIService {
                     if let suggestions = finalMessage.suggestedFoods {
                         continuation.yield(.suggestions(suggestions))
                     }
-                    // Always yield cleaned text to strip any JSON blocks from display
-                    if finalMessage.text != fullText {
-                        continuation.yield(.finalCleanText(finalMessage.text))
-                    }
+                    // Always yield cleaned text to ensure UI reflects final cleaned text (and doesn't stay frozen/truncated)
+                    continuation.yield(.finalCleanText(finalMessage.text))
                     
                     continuation.finish()
                 } catch {
@@ -1045,10 +1043,8 @@ class AIService {
                     if let suggestions = finalMessage.suggestedFoods {
                         continuation.yield(.suggestions(suggestions))
                     }
-                    // Always yield cleaned text to strip any JSON blocks from display
-                    if finalMessage.text != fullText {
-                        continuation.yield(.finalCleanText(finalMessage.text))
-                    }
+                    // Always yield cleaned text to ensure UI reflects final cleaned text (and doesn't stay frozen/truncated)
+                    continuation.yield(.finalCleanText(finalMessage.text))
                     
                     continuation.finish()
                 } catch {
@@ -1095,9 +1091,9 @@ class AIService {
         if let match = results?.last { // Find the last JSON block
             let jsonString = nsString.substring(with: match.range(at: 1))
             foods = tryParseActionJSON(jsonString)
-            if foods != nil {
-                cleanText = nsString.replacingCharacters(in: match.range, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
-            }
+            
+            // ALWAYS strip the JSON block from display, regardless of parsing success!
+            cleanText = nsString.replacingCharacters(in: match.range, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
         }
         
         // Strategy 2: Fallback — AI returned raw JSON without markdown code block
@@ -1117,11 +1113,23 @@ class AIService {
                         rawJSON = String(rawJSON.dropFirst(4)).trimmingCharacters(in: .whitespaces)
                     }
                     foods = tryParseActionJSON(rawJSON)
-                    if foods != nil {
-                        cleanText = nsString.replacingCharacters(in: rawMatch.range, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
-                        break
-                    }
+                    
+                    // ALWAYS strip detected raw JSON from UI to maintain visual cleaniness!
+                    cleanText = nsString.replacingCharacters(in: rawMatch.range, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    break
                 }
+            }
+        }
+        
+        // Strategy 3: Emergency Fallback — Strip any remaining/unclosed JSON blocks (e.g. truncated by token limit)
+        if cleanText.contains("```json") {
+            if let jsonRange = cleanText.range(of: "```json") {
+                cleanText = String(cleanText[..<jsonRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+        if cleanText.contains("json {") {
+            if let jsonRange = cleanText.range(of: "json {") {
+                cleanText = String(cleanText[..<jsonRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
             }
         }
         
