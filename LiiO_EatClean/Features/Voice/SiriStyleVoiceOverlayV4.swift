@@ -1,24 +1,54 @@
 import SwiftUI
 
 struct SiriStyleVoiceOverlayV4: View {
+    let target: VoiceOverlayTarget
+    
+    @State private var coordinator = VoiceOverlayRenderCoordinator.shared
+    
+    static var renderCounter = 0
+    
+    var body: some View {
+        let _ = Self.logRender()
+        
+        if coordinator.activeTarget == target {
+            ActiveSiriOverlayContent(target: target)
+        } else {
+            EmptyView()
+        }
+    }
+    
+    private static func logRender() {
+        renderCounter += 1
+        if renderCounter % 100 == 0 {
+            print("[Perf] activeOverlayBodyRendered count=\(renderCounter)")
+        }
+    }
+}
+
+/// Isolated structure containing the actual UI layers.
+/// This ensures high-frequency properties (@Environment GlobalVoiceAssistantManager)
+/// are ONLY read and subviews are ONLY instantiated if the target IS ACTIVE.
+fileprivate struct ActiveSiriOverlayContent: View {
+    let target: VoiceOverlayTarget
     @Environment(GlobalVoiceAssistantManager.self) var voiceManager
+    
     @State private var dragOffset: CGSize = .zero
     @State private var isDragging = false
     
     var body: some View {
         ZStack {
             // Render appropriate views depending on continuous window mode
-            if voiceManager.conversationMode == .activeMinimized {
+            if voiceManager.presentationMode == .minimized {
                 VoiceOrbView()
                     .transition(.move(edge: .trailing).combined(with: .opacity))
-            } else if voiceManager.siriOverlayPhase != .hidden && voiceManager.conversationMode != .inactive {
+            } else if voiceManager.presentationMode == .expanded {
                 
                 // 1. Wave & Glow Ambient Layers (Allows touch traversal)
                 Group {
                     SiriActivationWaveView(phase: voiceManager.siriOverlayPhase)
                     
                     SiriReactiveBorderView(
-                        audioLevel: voiceManager.audioLevel,
+                        voiceManager: voiceManager,
                         isActive: voiceManager.siriOverlayPhase != .hidden && voiceManager.siriOverlayPhase != .activatingWave && voiceManager.siriOverlayPhase != .closing
                     )
                 }
@@ -130,6 +160,12 @@ struct SiriStyleVoiceOverlayV4: View {
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: voiceManager.siriOverlayPhase)
-        .animation(.spring(response: 0.45, dampingFraction: 0.72), value: voiceManager.conversationMode)
+        .animation(.spring(response: 0.45, dampingFraction: 0.72), value: voiceManager.presentationMode)
+        .onAppear {
+            print("[VoiceOverlay] Mounted ActiveSiriOverlayContent target=\(target.rawValue)")
+        }
+        .onDisappear {
+            print("[VoiceOverlay] Unmounted ActiveSiriOverlayContent target=\(target.rawValue)")
+        }
     }
 }

@@ -21,6 +21,8 @@ enum ContextIntent: String, Codable, CaseIterable {
     case cooking
     case healthNutrition
     case generalChat
+    case dateTimeQuestion
+    case appQuestion
     
     // Backward compatibility cases
     case dailyPlanRequest

@@ -251,10 +251,17 @@ struct MealPlanSheet: View {
                 }
             }
         }
+        .overlay {
+            SiriStyleVoiceOverlayV4(target: .dailyPlanSheet)
+        }
         .onAppear {
+            VoiceOverlayRenderCoordinator.shared.activate(.dailyPlanSheet)
             Task {
                 await viewModel.loadExistingPlan()
             }
+        }
+        .onDisappear {
+            VoiceOverlayRenderCoordinator.shared.restoreContentViewIfNeeded(from: .dailyPlanSheet)
         }
         .task {
             // Check for existing plan for selected date

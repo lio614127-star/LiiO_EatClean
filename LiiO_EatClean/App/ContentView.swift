@@ -58,7 +58,7 @@ struct ContentView: View {
                 .ignoresSafeArea(.all, edges: .bottom)
         }
         .overlay {
-            SiriStyleVoiceOverlayV4()
+            SiriStyleVoiceOverlayV4(target: .contentView)
         }
         .animation(.spring(response: 0.4), value: voiceManager.state)
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("navigateToJournal"))) { _ in

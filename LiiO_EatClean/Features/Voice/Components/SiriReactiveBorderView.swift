@@ -1,12 +1,14 @@
 import SwiftUI
 
 struct SiriReactiveBorderView: View {
-    let audioLevel: Float
+    let voiceManager: GlobalVoiceAssistantManager
     let isActive: Bool
     
     @State private var rotationAngle: Double = 0
     
     var body: some View {
+        // Log high frequency subscriber correctly for perf metrics
+        let audioLevel = voiceManager.audioLevel
         let intensity = min(max(CGFloat(audioLevel) * 8.0, 0.2), 1.0)
         let calculatedOpacity = isActive ? 0.35 + intensity * 0.45 : 0.25
         let lineWidth = 2.0 + intensity * 4.0

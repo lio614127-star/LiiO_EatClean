@@ -556,8 +556,9 @@ class ContextBuilder {
            - "Tôi vừa ăn..." -> `isEaten: true`
            - "Gợi ý cho tôi...", "Nên ăn gì..." -> `isEaten: false`
         4. Xác định `mealType` (Bữa sáng, Bữa trưa, Bữa tối, Ăn vặt). Nếu không rõ, chọn buổi gần nhất theo giờ hiện tại (Bây giờ là \(dateFormatterTime.string(from: Date()))).
+        5. TUYỆT ĐỐI KHÔNG ĐƯỢC tạo khối JSON nếu người dùng chỉ hỏi xã giao, hỏi ngày tháng, kiểm tra tiến độ, phàn nàn, hoặc hỏi tình trạng kế hoạch hiện tại mà không yêu cầu gợi ý món mới. Nếu không chắc chắn, TUYỆT ĐỐI KHÔNG TRẢ VỀ JSON DƯỚI MỌI HÌNH THỨC.
         
-        Định dạng JSON chuẩn:
+        Định dạng JSON chuẩn (CHỈ DÙNG KHI GỢI Ý/LOG MÓN):
         ```json
         {
           "action": "suggest_meal",

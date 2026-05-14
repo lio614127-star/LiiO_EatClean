@@ -48,6 +48,8 @@ class GlobalVoiceAssistantManager: NSObject {
     var errorMessage: String?
     var audioLevel: Float = 0.0
     var dictationState: ChatDictationState = .idle
+    var processingState: VoiceProcessingState = .idle
+    var presentationMode: VoiceOverlayPresentation = .hidden
     
     // MARK: - Diagnostics
     var lastRawTranscript: String = ""
@@ -158,25 +160,32 @@ class GlobalVoiceAssistantManager: NSObject {
                 } 
                 // If we were speaking an AI response, transition back to continuous listening instead of dismissing
                 else if self.state == .speakingAIResponse || self.state == .speaking {
+                    print("[VoiceCmd 8] TTS finished")
+                    
                     if let error = self.ttsService.lastError {
-                        print("[Voice-Error] Detected TTS playback failure: \(error)")
+                        print("[VoiceCmd ERROR] step=TTS, error=\(error)")
                         self.overlayText = "Không phát được âm thanh giọng nói."
                     }
                     
-                    self.conversationMode = .speaking
+                    self.conversationMode = (self.presentationMode == .minimized) ? .activeMinimized : .speaking
                     print("[Voice-Flow 16] Response finished. Preparing continuous listening mode...")
                     
                     Task {
                         try? await Task.sleep(nanoseconds: 1_200_000_000) // 1.2s padding
                         await MainActor.run {
-                            // Ensure we haven't been forceClosed / minimized during wait
+                            // Ensure we haven't been forceClosed during wait
                             if self.state == .speakingAIResponse || self.state == .speaking {
-                                if self.conversationMode != .activeMinimized && self.conversationMode != .inactive {
-                                    print("[Voice-Flow 17] Rolling back to continuous capture.")
+                                if self.presentationMode != .hidden {
+                                    print("[VoiceCmd 9] follow-up listening armed")
+                                    print("[Voice-Flow 17] Rolling back to continuous capture (mode: \(self.presentationMode)).")
                                     self.currentTranscript = ""
                                     self.latestMeaningfulCommandTranscript = ""
                                     self.overlayText = "Bạn hỏi tiếp đi..."
-                                    self.conversationMode = .listening
+                                    self.processingState = .idle
+                                    
+                                    if self.presentationMode == .expanded {
+                                        self.conversationMode = .listening
+                                    }
                                     self.startCommandListening()
                                     self.resetActiveSessionTimer()
                                 }
@@ -313,6 +322,11 @@ class GlobalVoiceAssistantManager: NSObject {
         audioLevelTimer = nil
         audioAboveThresholdStart = nil
         audioLevel = 0.0
+        
+        Task { @MainActor in
+            ChatRealtimeStore.shared.clearAllDrafts()
+            print("[ChatDraft] cleared all drafts via stopAllActivities")
+        }
     }
     
     // MARK: - Chat Dictation Integration
@@ -796,6 +810,7 @@ class GlobalVoiceAssistantManager: NSObject {
     @MainActor
     func showSiriActivationOverlay() {
         print("[Voice-Latency] waveStartedAt: \(Date().timeIntervalSince1970)")
+        presentationMode = .expanded
         siriOverlayPhase = .activatingWave
         isActivationWaveVisible = true
         isAssistantPillVisible = false
@@ -1028,19 +1043,27 @@ class GlobalVoiceAssistantManager: NSObject {
     
     func processVoiceCommand(_ text: String) {
         guard !isProcessingCommand else { return }
+        print("[VoiceCmd 1] finalized command='\(text)'")
         let commandStartTime = Date().timeIntervalSince1970
-        print("[Voice-Latency] ⏱️ commandReceivedAt: \(commandStartTime)")
         
         isProcessingCommand = true
         state = .processingCommand
-        self.conversationMode = .processing
+        
+        if self.presentationMode != .minimized {
+            self.conversationMode = .processing
+        }
         siriOverlayPhase = .processing
         overlayText = "Đang xử lý..."
+        
+        // Clear any stale suggestions from previous queries
+        self.lastSuggestedFoods = nil
+        
         self.resetActiveSessionTimer()
         
         Task {
             do {
-                print("[Voice-Flow 13] Processing voice command='\(text)'")
+                self.processingState = .buildingContext
+                print("[VoiceCmd 2] context build started")
                 
                 // 1. Setup/fetch Active Session
                 let session: ChatSessionModel
@@ -1054,17 +1077,17 @@ class GlobalVoiceAssistantManager: NSObject {
                 await MainActor.run {
                     ChatRealtimeStore.shared.finalizeVoiceDraft()
                 }
-                print("[Voice-Flow C3] follow-up final transcript raw='\(text)'")
                 
                 var userMsg = ChatMessageModel(role: .user, text: text, inputMode: "voice")
                 userMsg.clientId = self.currentClientId // Match transient draft
                 
-                print("[Voice-Flow C4] follow-up sent to AI pipeline")
                 await saveAndMirrorMessage(userMsg, sessionId: session.id)
                 
                 // 2.5 Specialized Routing Intent Flow
                 let routedIntent = VoiceCommandIntentRouter.route(transcript: text)
                 if routedIntent == .dailyPlanRequest {
+                    print("[VoiceCmd 3] context build finished (routed to daily plan)")
+                    self.processingState = .sendingToAI
                     await handleDailyPlanIntent(sessionId: session.id, commandStartTime: commandStartTime)
                     self.isProcessingCommand = false
                     return
@@ -1072,9 +1095,9 @@ class GlobalVoiceAssistantManager: NSObject {
                 
                 // 3. FAST PATH GATEWAY (Bypasses network latency entirely)
                 if let fastResponseText = handleFastPath(text) {
-                    let diff = Date().timeIntervalSince1970 - commandStartTime
-                    print("[Voice-Latency] ⚡ commandToFastPath = \(String(format: "%.3f", diff))s")
-                    print("[Voice-Flow] ⚡ Fast path resolved in \(String(format: "%.2f", diff))s: '\(text)'")
+                    print("[VoiceCmd 3] context build finished (fast path)")
+                    print("[VoiceCmd 5] AI response received (fast path)")
+                    self.processingState = .receivedResponse
                     
                     let fastRespMsg = ChatMessageModel(
                         role: .assistant,
@@ -1086,26 +1109,26 @@ class GlobalVoiceAssistantManager: NSObject {
                     // Persist locally and mirror instantly
                     await saveAndMirrorMessage(fastRespMsg, sessionId: session.id)
                     try await chatRepository.updateSessionMetadata(sessionId: session.id, lastMessage: text)
-                    
-                    // Telemetry
-                    let end = Date().timeIntervalSince1970
-                    print("[Voice-Latency] ⏱️ totalCommandToFastSpeech = \(String(format: "%.3f", end - commandStartTime))s")
+                    print("[VoiceCmd 6] assistant chat message updated")
                     
                     // UI Update
                     self.lastResponse = fastResponseText
                     self.overlayText = fastResponseText
                     
                     if self.settings.voiceReplyEnabled {
+                        print("[VoiceCmd 7] TTS started")
+                        self.processingState = .speaking
                         self.state = .speakingAIResponse
                         self.siriOverlayPhase = .speaking
                         self.executeSpeak(fastResponseText)
                     } else {
-                        self.siriOverlayPhase = .closing
-                        self.state = .idle
-                        try? await Task.sleep(nanoseconds: 2_000_000_000)
-                        if self.state == .idle {
-                            self.siriOverlayPhase = .hidden
-                            self.startListening()
+                        print("[VoiceCmd 8] TTS finished (none)")
+                        self.processingState = .idle
+                        try? await Task.sleep(nanoseconds: 3_000_000_000)
+                        if self.presentationMode != .hidden {
+                            print("[VoiceCmd 9] follow-up listening armed")
+                            self.overlayText = "Bạn hỏi tiếp đi..."
+                            self.startCommandListening()
                         }
                     }
                     self.isProcessingCommand = false
@@ -1114,14 +1137,14 @@ class GlobalVoiceAssistantManager: NSObject {
                 
                 // 4. SLOW PATH - IMMEDIATE ZERO-LATENCY LOCAL ACKNOWLEDGEMENT
                 if settings.voiceReplyEnabled {
-                    print("[Voice-Flow] 📻 Local instant ACK triggered.")
-                    // Short, fast, zero-network local speak so user knows we heard them!
                     self.ttsService.speakLocal("Mình nghe rồi.", voiceName: "vi-VN", rate: 1.05, volume: 1.0)
                 }
                 
+                print("[VoiceCmd 3] context build finished")
+                
                 // 5. START LONG-RUNNING AI WORKLOAD
-                let aiStart = Date().timeIntervalSince1970
-                print("[Voice-Latency] aiRequestSentAt: \(aiStart)")
+                self.processingState = .sendingToAI
+                print("[VoiceCmd 4] AI request started")
                 
                 // Broadcast assistant thinking draft for realtime chat mirror
                 let assistantClientId = UUID().uuidString
@@ -1129,12 +1152,13 @@ class GlobalVoiceAssistantManager: NSObject {
                     ChatRealtimeStore.shared.startAssistantDraft(sessionId: session.id, clientId: assistantClientId)
                 }
                 
+                self.processingState = .waitingForAI
+                
                 // Engagement timer: Keep user in loop if network drags
                 let statusUpdateTask = Task {
                     try? await Task.sleep(nanoseconds: 3_200_000_000) // 3.2s
                     await MainActor.run {
                         if self.state == .processingCommand {
-                            print("[Voice-Flow] ⏱️ AI lagging past 3.2s. Updating engagement message.")
                             self.overlayText = "Mạng hơi chậm, mình vẫn đang xử lý..."
                         }
                     }
@@ -1165,19 +1189,25 @@ class GlobalVoiceAssistantManager: NSObject {
                     history: history,
                     systemPrompt: systemPrompt,
                     task: .chat,
-                    feature: "Voice Assistant"
+                    feature: "Voice Assistant",
+                    isInternal: true
                 )
                 
                 // AI returned! Kill the status tracker
                 statusUpdateTask.cancel()
                 
-                let aiEnd = Date().timeIntervalSince1970
-                print("[Voice-Latency] ⏱️ aiRequestToResponse = \(String(format: "%.3f", aiEnd - aiStart))s")
-                print("[Voice-Flow 14] AI response received for command='\(text)'")
+                print("[VoiceCmd 5] AI response received")
+                self.processingState = .receivedResponse
                 
                 var finalMsg = responseMessage
                 finalMsg.clientId = assistantClientId
                 finalMsg.outputMode = settings.voiceReplyEnabled ? "voice" : "text"
+                
+                // Filter suggested foods based on user query intent allowed keywords
+                let allowedFoods = AICoachIntentDetector.shared.shouldAllowFoodSuggestions(for: text)
+                if !allowedFoods {
+                    finalMsg.suggestedFoods = nil
+                }
                 
                 // Finalize draft so official model replaces it
                 await MainActor.run {
@@ -1186,42 +1216,45 @@ class GlobalVoiceAssistantManager: NSObject {
                 
                 await saveAndMirrorMessage(finalMsg, sessionId: session.id)
                 try await chatRepository.updateSessionMetadata(sessionId: session.id, lastMessage: text)
+                print("[VoiceCmd 6] assistant chat message updated")
                 
                 // 6. PRESENT RESULT IMMEDIATELY
                 self.lastResponse = finalMsg.text
                 self.overlayText = finalMsg.text
                 self.lastSuggestedFoods = finalMsg.suggestedFoods
                 
-                let total = Date().timeIntervalSince1970 - commandStartTime
-                print("[Voice-Latency] ⏱️ totalCommandToSpeech = \(String(format: "%.3f", total))s")
-                
                 if self.settings.voiceReplyEnabled {
-                    print("[Voice-Latency] responseTTSStartedAt: \(Date().timeIntervalSince1970)")
-                    print("[Voice-Flow 15] response TTS started")
+                    print("[VoiceCmd 7] TTS started")
+                    self.processingState = .speaking
                     self.state = .speakingAIResponse
                     self.siriOverlayPhase = .speaking
                     
                     // Switch to Premium Mode and Read Full Neural Output
                     self.executeSpeak(finalMsg.text)
                 } else {
-                    print("[Voice-Flow] Voice reply disabled. Resuming gate after delay.")
-                    self.siriOverlayPhase = .closing
-                    self.state = .idle
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    if self.state == .idle {
-                        self.siriOverlayPhase = .hidden
-                        self.startListening()
+                    print("[VoiceCmd 8] TTS finished (none)")
+                    self.processingState = .idle
+                    try? await Task.sleep(nanoseconds: 3_000_000_000) // Wait to read text
+                    if self.presentationMode != .hidden {
+                        print("[VoiceCmd 9] follow-up listening armed")
+                        self.overlayText = "Bạn hỏi tiếp đi..."
+                        self.startCommandListening()
                     }
                 }
                 self.isProcessingCommand = false
             } catch {
-                print("[Voice-Error] AI Pipeline failed: \(error.localizedDescription)")
-                self.overlayText = "Đã xảy ra lỗi kết nối, vui lòng thử lại nhé."
+                print("[VoiceCmd ERROR] step=AIExecution, error=\(error.localizedDescription)")
+                self.processingState = .failed(error.localizedDescription)
+                
+                self.overlayText = "Mình xử lý chưa được, bạn thử lại nhé."
                 self.state = .error
                 self.isProcessingCommand = false
+                
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
-                if self.state == .error {
-                    self.dismissOverlay()
+                if self.state == .error && self.presentationMode != .hidden {
+                    print("[VoiceCmd 9] follow-up listening armed after error")
+                    self.overlayText = "Bạn hỏi tiếp đi..."
+                    self.startCommandListening()
                 }
             }
         }
@@ -1613,6 +1646,7 @@ class GlobalVoiceAssistantManager: NSObject {
         print("[VoiceManager] 🧭 Minimizing overlay to right side orb.")
         withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
             self.conversationMode = .activeMinimized
+            self.presentationMode = .minimized
         }
         // We keep speech capture if previously listening, but prompt text becomes silent
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1622,6 +1656,7 @@ class GlobalVoiceAssistantManager: NSObject {
         print("[VoiceManager] 🧭 Expanding overlay from orb.")
         withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
             self.conversationMode = .activeExpanded
+            self.presentationMode = .expanded
             if self.state == .commandListening {
                 self.conversationMode = .listening
             } else if self.state == .processingCommand {
@@ -1638,10 +1673,12 @@ class GlobalVoiceAssistantManager: NSObject {
         self.activeSessionTimer = nil
         
         self.conversationMode = .inactive
+        self.presentationMode = .hidden
         self.siriOverlayPhase = .closing
         
         ttsService.stop()
         speechService.stopListening()
+        self.processingState = .idle
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             self.siriOverlayPhase = .hidden

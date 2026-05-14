@@ -62,17 +62,48 @@ struct ChatView: View {
                                 .padding(.horizontal)
                                 .id(pending.id)
                             }
+                            
+                            // Dedicated hidden anchor to guarantee absolute bottom positioning 
+                            Color.clear
+                                .frame(height: 1)
+                                .id("bottomAnchor")
                         }
                         .padding(.vertical, 16)
                     }
                     .onChange(of: viewModel.displayMessages.last?.text) { _ in
-                        if viewModel.isStreaming || viewModel.displayMessages.last?.status == .transcribing {
-                            proxy.scrollTo(viewModel.displayMessages.last?.id, anchor: .bottom)
+                        // Ensure layout recalculation completes before scrolling
+                        DispatchQueue.main.async {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo("bottomAnchor", anchor: .bottom)
+                            }
                         }
                     }
                     .onChange(of: viewModel.displayMessages.count) { _ in
-                        withAnimation {
-                            proxy.scrollTo(viewModel.displayMessages.last?.id, anchor: .bottom)
+                        DispatchQueue.main.async {
+                            withAnimation(.easeOut(duration: 0.25)) {
+                                proxy.scrollTo("bottomAnchor", anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: viewModel.displayMessages.last?.status) { _ in
+                        DispatchQueue.main.async {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo("bottomAnchor", anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: viewModel.isStreaming) { _ in
+                        DispatchQueue.main.async {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo("bottomAnchor", anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: viewModel.healthSafetyApplied) { _ in
+                        DispatchQueue.main.async {
+                            withAnimation(.easeOut(duration: 0.25)) {
+                                proxy.scrollTo("bottomAnchor", anchor: .bottom)
+                            }
                         }
                     }
                     .onTapGesture {

@@ -18,7 +18,7 @@ struct SiriStyleVoiceOverlayV3: View {
                 
                 // 2. Persistent Reactive Border & Ambient Wave
                 SiriReactiveBorderView(
-                    audioLevel: voiceManager.audioLevel,
+                    voiceManager: voiceManager,
                     isActive: voiceManager.siriOverlayPhase != .hidden && voiceManager.siriOverlayPhase != .activatingWave && voiceManager.siriOverlayPhase != .closing
                 )
                 

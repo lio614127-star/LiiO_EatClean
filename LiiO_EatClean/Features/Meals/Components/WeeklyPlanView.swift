@@ -195,6 +195,15 @@ struct WeeklyPlanView: View {
                 WeeklyDayDetailView(dayPlan: dayPlan, targetCalories: targetCalories, viewModel: viewModel)
             }
         }
+        .overlay {
+            SiriStyleVoiceOverlayV4(target: .weeklyPlanSheet)
+        }
+        .onAppear {
+            VoiceOverlayRenderCoordinator.shared.activate(.weeklyPlanSheet)
+        }
+        .onDisappear {
+            VoiceOverlayRenderCoordinator.shared.restoreContentViewIfNeeded(from: .weeklyPlanSheet)
+        }
         .task {
             if viewModel.weeklyPlan.isEmpty {
                 viewModel.generateWeekPlan(targetCalories: targetCalories)

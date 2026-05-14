@@ -30,6 +30,15 @@ struct MemoryHubView: View {
                     }
                 })
             }
+            .overlay {
+                SiriStyleVoiceOverlayV4(target: .memoryHub)
+            }
+            .onAppear {
+                VoiceOverlayRenderCoordinator.shared.activate(.memoryHub)
+            }
+            .onDisappear {
+                VoiceOverlayRenderCoordinator.shared.restoreContentViewIfNeeded(from: .memoryHub)
+            }
             .task {
                 await viewModel.loadData()
             }

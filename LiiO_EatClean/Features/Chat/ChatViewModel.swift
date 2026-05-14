@@ -78,7 +78,9 @@ class ChatViewModel {
             let session = try await chatRepository.createSession(title: "Hội thoại mới", source: "aiCoach")
             self.currentSession = session
             self.messages = []
+            ChatRealtimeStore.shared.clearAllDrafts()
             addWelcomeMessage()
+            print("[ChatDraft] cleared all drafts via startNewChat")
         } catch {
             print("Failed to create new session: \(error)")
         }
@@ -96,6 +98,11 @@ class ChatViewModel {
     func sendMessage(_ text: String, isRetry: Bool = false, pendingId: UUID? = nil, inputMode: String = "text") {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        
+        Task { @MainActor in
+            ChatRealtimeStore.shared.clearAllDrafts()
+            print("[ChatDraft] cleared all drafts via sendMessage")
+        }
         
         let userMessage = ChatMessageModel(role: .user, text: trimmed, inputMode: inputMode, suggestedFoods: nil)
         
@@ -168,7 +175,9 @@ class ChatViewModel {
                             }
                         case .suggestions(let foods):
                             if let index = self.messages.firstIndex(where: { $0.id == assistantID }) {
-                                self.messages[index].suggestedFoods = foods
+                                let allowed = AICoachIntentDetector.shared.shouldAllowFoodSuggestions(for: trimmed)
+                                self.messages[index].suggestedFoods = allowed ? foods : nil
+                                print("[ChatRender] intent evaluated: userQuery='\(trimmed)', suggestedFoodsCount=\(foods.count), shouldShowFoodCards=\(allowed)")
                             }
                         case .finalCleanText(let cleanText):
                             if let index = self.messages.firstIndex(where: { $0.id == assistantID }) {
