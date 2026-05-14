@@ -61,14 +61,14 @@ Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi 
     2. Mở app lên giữ nguyên phiên chat cũ.
   - Status: Completed (UAT Passed)
 
-- [/] **Phase 30: In-App Voice Assistant & Global Wake Phrase**
+- [x] **Phase 30: In-App Voice Assistant & Global Wake Phrase**
   - Goal: Trải nghiệm Hands-free đích thực, nói là hiểu.
   - Requirements: VOICE-01, VOICE-02, VOICE-03, VOICE-04
   - Success Criteria:
     1. Nói "Hey LiiO" trong app thì AI lắng nghe.
     2. Auto-send khi dừng nói.
     3. Đổi tên AI hoạt động hoàn hảo.
-  - Progress: 4/5 plans complete
+  - Progress: 5/5 plans complete (Completed)
 
 - [ ] **Phase 31: Global Context Builder cho AI Coach**
   - Goal: AI Coach đọc và hiểu mọi dữ liệu người dùng để tư vấn như một con người thực sự.
@@ -76,13 +76,14 @@ Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi 
   - Success Criteria:
     1. AI trả lời chính xác số calo còn thiếu và món đang chờ trong Plan.
     2. Không bịa dữ liệu và tuân thủ ràng buộc dị ứng.
+  - Progress: 1/2 plans complete (In Progress)
 
 ## Progress
 
-- **Phases Complete:** 29
-- **Phases Active:** 30
-- **Phases Pending:** 1
-- **Completion:** 94% (29/31)
+- **Phases Complete:** 30
+- **Phases Active:** 31
+- **Phases Pending:** 0
+- **Completion:** 98% (30.5/31)
 
 ---
-*Last updated: 2026-05-12 for Milestone v1.5*
+*Last updated: 2026-05-14 for Milestone v1.5*
