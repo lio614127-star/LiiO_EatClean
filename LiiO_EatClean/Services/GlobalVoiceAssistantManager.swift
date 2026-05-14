@@ -33,6 +33,7 @@ enum RecognitionPurpose {
     case command
     case testWake
     case testSpeech
+    case chatDictation
 }
 
 @MainActor
@@ -46,6 +47,7 @@ class GlobalVoiceAssistantManager: NSObject {
     var lastSuggestedFoods: [AISuggestedFood]?
     var errorMessage: String?
     var audioLevel: Float = 0.0
+    var dictationState: ChatDictationState = .idle
     
     // MARK: - Diagnostics
     var lastRawTranscript: String = ""
@@ -68,6 +70,10 @@ class GlobalVoiceAssistantManager: NSObject {
     var hasUserStartedSpeaking: Bool = false
     var orbYPosition: CGFloat = 520.0 // Remembers Y drag snap coordinate
     private var initialSpeechTimeoutTask: Task<Void, Never>?
+    private var dictationWatchdogTask: Task<Void, Never>?
+    
+    @ObservationIgnored var onChatDictationUpdate: ((String) -> Void)?
+    @ObservationIgnored var onChatDictationFinalized: ((String) -> Void)?
     
     @ObservationIgnored private var activeSessionTimer: Timer?
     
@@ -184,7 +190,15 @@ class GlobalVoiceAssistantManager: NSObject {
         speechService.onSilenceTimeout = { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
-                if self.state == .commandListening && self.settings.autoSendAfterSpeech {
+                if self.state == .chatDictation {
+                    // Ensure we only finalize if the user actually said something meaningful
+                    if self.hasUserStartedSpeaking && !self.speechService.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        print("[VoiceManager] 🔇 Silence timeout. Finalizing Chat Dictation.")
+                        self.finalizeChatDictation()
+                    } else {
+                        print("[VoiceManager] 🔇 Silence ignored during Chat Dictation waiting phase.")
+                    }
+                } else if self.state == .commandListening && self.settings.autoSendAfterSpeech {
                     if self.hasUserStartedSpeaking {
                         print("[VoiceManager] 🔇 Silence timeout. Sending command.")
                         self.handleCommandResult(self.speechService.transcript)
@@ -212,6 +226,12 @@ class GlobalVoiceAssistantManager: NSObject {
     // MARK: - Core Controls
     
     func startListening() {
+        // Core Defensive Guard: Never auto-resume if Chat Dictation is currently active
+        guard state != .chatDictation && !dictationState.isActive else {
+            print("[Voice-Flow] startListening cancelled: Chat dictation is active.")
+            return
+        }
+        
         guard settings.globalWakeEnabled && isAppForeground else {
             print("[Voice-Flow] startListening skipped: enabled=\(settings.globalWakeEnabled), foreground=\(isAppForeground)")
             state = settings.globalWakeEnabled ? .idle : .disabled
@@ -293,6 +313,258 @@ class GlobalVoiceAssistantManager: NSObject {
         audioLevelTimer = nil
         audioAboveThresholdStart = nil
         audioLevel = 0.0
+    }
+    
+    // MARK: - Chat Dictation Integration
+    
+    func startChatDictation(
+        onUpdate: @escaping (String) -> Void,
+        onFinalized: @escaping (String) -> Void
+    ) {
+        print("[ChatMic 1] start requested")
+        
+        // Haptic feedback on tap-down
+        print("[ChatMic] haptic reason = started")
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        
+        // 1. Stop/pause global assistant
+        stopAllActivities()
+        initialSpeechTimeoutTask?.cancel()
+        dictationWatchdogTask?.cancel()
+        print("[ChatMic 2] global assistant paused")
+        
+        // Reset local tokens & flags
+        self.state = .chatDictation
+        self.currentPurpose = .chatDictation
+        self.dictationState = .preparing
+        self.onChatDictationUpdate = onUpdate
+        self.onChatDictationFinalized = onFinalized
+        self.currentTranscript = ""
+        self.hasUserStartedSpeaking = false
+        self.siriOverlayPhase = .hidden // Force hide the overlay
+        self.errorMessage = nil
+        
+        // 2. Feed callbacks into internal SpeechRecognitionService
+        speechService.silenceTimeout = 0.9 // silenceAfterSpeechTimeout = 0.9s
+        
+        speechService.onTranscriptUpdate = { [weak self] partial in
+            Task { @MainActor [weak self] in
+                guard let self = self, self.state == .chatDictation else { return }
+                
+                let isMeaningful = !partial.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                print("[ChatMic 8] partial transcript='\(partial)'")
+                
+                if isMeaningful && !self.hasUserStartedSpeaking {
+                    print("[ChatMic 9] meaningful speech started")
+                    self.hasUserStartedSpeaking = true
+                    self.initialSpeechTimeoutTask?.cancel() // Disarm initial timeout
+                    self.dictationState = .transcribing
+                }
+                
+                if self.hasUserStartedSpeaking {
+                    print("[ChatMic 10] silence timer reset")
+                    self.currentTranscript = partial
+                    self.onChatDictationUpdate?(partial)
+                }
+            }
+        }
+        
+        speechService.onError = { [weak self] errorDescription in
+            Task { @MainActor [weak self] in
+                guard let self = self, self.state == .chatDictation else { return }
+                print("[ChatMic ERROR] \(errorDescription)")
+                self.dictationState = .failed(errorDescription)
+                self.handleDictationErrorHandoff()
+            }
+        }
+        
+        // 3. Complete flow with hardware start
+        Task {
+            // Ensure permissions before touching session
+            let perms = await checkPermissions()
+            guard perms.canUseVoiceAssistant else {
+                print("[ChatMic ERROR] Missing permissions")
+                self.dictationState = .failed(perms.message ?? "Thiếu quyền truy cập.")
+                self.handleDictationErrorHandoff()
+                return
+            }
+            
+            do {
+                // Prepare and activate hardware session
+                try setupAudioSession()
+                print("[ChatMic 3] audio session configured")
+                
+                print("[ChatMic 4] recognition request created")
+                
+                setupAudioEngineTap()
+                try audioEngine.start()
+                print("[ChatMic 5] audio engine started")
+                
+                self.dictationState = .listening
+                speechService.startListening(useInternalEngine: false) // Feed buffer only!
+                
+                // Start initial no-speech timeout task
+                print("[ChatMic 6] waiting for speech timeout=5s")
+                self.startDictationInitialSpeechTimeout()
+                
+                // Deploy Watchdog Agent
+                self.startDictationWatchdog()
+                
+            } catch {
+                print("[ChatMic ERROR] Hardware start failure: \(error.localizedDescription)")
+                self.dictationState = .failed(error.localizedDescription)
+                self.handleDictationErrorHandoff()
+            }
+        }
+    }
+    
+    private func startDictationInitialSpeechTimeout() {
+        initialSpeechTimeoutTask?.cancel()
+        initialSpeechTimeoutTask = Task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000) // 5.0s
+            guard !Task.isCancelled else { return }
+            
+            await MainActor.run {
+                if !self.hasUserStartedSpeaking && self.state == .chatDictation {
+                    print("[ChatMic ERROR] No speech detected within 5s window.")
+                    
+                    // Haptic: noSpeechTimeout
+                    print("[ChatMic] haptic reason = noSpeechTimeout")
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                    
+                    self.dictationState = .failed("Mình chưa nghe thấy gì.")
+                    self.handleDictationErrorHandoff()
+                }
+            }
+        }
+    }
+    
+    private func startDictationWatchdog() {
+        dictationWatchdogTask?.cancel()
+        dictationWatchdogTask = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s polling
+                guard !Task.isCancelled else { break }
+                
+                await MainActor.run {
+                    guard self.state == .chatDictation else { return }
+                    
+                    // We only validate after it successfully enters listening
+                    let validatingStates: [ChatDictationState] = [.listening, .transcribing]
+                    if validatingStates.contains(self.dictationState) {
+                        let engineAlive = self.audioEngine.isRunning
+                        let speechAlive = self.speechService.isListening
+                        
+                        if !engineAlive || !speechAlive {
+                            print("[ChatMic WATCHDOG] Session died! Engine=\(engineAlive), Speech=\(speechAlive)")
+                            
+                            // Haptic: watchdogFailed
+                            print("[ChatMic] haptic reason = watchdogFailed")
+                            UINotificationFeedbackGenerator().notificationOccurred(.error)
+                            
+                            self.dictationState = .failed("Kết nối microphone bị gián đoạn.")
+                            self.handleDictationErrorHandoff()
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    func finalizeChatDictation() {
+        print("[ChatMic 11] silence finalize fired")
+        
+        // Guard to ensure we don't double fire or finalize if not active
+        guard self.state == .chatDictation else { return }
+        self.dictationState = .finalizing
+        
+        let finalResult = speechService.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        print("[ChatMic 12] final transcript='\(finalResult)'")
+        
+        // Haptic: finalize
+        print("[ChatMic] haptic reason = finalize")
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        
+        // 1. Deliver text to chat text-field callback
+        onChatDictationFinalized?(finalResult)
+        print("[ChatMic 13] auto-send / callback update complete")
+        
+        // 2. Clean teardown
+        self.dictationState = .completed
+        stopDictationTeardown()
+        print("[ChatMic 14] session completed")
+    }
+    
+    func cancelChatDictationManual() {
+        print("[ChatMic] User manually cancelled chat dictation via double-tap.")
+        guard self.state == .chatDictation else { return }
+        
+        let currentText = speechService.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !currentText.isEmpty {
+            print("[ChatMic] Manual cancellation saved partial transcript.")
+            finalizeChatDictation()
+        } else {
+            print("[ChatMic] Discarding empty manual cancellation.")
+            self.dictationState = .completed
+            stopDictationTeardown()
+        }
+    }
+    
+    private func stopDictationTeardown() {
+        // 1. Stop everything immediately
+        stopAllActivities()
+        initialSpeechTimeoutTask?.cancel()
+        dictationWatchdogTask?.cancel()
+        
+        // 2. Clear closures to break memory cycles
+        onChatDictationUpdate = nil
+        onChatDictationFinalized = nil
+        
+        // 3. Clean separation hand-off: Transition out of dictation to idle/gate
+        let restoreWake = settings.globalWakeEnabled && isAppForeground
+        print("[ChatMic] Finished teardown. Resuming global wake = \(restoreWake).")
+        
+        // 4. Standard delay before reverting state back to idle so UI can animate closed gracefully
+        Task {
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms UI padding
+            await MainActor.run {
+                self.dictationState = .idle
+                if restoreWake {
+                    self.startListening()
+                } else {
+                    self.state = self.settings.globalWakeEnabled ? .idle : .disabled
+                }
+            }
+        }
+    }
+    
+    private func handleDictationErrorHandoff() {
+        // 1. Stop engine
+        stopAllActivities()
+        initialSpeechTimeoutTask?.cancel()
+        dictationWatchdogTask?.cancel()
+        
+        // Haptic: error
+        print("[ChatMic] haptic reason = error")
+        UINotificationFeedbackGenerator().notificationOccurred(.error)
+        
+        // 2. Auto-reset to idle after 1.5 seconds so UI doesn't hang
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5s delay
+            await MainActor.run {
+                guard self.state == .chatDictation else { return } // Ensure user hasn't tapped again
+                self.dictationState = .idle
+                self.onChatDictationUpdate = nil
+                self.onChatDictationFinalized = nil
+                
+                // Attempt to resume background listener if setting is ON
+                if self.settings.globalWakeEnabled && self.isAppForeground {
+                    self.startListening()
+                } else {
+                    self.state = self.settings.globalWakeEnabled ? .idle : .disabled
+                }
+            }
+        }
     }
     
     // MARK: - Audio Gate

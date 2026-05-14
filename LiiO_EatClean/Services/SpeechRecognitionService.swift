@@ -17,6 +17,7 @@ class SpeechRecognitionService {
     private var currentSessionId: UUID = UUID()
     
     var onTranscriptUpdate: ((String) -> Void)?
+    var onError: ((String) -> Void)?
     
     // Silence detection
     private var silenceTimer: Timer?
@@ -39,7 +40,9 @@ class SpeechRecognitionService {
     
     func startListening(useInternalEngine: Bool = true) {
         guard let recognizer = recognizer, recognizer.isAvailable else {
-            self.error = "Nhận diện giọng nói không khả dụng."
+            let msg = "Nhận diện giọng nói không khả dụng."
+            self.error = msg
+            self.onError?(msg)
             return
         }
         
@@ -53,7 +56,9 @@ class SpeechRecognitionService {
         // Setup request
         request = SFSpeechAudioBufferRecognitionRequest()
         guard let request = request else {
-            self.error = "Không thể tạo request nhận diện."
+            let msg = "Không thể tạo request nhận diện."
+            self.error = msg
+            self.onError?(msg)
             return
         }
         request.shouldReportPartialResults = true
@@ -84,7 +89,9 @@ class SpeechRecognitionService {
                 audioEngine.prepare()
                 try audioEngine.start()
             } catch {
-                self.error = "Lỗi âm thanh: \(error.localizedDescription)"
+                let msg = "Lỗi âm thanh: \(error.localizedDescription)"
+                self.error = msg
+                self.onError?(msg)
                 stopListening()
                 return
             }
@@ -115,7 +122,9 @@ class SpeechRecognitionService {
                 } else {
                     print("[SpeechService] ❌ Recognition error: \(error.localizedDescription)")
                     DispatchQueue.main.async {
-                        self.error = "Lỗi: \(error.localizedDescription)"
+                        let msg = "Lỗi: \(error.localizedDescription)"
+                        self.error = msg
+                        self.onError?(msg)
                     }
                 }
             } else if result?.isFinal == true {

@@ -8,8 +8,6 @@ struct ChatView: View {
     @State private var showMemoryHub = false
     @Environment(GlobalVoiceAssistantManager.self) var voiceManager
     
-    @State private var speechService = SpeechRecognitionService()
-    @State private var showVoiceSheet = false
     @State private var hasMicPermission: Bool? = nil
     
     // Offline State
@@ -188,24 +186,7 @@ struct ChatView: View {
             MemoryHubView()
         }
         .onAppear {
-            speechService.onSilenceTimeout = {
-                let settings = AssistantVoiceSettings()
-                let transcript = speechService.transcript
-                speechService.stopListening()
-                
-                if settings.autoSendAfterSpeech && !transcript.isEmpty {
-                    viewModel.sendMessage(transcript, inputMode: "voice")
-                    showVoiceSheet = false
-                } else if !transcript.isEmpty {
-                    inputText = transcript
-                    showVoiceSheet = false
-                } else {
-                    // Empty transcript, keep listening or dismiss if manually stopped
-                }
-                
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.success)
-            }
+            // Removed local voice configs - now managed centrally by GlobalVoiceAssistantManager
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AskAICoachAboutMeal"))) { notification in
             if let food = notification.object as? FoodItemModel {
@@ -214,49 +195,18 @@ struct ChatView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if showVoiceSheet {
+            if voiceManager.dictationState != .idle {
                 VoiceRecordingSheet(
-                    speechService: speechService,
+                    dictationState: voiceManager.dictationState,
+                    transcript: voiceManager.currentTranscript,
+                    audioLevel: voiceManager.audioLevel,
                     onDismiss: {
-                        speechService.stopListening()
-                        if !speechService.transcript.isEmpty {
-                            inputText = speechService.transcript
-                        }
-                        showVoiceSheet = false
-                    },
-                    onConfirm: { text in
-                        inputText = text
-                        showVoiceSheet = false
+                        voiceManager.cancelChatDictationManual()
                     }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
-                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showVoiceSheet)
+                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: voiceManager.dictationState)
                 .padding(.bottom, 80)
-            }
-        }
-        .onChange(of: showVoiceSheet) { isShowing in
-            if isShowing {
-                // 1. Preemptively stop global manager to free audio hardware tap
-                voiceManager.stopListening()
-                
-                // 2. Wait 200ms safety window for hardware release before local initialization
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    if self.showVoiceSheet {
-                        print("[ChatView] 🎙️ Global tap released. Starting local recognition.")
-                        self.speechService.startListening()
-                    }
-                }
-            } else {
-                // 1. Explicitly close local recognizer
-                self.speechService.stopListening()
-                
-                // 2. Release hardware and let global manager re-establish wake listening
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    if !self.showVoiceSheet && self.voiceManager.settings.globalWakeEnabled {
-                        print("[ChatView] 🔊 Re-enabling global wake detection.")
-                        self.voiceManager.startListening()
-                    }
-                }
             }
         }
     }
@@ -278,23 +228,26 @@ struct ChatView: View {
             return
         }
         
-        if hasMicPermission == nil {
-            let granted = await speechService.requestAuthorization()
-            hasMicPermission = granted
-            
-            let micGranted = await AVAudioApplication.requestRecordPermission()
-            hasMicPermission = granted && micGranted
-        }
-        
-        guard hasMicPermission == true else {
-            viewModel.errorMessage = "Vui lòng cấp quyền micro và nhận diện giọng nói trong Cài đặt."
+        // Toggle pattern: Stop if already active
+        if voiceManager.dictationState.isActive {
+            voiceManager.cancelChatDictationManual()
             return
         }
         
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
-        
-        showVoiceSheet = true
+        // Hand-off entirely to the centralized coordinator
+        voiceManager.startChatDictation(
+            onUpdate: { partialText in
+                self.inputText = partialText
+            },
+            onFinalized: { finalizedText in
+                if !finalizedText.isEmpty {
+                    self.inputText = finalizedText
+                    if self.voiceManager.settings.autoSendAfterSpeech {
+                        self.sendMessage()
+                    }
+                }
+            }
+        )
     }
 }
 
