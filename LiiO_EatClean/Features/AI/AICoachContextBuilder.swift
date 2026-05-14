@@ -2,17 +2,17 @@ import Foundation
 
 class AICoachContextBuilder {
     private let userRepository: UserRepositoryProtocol
-    private let memoryRepository: MemoryRepositoryProtocol
+    private let memoryRepository: AIMemoryRepositoryProtocol
     private let mealRepository: MealRepositoryProtocol
     private let dailyPlanRepository: DailyPlanRepositoryProtocol
     private let metabolicRepository: MetabolicRepositoryProtocol
     
     init(
-        userRepository: UserRepositoryProtocol,
-        memoryRepository: MemoryRepositoryProtocol,
-        mealRepository: MealRepositoryProtocol,
-        dailyPlanRepository: DailyPlanRepositoryProtocol,
-        metabolicRepository: MetabolicRepositoryProtocol
+        userRepository: UserRepositoryProtocol = UserRepository(),
+        memoryRepository: AIMemoryRepositoryProtocol = AIMemoryRepository(),
+        mealRepository: MealRepositoryProtocol = MealRepository(),
+        dailyPlanRepository: DailyPlanRepositoryProtocol = DailyPlanRepository(),
+        metabolicRepository: MetabolicRepositoryProtocol = MetabolicRepository()
     ) {
         self.userRepository = userRepository
         self.memoryRepository = memoryRepository
