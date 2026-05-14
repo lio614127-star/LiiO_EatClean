@@ -11,12 +11,16 @@ class SpeechRecognitionService {
     
     private var recognizer: SFSpeechRecognizer?
     private var recognitionTask: SFSpeechRecognitionTask?
-    private var audioEngine = AVAudioEngine()
+    private var internalAudioEngine: AVAudioEngine?
     private var request: SFSpeechAudioBufferRecognitionRequest?
+    var expectedCancellation: Bool = false
+    private var currentSessionId: UUID = UUID()
+    
+    var onTranscriptUpdate: ((String) -> Void)?
     
     // Silence detection
     private var silenceTimer: Timer?
-    var silenceTimeout: TimeInterval = 1.0
+    var silenceTimeout: TimeInterval = 0.8 // Optimized for fast response
     var onSilenceTimeout: (() -> Void)?
     
     init() {
@@ -33,129 +37,163 @@ class SpeechRecognitionService {
         }
     }
     
-    func startListening() {
-        guard let recognizer = recognizer else {
+    func startListening(useInternalEngine: Bool = true) {
+        guard let recognizer = recognizer, recognizer.isAvailable else {
             self.error = "Nhận diện giọng nói không khả dụng."
             return
         }
         
-        // Reset state
         self.error = nil
         self.transcript = ""
+        self.expectedCancellation = false
         
-        do {
-            try setupAudioSession()
-            
-            // Cancel previous task
-            recognitionTask?.cancel()
-            recognitionTask = nil
-            
-            // Setup request
-            request = SFSpeechAudioBufferRecognitionRequest()
-            guard let request = request else {
-                self.error = "Không thể tạo request nhận diện."
+        // Cleanup previous task thoroughly
+        stopListening()
+        
+        // Setup request
+        request = SFSpeechAudioBufferRecognitionRequest()
+        guard let request = request else {
+            self.error = "Không thể tạo request nhận diện."
+            return
+        }
+        request.shouldReportPartialResults = true
+        
+        if useInternalEngine {
+            do {
+                try setupAudioSession()
+                internalAudioEngine = AVAudioEngine()
+                guard let audioEngine = internalAudioEngine else { return }
+                
+                let inputNode = audioEngine.inputNode
+                let inputFormat = inputNode.outputFormat(forBus: 0)
+                
+                // Safeguard against zero-rate or non-initialized input channels
+                let finalSampleRate = inputFormat.sampleRate > 0 ? inputFormat.sampleRate : 44100.0
+                let recordingFormat = AVAudioFormat(
+                    commonFormat: .pcmFormatFloat32,
+                    sampleRate: finalSampleRate,
+                    channels: 1, // Highly optimized for Speech Framework
+                    interleaved: false
+                ) ?? inputFormat
+                
+                inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+                    guard let self = self, buffer.frameLength > 0 else { return }
+                    self.feed(buffer)
+                }
+                
+                audioEngine.prepare()
+                try audioEngine.start()
+            } catch {
+                self.error = "Lỗi âm thanh: \(error.localizedDescription)"
+                stopListening()
                 return
             }
-            request.shouldReportPartialResults = true
+        }
+        
+        isListening = true
+        
+        // Start recognition task
+        recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            guard let self = self else { return }
             
-            // Setup audio input
-            let inputNode = audioEngine.inputNode
-            let recordingFormat = inputNode.outputFormat(forBus: 0)
-            inputNode.removeTap(onBus: 0) // Ensure no previous tap
-            
-            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
-                self?.request?.append(buffer)
-                
-                // Calculate audio power for waveform
-                guard let channelData = buffer.floatChannelData?[0] else { return }
-                let frames = buffer.frameLength
-                var sum: Float = 0
-                for i in 0..<Int(frames) {
-                    sum += channelData[i] * channelData[i]
-                }
-                let rms = sqrt(sum / Float(frames))
-                let avgPower = 20 * log10(max(rms, 0.000001))
-                // Normalize: -60dB..0dB → 0.0..1.0
-                let normalized = max(0, min(1, (avgPower + 60) / 60))
+            if let result = result {
+                let text = result.bestTranscription.formattedString
                 DispatchQueue.main.async {
-                    self?.audioLevel = normalized
+                    self.transcript = text
+                    self.onTranscriptUpdate?(text)
+                    self.resetSilenceTimer()
                 }
             }
             
-            audioEngine.prepare()
-            try audioEngine.start()
-            
-            isListening = true
-            
-            // Start recognition task
-            recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
-                guard let self = self else { return }
+            if let error = error {
+                let nsError = error as NSError
+                let isCanceled = nsError.domain == "kAFAssistantErrorDomain" && (nsError.code == 216 || nsError.code == 203)
                 
-                if let result = result {
+                if isCanceled || self.expectedCancellation {
+                    // Task cancelled or timeout - normal flow
+                    print("[SpeechService] ℹ️ Recognition session ended (expected or canceled).")
+                } else {
+                    print("[SpeechService] ❌ Recognition error: \(error.localizedDescription)")
                     DispatchQueue.main.async {
-                        self.transcript = result.bestTranscription.formattedString
-                        self.resetSilenceTimer()
+                        self.error = "Lỗi: \(error.localizedDescription)"
                     }
                 }
-                
-                if let error = error {
-                    // Ignore cancellation errors
-                    if let nsError = error as NSError?, nsError.domain == "kAFAssistantErrorDomain" && nsError.code == 216 {
-                        // Task was cancelled
-                    } else if let nsError = error as NSError?, nsError.domain == "kAFAssistantErrorDomain" && nsError.code == 203 {
-                        // Task timeout
-                    } else {
-                        DispatchQueue.main.async {
-                            self.error = "Lỗi nhận diện: \(error.localizedDescription)"
-                            self.stopListening()
-                        }
-                    }
-                } else if result?.isFinal == true {
-                    DispatchQueue.main.async {
-                        self.stopListening()
-                    }
-                }
+            } else if result?.isFinal == true {
+                // Final result handled by caller or state
             }
-            
-            resetSilenceTimer()
-            
-        } catch {
-            self.error = "Lỗi khởi tạo audio: \(error.localizedDescription)"
-            stopListening()
+        }
+        
+        resetSilenceTimer()
+    }
+    
+    func feed(_ buffer: AVAudioPCMBuffer) {
+        guard isListening, buffer.frameLength > 0 else { return }
+        
+        // Guard against zero data size / null pointers
+        guard let channelData = buffer.floatChannelData?[0] else { return }
+        
+        request?.append(buffer)
+        let frames = buffer.frameLength
+        var sum: Float = 0
+        for i in 0..<Int(frames) { sum += channelData[i] * channelData[i] }
+        let rms = sqrt(sum / Float(frames))
+        // Mapping RMS to 0...1 range for UI
+        let normalized = min(1.0, max(0.0, rms * 5.0)) // Boosted for visibility
+        DispatchQueue.main.async {
+            self.audioLevel = normalized
         }
     }
     
     func stopListening() {
-        guard isListening else { return }
+        // Invalidate current session ID immediately so any running short-session timers exit
+        currentSessionId = UUID()
         
         silenceTimer?.invalidate()
         silenceTimer = nil
         
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if let engine = internalAudioEngine, engine.isRunning {
+            engine.stop()
+            engine.inputNode.removeTap(onBus: 0)
+            engine.reset() // Purge all hardware graphs
+        }
+        internalAudioEngine = nil
         
         request?.endAudio()
+        request = nil
+        
+        recognitionTask?.cancel()
+        recognitionTask = nil
         
         isListening = false
         audioLevel = 0.0
     }
     
-    /// Start a short recognition session for wake phrase detection
-    /// Automatically stops after maxDuration seconds
-    func startShortSession(maxDuration: TimeInterval = 3.0, onResult: @escaping (String) -> Void) {
-        startListening()
+    func startShortSession(maxDuration: TimeInterval = 3.0, useInternalEngine: Bool = true, onResult: @escaping (String) -> Void) {
+        // Start tracking a new session ID before starting listen
+        currentSessionId = UUID()
+        let sessionId = currentSessionId
+        
+        startListening(useInternalEngine: useInternalEngine)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + maxDuration) { [weak self] in
-            guard let self, self.isListening else { return }
-            let transcript = self.transcript
+            guard let self = self else { return }
+            // Critically verify both listening state AND matching session ID!
+            guard self.isListening, self.currentSessionId == sessionId else {
+                print("[SpeechService] ⏱️ Short session timer discarded. Session expired or changed.")
+                return
+            }
+            
+            let finalTranscript = self.transcript
+            print("[SpeechService] ⏱️ Short session timeout. Final raw: '\(finalTranscript)'")
             self.stopListening()
-            onResult(transcript)
+            onResult(finalTranscript)
         }
     }
     
     private func setupAudioSession() throws {
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+        // MUST match global mode (.voiceChat) to prevent disruptive OS re-routing transitions
+        try audioSession.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth, .duckOthers])
         try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
     }
     
