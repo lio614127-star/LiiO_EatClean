@@ -372,8 +372,17 @@ class GlobalVoiceAssistantManager: NSObject {
         speechService.onError = { [weak self] errorDescription in
             Task { @MainActor [weak self] in
                 guard let self = self, self.state == .chatDictation else { return }
-                print("[ChatMic ERROR] \(errorDescription)")
-                self.dictationState = .failed(errorDescription)
+                
+                // Map technical "No speech detected" strings to our friendly message
+                let friendlyError: String
+                if errorDescription.localizedCaseInsensitiveContains("No speech detected") {
+                    friendlyError = "Mình chưa nghe thấy gì."
+                } else {
+                    friendlyError = errorDescription
+                }
+                
+                print("[ChatMic ERROR] \(friendlyError) (orig: \(errorDescription))")
+                self.dictationState = .failed(friendlyError)
                 self.handleDictationErrorHandoff()
             }
         }

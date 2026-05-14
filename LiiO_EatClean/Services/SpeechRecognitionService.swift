@@ -161,6 +161,8 @@ class SpeechRecognitionService {
     }
     
     func stopListening() {
+        self.expectedCancellation = true
+        
         // Invalidate current session ID immediately so any running short-session timers exit
         currentSessionId = UUID()
         
