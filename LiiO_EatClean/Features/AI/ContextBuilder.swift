@@ -15,6 +15,7 @@ class ContextBuilder {
     private let userRepository: UserRepositoryProtocol
     private let mealRepository: MealRepositoryProtocol
     private let memoryRepository: AIMemoryRepositoryProtocol
+    private let aiCoachContextBuilder: AICoachContextBuilder
     
     init(userRepository: UserRepositoryProtocol = UserRepository(),
          mealRepository: MealRepositoryProtocol = MealRepository(),
@@ -22,6 +23,11 @@ class ContextBuilder {
         self.userRepository = userRepository
         self.mealRepository = mealRepository
         self.memoryRepository = memoryRepository
+        self.aiCoachContextBuilder = AICoachContextBuilder(
+            userRepository: userRepository,
+            mealRepository: mealRepository,
+            memoryRepository: memoryRepository
+        )
     }
     
     // MARK: - Main Entry Point (Strategy-based)
@@ -33,7 +39,8 @@ class ContextBuilder {
         mealType: String? = nil,
         voiceMode: Bool = false,
         responseStyle: AssistantResponseStyle? = nil,
-        responseLength: VoiceResponseLength? = nil
+        responseLength: VoiceResponseLength? = nil,
+        assistantName: String = "Chuyên gia dinh dưỡng"
     ) async throws -> String {
         let user = try await userRepository.fetchUser()
         let memory = try await memoryRepository.fetchMemory()
@@ -42,41 +49,44 @@ class ContextBuilder {
         let goalType = user?.goalType ?? "Duy trì cân nặng"
         let effectiveRemaining = remainingCalories ?? targetCalories
         
+        let prompt: String
         switch strategy {
         case .chat:
-            return try await buildChatContext(
+            prompt = try await buildChatContext(
                 userMessage: userMessage,
                 goalType: goalType,
                 targetCalories: targetCalories,
-                memory: memory
+                memory: memory,
+                assistantName: assistantName,
+                voiceMode: voiceMode
             )
         case .mealSuggestion:
-            return buildMealSuggestionContext(
+            prompt = buildMealSuggestionContext(
                 remainingCalories: effectiveRemaining,
                 mealType: mealType ?? autoDetectMealType(),
                 goalType: goalType,
                 memory: memory
             )
         case .healthAdvice:
-            return buildHealthAdviceContext(
+            prompt = buildHealthAdviceContext(
                 goalType: goalType,
                 targetCalories: targetCalories,
                 memory: memory
             )
         case .progressAnalysis:
-            return try await buildProgressContext(
+            prompt = try await buildProgressContext(
                 goalType: goalType,
                 targetCalories: targetCalories,
                 memory: memory
             )
         case .dailySummary:
-            // Will need daily data passed in, but we can structure the prompt here
-            return buildDailySummaryContext(
+            prompt = buildDailySummaryContext(
                 goalType: goalType,
                 targetCalories: targetCalories,
                 memory: memory
             )
-            return try await buildMealPlanContext(
+        case .mealPlan:
+            prompt = try await buildMealPlanContext(
                 targetCalories: effectiveRemaining,
                 memory: memory,
                 mealType: mealType
@@ -140,37 +150,64 @@ class ContextBuilder {
         userMessage: String,
         goalType: String,
         targetCalories: Double,
-        memory: UserProfileMemory
+        memory: UserProfileMemory,
+        assistantName: String,
+        voiceMode: Bool = false
     ) async throws -> String {
+        let appName = "LiiO EatClean"
+        
+        // 1. Detect multiple intents using the new AI Intent Detector
+        let detectedIntents = AICoachIntentDetector.shared.detectContextIntents(from: userMessage)
+        let activeMode: AICoachContextMode = voiceMode ? .voice : .chat
+        
+        // 2. Load rich context snapshot using multi-intent & mode aware interface
+        let snapshot = await aiCoachContextBuilder.buildSnapshot(
+            for: Date(),
+            mode: activeMode,
+            intents: Set(detectedIntents.map { $0.intent }),
+            currentTab: nil
+        )
+        
         var prompt = """
-        Bạn là chuyên gia dinh dưỡng cá nhân thân thiện, tận tâm trong ứng dụng LiiO EatClean.
+        Bạn là \(assistantName), trợ lý kiêm chuyên gia dinh dưỡng cá nhân thân thiện, tận tâm bên trong ứng dụng \(appName).
+        Khi tự xưng, bạn hãy xưng hô là 'mình' hoặc dùng đúng tên \(assistantName) nếu cần nhắc tên mình, TUYỆT ĐỐI không được tự xưng là '\(appName)' hay 'LiiO' trừ khi tên của bạn được đặt là 'LiiO'.
         Mục tiêu của bạn là đồng hành, động viên người dùng (như Apple Health: supportive, không phán xét).
         
+        \(snapshot.toMarkdown())
+        
         [Ngữ cảnh Ứng dụng]
-        - Chức năng app: Track calories, track nước, theo dõi cân nặng.
+        - Chức năng app \(appName): Track calories, track nước, theo dõi cân nặng.
         - Khả năng của bạn: Trả lời câu hỏi dinh dưỡng, đưa ra lời khuyên, gợi ý món ăn, và có thể LOG món ăn trực tiếp cho người dùng.
         
-        [Thông tin Người dùng]
-        - Mục tiêu: \(goalType)
-        - Target Calories/ngày: \(Int(targetCalories)) kcal
         """
         
-        // Add Memory Context
+        // Retain dynamic memory blocks for fine details not captured by snapshot
         prompt += buildMemoryBlock(memory)
         prompt += buildAbsoluteRestrictionBlock(memory)
-        prompt += buildRecommendedFoodsBlock(memory)
-        
-        // Intent-based Context Injection (Hybrid Approach)
-        let lowerMsg = userMessage.lowercased()
-        let needsHistory = lowerMsg.contains("dạo này") || lowerMsg.contains("gần đây") || lowerMsg.contains("tuần qua") || lowerMsg.contains("giảm cân") || lowerMsg.contains("tiến độ")
-        
-        if needsHistory {
-            prompt += try await build7DayBlock()
-        }
         
         prompt += buildResponseRules()
         
         return prompt
+    }
+    
+    // MARK: - Snapshot Intent Dispatcher
+    
+    // Legacy snapshot intent detector (deprecated)
+    private func detectSnapshotIntent(from text: String) -> ContextIntent {
+        let lower = text.lowercased()
+        if lower.contains("kế hoạch") || lower.contains("thực đơn") || lower.contains("lên thực đơn") {
+            return .dailyPlanRequest
+        }
+        if lower.contains("ăn gì") || lower.contains("đã ăn") || lower.contains("ăn chưa") || lower.contains("ghi món") || lower.contains("log món") {
+            return .mealLogging
+        }
+        if lower.contains("cân nặng") || lower.contains("tiến độ") || lower.contains("progress") || lower.contains("biểu đồ") || lower.contains("adherence") || lower.contains("tuân thủ") {
+            return .progressQuestion
+        }
+        if lower.contains("tính lại") || lower.contains("cân bằng") || lower.contains("rebalance") {
+            return .rebalanceRequest
+        }
+        return .generalChat
     }
     
     // MARK: - Strategy: Meal Suggestion (PRIORITY: avoid → calories → preferences)
