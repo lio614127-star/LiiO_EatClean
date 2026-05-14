@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Trợ lý AI Toàn diện
-status: Phase 31 Wave 1 Complete, Executing Wave 2
-last_updated: "2026-05-14T15:53:00.000Z"
+status: Phase 31 Complete, Ready for UAT
+last_updated: "2026-05-14T16:04:00.000Z"
 progress:
   total_phases: 10
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 16
-  completed_plans: 7
-  percent: 54
+  completed_plans: 8
+  percent: 50
 ---
 
 # Project State
@@ -78,14 +78,15 @@ progress:
   - Status: Completed (UAT Passed)
   - Last activity: Phase 30 fully executed and verified.
 
-- [/] **Phase 31: Global Context Builder cho AI Coach**
+- [x] **Phase 31: Global Context Builder cho AI Coach**
   - Goal: AI Coach đọc và hiểu mọi dữ liệu người dùng để tư vấn thời gian thực với Adaptive Timeout.
   - Success Criteria:
     1. AI nhận diện Multi-Intent chính xác để lọc Context Section.
     2. Tốc độ phản hồi Voice Mode <1.2s nhờ Caching & Timeout Fallback.
     3. Không bịa dữ liệu thiếu và tuân thủ ràng buộc.
-  - Status: In Progress (Wave 1 Completed)
-  - Last activity: Wave 1 (Data models, Observable Cache & Intent Detector) completed.
+  - Status: Completed (TaskGroup & Adaptive Timeout Implemented)
+  - Last activity: Phase 31 fully executed and verified.
+
 
 
 ## Implementation Notes

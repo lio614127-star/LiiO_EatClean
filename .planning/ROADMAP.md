@@ -70,20 +70,20 @@ Trợ lý AI toàn diện: Ghi nhớ, Lắng nghe, và Tự động thích nghi 
     3. Đổi tên AI hoạt động hoàn hảo.
   - Progress: 5/5 plans complete (Completed)
 
-- [ ] **Phase 31: Global Context Builder cho AI Coach**
+- [x] **Phase 31: Global Context Builder cho AI Coach**
   - Goal: AI Coach đọc và hiểu mọi dữ liệu người dùng để tư vấn như một con người thực sự.
   - Requirements: VOICE-05
   - Success Criteria:
     1. AI trả lời chính xác số calo còn thiếu và món đang chờ trong Plan.
     2. Không bịa dữ liệu và tuân thủ ràng buộc dị ứng.
-  - Progress: 1/2 plans complete (In Progress)
+  - Progress: 2/2 plans complete (Completed)
 
 ## Progress
 
-- **Phases Complete:** 30
-- **Phases Active:** 31
+- **Phases Complete:** 31
+- **Phases Active:** 0
 - **Phases Pending:** 0
-- **Completion:** 98% (30.5/31)
+- **Completion:** 100% (31/31)
 
 ---
 *Last updated: 2026-05-14 for Milestone v1.5*
