@@ -9,14 +9,14 @@ class AICoachContextBuilder {
     
     init(
         userRepository: UserRepositoryProtocol = UserRepository(),
-        memoryRepository: AIMemoryRepositoryProtocol = AIMemoryRepository(),
         mealRepository: MealRepositoryProtocol = MealRepository(),
+        memoryRepository: AIMemoryRepositoryProtocol = AIMemoryRepository(),
         dailyPlanRepository: DailyPlanRepositoryProtocol = DailyPlanRepository(),
         metabolicRepository: MetabolicRepositoryProtocol = MetabolicRepository()
     ) {
         self.userRepository = userRepository
-        self.memoryRepository = memoryRepository
         self.mealRepository = mealRepository
+        self.memoryRepository = memoryRepository
         self.dailyPlanRepository = dailyPlanRepository
         self.metabolicRepository = metabolicRepository
     }
