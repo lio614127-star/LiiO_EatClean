@@ -6,6 +6,7 @@ struct ChatView: View {
     @State private var inputText = ""
     @FocusState private var isInputFocused: Bool
     @State private var showMemoryHub = false
+    @Environment(GlobalVoiceAssistantManager.self) var voiceManager
     
     @State private var speechService = SpeechRecognitionService()
     @State private var showVoiceSheet = false
@@ -21,10 +22,10 @@ struct ChatView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 16) {
-                            ForEach(viewModel.messages) { message in
+                            ForEach(viewModel.displayMessages) { message in
                                 ActionableMessageView(
                                     message: message, 
-                                    isStreaming: viewModel.isStreaming && message.id == viewModel.messages.last?.id
+                                    isStreaming: viewModel.isStreaming && message.id == viewModel.displayMessages.last?.id
                                 ) { food in
                                     viewModel.logSuggestedFood(food)
                                 }
@@ -66,14 +67,14 @@ struct ChatView: View {
                         }
                         .padding(.vertical, 16)
                     }
-                    .onChange(of: viewModel.messages.last?.text) { _ in
-                        if viewModel.isStreaming {
-                            proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom)
+                    .onChange(of: viewModel.displayMessages.last?.text) { _ in
+                        if viewModel.isStreaming || viewModel.displayMessages.last?.status == .transcribing {
+                            proxy.scrollTo(viewModel.displayMessages.last?.id, anchor: .bottom)
                         }
                     }
-                    .onChange(of: viewModel.messages.count) { _ in
+                    .onChange(of: viewModel.displayMessages.count) { _ in
                         withAnimation {
-                            proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom)
+                            proxy.scrollTo(viewModel.displayMessages.last?.id, anchor: .bottom)
                         }
                     }
                     .onTapGesture {
@@ -233,6 +234,31 @@ struct ChatView: View {
                 .padding(.bottom, 80)
             }
         }
+        .onChange(of: showVoiceSheet) { isShowing in
+            if isShowing {
+                // 1. Preemptively stop global manager to free audio hardware tap
+                voiceManager.stopListening()
+                
+                // 2. Wait 200ms safety window for hardware release before local initialization
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    if self.showVoiceSheet {
+                        print("[ChatView] 🎙️ Global tap released. Starting local recognition.")
+                        self.speechService.startListening()
+                    }
+                }
+            } else {
+                // 1. Explicitly close local recognizer
+                self.speechService.stopListening()
+                
+                // 2. Release hardware and let global manager re-establish wake listening
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    if !self.showVoiceSheet && self.voiceManager.settings.globalWakeEnabled {
+                        print("[ChatView] 🔊 Re-enabling global wake detection.")
+                        self.voiceManager.startListening()
+                    }
+                }
+            }
+        }
     }
     
     private func sendMessage() {
@@ -268,7 +294,6 @@ struct ChatView: View {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         
-        speechService.startListening()
         showVoiceSheet = true
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 struct VoiceInputView: View {
     @State private var speechService = SpeechRecognitionService()
     @State private var parserService = VoiceFoodParserService()
+    @Environment(GlobalVoiceAssistantManager.self) var voiceManager
     
     @State private var parsedFoods: [AISuggestedFood] = []
     @State private var isParsing = false
@@ -35,14 +36,26 @@ struct VoiceInputView: View {
                 }
             }
             .task {
+                // Release global voice tap before initializing local engine
+                voiceManager.stopListening()
+                
                 if !showResults {
                     isInitializing = true
+                    // Brief hardware release window
+                    try? await Task.sleep(nanoseconds: 200_000_000)
                     await startRecordingProcess()
                     isInitializing = false
                 }
             }
             .onDisappear {
                 speechService.stopListening()
+                
+                // Reinstate global wake detector with safety lag
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    if self.voiceManager.settings.globalWakeEnabled {
+                        self.voiceManager.startListening()
+                    }
+                }
             }
         }
     }
