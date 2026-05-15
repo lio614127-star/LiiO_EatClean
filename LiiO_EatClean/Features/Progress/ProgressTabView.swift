@@ -309,6 +309,30 @@ struct ProgressTabView: View {
                 await viewModel.loadData()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name.appSetProgressRange)) { notification in
+            if let rawStr = notification.object as? String,
+               let range = TimeRange(rawValue: rawStr) {
+                print("[AppAction Router] ProgressTabView updating time range to \(rawStr)")
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    viewModel.selectedTimeRange = range
+                    viewModel.periodOffset = 0
+                }
+                Task { await viewModel.loadData() }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name.appSetProgressMetric)) { notification in
+            if let rawStr = notification.object as? String,
+               let tab = ProgressTab(rawValue: rawStr) {
+                print("[AppAction Router] ProgressTabView updating active tab metric to \(rawStr)")
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    viewModel.selectedTab = tab
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name.appWeightDidChange)) { _ in
+            print("[AppAction Router] ProgressTabView received weight delta event. Refreshing dashboard.")
+            Task { await viewModel.loadData() }
+        }
     }
     
     private var rangeHeader: String {

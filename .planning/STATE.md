@@ -64,6 +64,10 @@ progress:
 - `MealFoodModel.isEaten` is currently handled by `MealFoodStatusManager` (UserDefaults) rather than a persistent CoreData attribute. This needs to be synced carefully when we upgrade the UI to Planned vs Actual.
 - `MealType` string matching must be strictly adhered to across UI ("Sáng", "Trưa", "Tối", "Ăn vặt").
 - Calorie target updates reactively on weight logging via `UserRepository`.
+- **Local Action Priority:** Tất cả khẩu lệnh voice command được dẫn qua `VoiceCommandActionParser` trước để bắt nhanh lệnh hệ thống cục bộ (chuyển tab, ghi cân nặng, xem biểu đồ) mà không cần kết nối AI, giảm tối đa độ trễ.
+- **No-Silent-Fail Guarantee:** Mọi nhánh xử lý AI pipeline hiện được bọc chặt chẽ bằng `deliverAssistantError`, bao gồm kiểm tra text phản hồi rỗng, tránh việc assistant rơi vào trạng thái im lặng.
+- **Plan Status separation:** Phân định rạch ròi giữa khẩu lệnh "Đánh giá kế hoạch hiện tại" (`dailyPlanStatus`) và "Tạo kế hoạch mới" (`dailyPlanGeneration`/`dailyPlanRequest`). Khẩu lệnh đánh giá sẽ tự động nạp toàn diện dữ liệu đối soát Planned vs Actual (kế hoạch và thực tế ăn uống đã ăn) mà không kích hoạt quy trình sinh mới dữ liệu làm phiền người dùng.
+
 
 ### Known Blockers
 
@@ -75,8 +79,10 @@ progress:
     1. Nói "Hey LiiO" trong app thì AI lắng nghe.
     2. Auto-send khi dừng nói.
     3. Đổi tên AI hoạt động hoàn hảo.
+    4. **Vừa sửa xong:** Local System Actions (Chuyển tab, xem biểu đồ, ghi cân nặng) hoạt động mượt mà 100% trên MainActor.
+    5. **Vừa sửa xong:** Loại bỏ hoàn toàn tình trạng silent fail trong AI pipeline.
   - Status: Completed (UAT Passed)
-  - Last activity: Phase 30 fully executed and verified.
+  - Last activity: Phase 30 system integration successfully hotfixed and verified.
 
 - [x] **Phase 31: Global Context Builder cho AI Coach**
   - Goal: AI Coach đọc và hiểu mọi dữ liệu người dùng để tư vấn thời gian thực với Adaptive Timeout.
@@ -94,3 +100,4 @@ progress:
 - **Local-first focus:** All new entities (`DailyPlan`, `ChatMessage`) MUST be added to CoreData.
 - **Do not overwrite plans:** We must check for existing plans via `startOfDay` normalized dates.
 - **Rebalance boundary:** Rebalance logic must strictly filter out meals where `isEaten == true`.
+- **System Routing:** `AppActionRouter` sử dụng cơ chế phân phối tin báo `Notification.Name.appSwitchTab` tập trung để đảm bảo đồng bộ hóa trạng thái UI mượt mà trên luồng chính.

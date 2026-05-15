@@ -1,7 +1,8 @@
 import Foundation
 
 enum VoiceCommandIntent: String {
-    case dailyPlanRequest
+    case dailyPlanRequest       // Legacy name for generation/creation flow
+    case dailyPlanStatus        // Status review, evaluation, comparison
     case weeklyPlanRequest
     case mealLogging
     case rebalanceRequest
@@ -15,62 +16,86 @@ enum VoiceCommandIntent: String {
 struct VoiceCommandIntentRouter {
     static func route(transcript: String) -> VoiceCommandIntent {
         let lower = transcript.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = lower.folding(options: .diacriticInsensitive, locale: Locale(identifier: "vi"))
         
-        // 1. Daily Plan Requests
-        let dailyKeywords = [
-            "lên thực đơn hôm nay", "lập thực đơn hôm nay", "tạo thực đơn hôm nay",
-            "lên kế hoạch ăn hôm nay", "hôm nay ăn gì", "lên plan hôm nay",
-            "tạo plan ngày", "gợi ý thực đơn ngày", "lên thực đơn ngày",
-            "lên thực đơn cho tôi", "lên kế hoạch ngày", "hãy lên thực đơn"
+        print("[IntentRouter 1] raw='\(lower)'")
+        print("[IntentRouter 2] normalized='\(normalized)'")
+        
+        // 1. Daily Plan Creation (Strict creation verbs)
+        let dailyCreationKeywords = [
+            "len thuc don", "lap thuc don", "tao thuc don", "thiet ke thuc don",
+            "len ke hoach an", "len plan", "tao plan moi", "generate plan",
+            "goi y thuc don", "len ke hoach ngay", "lap ke hoach"
         ]
-        for kw in dailyKeywords {
-            if lower.contains(kw) { return .dailyPlanRequest }
+        for kw in dailyCreationKeywords {
+            if normalized.contains(kw) {
+                print("[IntentRouter 3] matched dailyPlanRequest (generation)")
+                return .dailyPlanRequest
+            }
         }
         
-        // Dual combination check (e.g., "thực đơn" + "hôm nay")
-        if (lower.contains("thực đơn") || lower.contains("kế hoạch ăn") || lower.contains("plan")) && 
-           (lower.contains("hôm nay") || lower.contains("ngày hôm nay")) {
-            return .dailyPlanRequest
+        // 2. Daily Plan Status Check (Review, evaluate, remaining items)
+        let hasPlanKeyword = normalized.contains("ke hoach") || normalized.contains("thuc don") || normalized.contains("plan")
+        let statusReviewKeywords = [
+            "the nao", "ra sao", "nhu the nao", "dung chua", "con gi", 
+            "xem", "danh gia", "cua toi", "con thieu", "bua nao", "bua toi", "bua sang", "bua trua"
+        ]
+        
+        if hasPlanKeyword {
+            let isStatus = statusReviewKeywords.contains { normalized.contains($0) }
+            if isStatus {
+                print("[IntentRouter 3] matched dailyPlanStatus")
+                return .dailyPlanStatus
+            }
         }
         
-        // 2. Weekly Plan Requests
+        // Dual combination fallback for dailyPlanRequest ONLY IF not status-based
+        if hasPlanKeyword && (normalized.contains("hom nay") || normalized.contains("ngay hom nay")) {
+            // Example: "thực đơn hôm nay" -> default to status review if it's open ended
+            // Let's treat general "thực đơn hôm nay" as status request to prevent disruptive regen overlays
+            print("[IntentRouter 3] general plan question -> dailyPlanStatus")
+            return .dailyPlanStatus
+        }
+        
+        // 3. Weekly Plan Requests
         let weeklyKeywords = [
-            "lên thực đơn tuần", "lập kế hoạch tuần", "plan tuần này", "thực đơn 7 ngày"
+            "len thuc don tuan", "lap ke hoach tuan", "plan tuan nay", "thuc don 7 ngay"
         ]
         for kw in weeklyKeywords {
-            if lower.contains(kw) { return .weeklyPlanRequest }
+            if normalized.contains(kw) { return .weeklyPlanRequest }
         }
         
-        // 3. Rebalance
-        if lower.contains("cân đối") || lower.contains("rebalance") || lower.contains("chỉnh lại") || lower.contains("nhiều quá") {
+        // 4. Rebalance
+        if normalized.contains("can doi") || normalized.contains("rebalance") || normalized.contains("chinh lai") || normalized.contains("nhieu qua") {
             return .rebalanceRequest
         }
         
-        // 4. Meal Logging
-        if lower.contains("vừa ăn") || lower.contains("đã ăn") || lower.contains("ăn rồi") || lower.contains("ghi lại") {
+        // 5. Meal Logging
+        if normalized.contains("vua an") || normalized.contains("da an") || normalized.contains("an roi") || normalized.contains("ghi lai") {
             return .mealLogging
         }
         
-        // 5. Progress
-        if lower.contains("tiến độ") || lower.contains("tuần qua") || lower.contains("giảm cân") || lower.contains("cân nặng") {
+        // 6. Progress
+        if normalized.contains("tien do") || normalized.contains("tuan qua") || normalized.contains("giam can") || normalized.contains("can nang") {
             return .progressQuestion
         }
         
-        // 6. Cooking
-        if lower.contains("nấu") || lower.contains("chế biến") || lower.contains("làm") || lower.contains("công thức") {
+        // 7. Cooking
+        if normalized.contains("nau") || normalized.contains("che bien") || normalized.contains("lam") || normalized.contains("cong thuc") {
             return .cookingQuestion
         }
         
-        // 7. Nutrition / Health
-        if lower.contains("sức khỏe") || lower.contains("bệnh") || lower.contains("dị ứng") || lower.contains("kiêng") {
+        // 8. Nutrition / Health
+        if normalized.contains("suc khoe") || normalized.contains("benh") || normalized.contains("di ung") || normalized.contains("kieng") {
             return .nutritionQuestion
         }
         
-        // 8. Weather
-        if lower.contains("trời thế nào") || lower.contains("thời tiết") || lower.contains("trời hôm nay") {
+        // 9. Weather
+        if normalized.contains("troi the nao") || normalized.contains("thoi tiet") || normalized.contains("troi hom nay") {
             return .weatherQuestion
         }
         
+        print("[IntentRouter 3] matched generalChat")
         return .generalChat
     }
 }

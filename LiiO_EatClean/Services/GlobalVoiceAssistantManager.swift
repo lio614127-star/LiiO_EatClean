@@ -1061,6 +1061,7 @@ class GlobalVoiceAssistantManager: NSObject {
         self.resetActiveSessionTimer()
         
         Task {
+            var currentSessionId: UUID? = nil
             do {
                 self.processingState = .buildingContext
                 print("[VoiceCmd 2] context build started")
@@ -1072,6 +1073,7 @@ class GlobalVoiceAssistantManager: NSObject {
                 } else {
                     session = try await chatRepository.createSession(title: "Hội thoại giọng nói", source: "globalVoiceAssistant")
                 }
+                currentSessionId = session.id
                 
                 // 2. Finalize User Voice Draft & Save official copy to trigger live mirror UI update
                 await MainActor.run {
@@ -1083,8 +1085,20 @@ class GlobalVoiceAssistantManager: NSObject {
                 
                 await saveAndMirrorMessage(userMsg, sessionId: session.id)
                 
+                print("[VoiceCmd] transcript='\(text)'")
+                
+                // 2.4 LOCAL APP ACTION PARSER (Highest Priority Local Engine)
+                if let localAction = VoiceCommandActionParser.parse(text), localAction.confidence >= 0.85 {
+                    print("[ActionParser] result=executedAction count=\(localAction.actions.count)")
+                    await handleLocalAction(localAction, sessionId: session.id)
+                    return
+                } else {
+                    print("[ActionParser] result=noLocalAction")
+                }
+                
                 // 2.5 Specialized Routing Intent Flow
                 let routedIntent = VoiceCommandIntentRouter.route(transcript: text)
+                print("[IntentRouter] intent=\(routedIntent.rawValue)")
                 if routedIntent == .dailyPlanRequest {
                     print("[VoiceCmd 3] context build finished (routed to daily plan)")
                     self.processingState = .sendingToAI
@@ -1144,7 +1158,7 @@ class GlobalVoiceAssistantManager: NSObject {
                 
                 // 5. START LONG-RUNNING AI WORKLOAD
                 self.processingState = .sendingToAI
-                print("[VoiceCmd 4] AI request started")
+                print("[AI] request started intent=\(routedIntent.rawValue)")
                 
                 // Broadcast assistant thinking draft for realtime chat mirror
                 let assistantClientId = UUID().uuidString
@@ -1196,8 +1210,12 @@ class GlobalVoiceAssistantManager: NSObject {
                 // AI returned! Kill the status tracker
                 statusUpdateTask.cancel()
                 
-                print("[VoiceCmd 5] AI response received")
+                print("[AI] response received length=\(responseMessage.text.count)")
                 self.processingState = .receivedResponse
+                
+                guard !responseMessage.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw NSError(domain: "GlobalVoiceAssistantManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "AI returned empty response text"])
+                }
                 
                 var finalMsg = responseMessage
                 finalMsg.clientId = assistantClientId
@@ -1224,7 +1242,7 @@ class GlobalVoiceAssistantManager: NSObject {
                 self.lastSuggestedFoods = finalMsg.suggestedFoods
                 
                 if self.settings.voiceReplyEnabled {
-                    print("[VoiceCmd 7] TTS started")
+                    print("[Voice] response delivered")
                     self.processingState = .speaking
                     self.state = .speakingAIResponse
                     self.siriOverlayPhase = .speaking
@@ -1244,22 +1262,104 @@ class GlobalVoiceAssistantManager: NSObject {
                 self.isProcessingCommand = false
             } catch {
                 print("[VoiceCmd ERROR] step=AIExecution, error=\(error.localizedDescription)")
-                self.processingState = .failed(error.localizedDescription)
-                
-                self.overlayText = "Mình xử lý chưa được, bạn thử lại nhé."
-                self.state = .error
-                self.isProcessingCommand = false
-                
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                if self.state == .error && self.presentationMode != .hidden {
-                    print("[VoiceCmd 9] follow-up listening armed after error")
-                    self.overlayText = "Bạn hỏi tiếp đi..."
-                    self.startCommandListening()
-                }
+                await deliverAssistantError("Mình xử lý chưa được, bạn thử lại nhé.", sessionId: currentSessionId)
             }
         }
     }
     
+    
+    private func handleLocalAction(_ parsed: ParsedAppAction, sessionId: UUID) async {
+        print("[VoiceCmd 2] localAction matched spoken='\(parsed.spokenResponse)'")
+        
+        // 1. Overlay updates instantly
+        self.overlayText = parsed.processingText
+        self.processingState = .receivedResponse
+        
+        // 2. Finalize User Voice Draft in chat
+        await MainActor.run {
+            ChatRealtimeStore.shared.finalizeVoiceDraft()
+        }
+        
+        // 3. Create Assistant response message
+        let assistantMsg = ChatMessageModel(
+            role: .assistant,
+            text: parsed.spokenResponse,
+            inputMode: "voice",
+            outputMode: settings.voiceReplyEnabled ? "voice" : "text"
+        )
+        
+        // Save and mirror to chat UI immediately
+        await saveAndMirrorMessage(assistantMsg, sessionId: sessionId)
+        try? await chatRepository.updateSessionMetadata(sessionId: sessionId, lastMessage: parsed.spokenResponse)
+        
+        // 4. Execute the routing actions on main actor
+        do {
+            for action in parsed.actions {
+                try await AppActionRouter.shared.execute(action)
+            }
+        } catch {
+            print("[AppAction ERROR] failure executing actions: \(error.localizedDescription)")
+        }
+        
+        // 5. Deliver TTS or idle response
+        self.lastResponse = parsed.spokenResponse
+        self.overlayText = parsed.spokenResponse
+        
+        if self.settings.voiceReplyEnabled {
+            print("[VoiceCmd 7] TTS started for local action")
+            self.processingState = .speaking
+            self.state = .speakingAIResponse
+            self.siriOverlayPhase = .speaking
+            self.executeSpeak(parsed.spokenResponse)
+        } else {
+            print("[VoiceCmd 8] TTS skipped (none)")
+            self.processingState = .idle
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if self.presentationMode != .hidden {
+                print("[VoiceCmd 9] follow-up listening armed reason=localActionDone")
+                self.overlayText = "Bạn hỏi tiếp đi..."
+                self.startCommandListening()
+            }
+        }
+        self.isProcessingCommand = false
+    }
+    
+    private func deliverAssistantError(_ errorMessage: String, sessionId: UUID?) async {
+        print("[VoiceAI ERROR] delivering failure: \(errorMessage)")
+        self.processingState = .failed(errorMessage)
+        
+        // Finalize any active draft thinking indicator
+        await MainActor.run {
+            ChatRealtimeStore.shared.finalizeAssistantDraft()
+            ChatRealtimeStore.shared.finalizeVoiceDraft()
+        }
+        
+        if let sId = sessionId {
+            let errorMsg = ChatMessageModel(
+                role: .assistant,
+                text: errorMessage,
+                inputMode: "voice",
+                outputMode: settings.voiceReplyEnabled ? "voice" : "text",
+                isError: true
+            )
+            await saveAndMirrorMessage(errorMsg, sessionId: sId)
+        }
+        
+        self.overlayText = errorMessage
+        self.state = .error
+        self.isProcessingCommand = false
+        
+        if self.settings.voiceReplyEnabled {
+            self.executeSpeak(errorMessage)
+        } else {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if self.state == .error && self.presentationMode != .hidden {
+                print("[VoiceState] followUpListening armed reason=afterError")
+                self.overlayText = "Bạn hỏi tiếp đi..."
+                self.startCommandListening()
+            }
+        }
+    }
     
     private func handleFastPath(_ text: String) -> String? {
         let lower = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1495,7 +1595,7 @@ class GlobalVoiceAssistantManager: NSObject {
         let routedIntent = VoiceCommandIntentRouter.route(transcript: text)
         switch routedIntent {
         case .mealLogging: return "meal_logging"
-        case .dailyPlanRequest, .weeklyPlanRequest, .nutritionQuestion: return "plan_question"
+        case .dailyPlanRequest, .dailyPlanStatus, .weeklyPlanRequest, .nutritionQuestion: return "plan_question"
         case .cookingQuestion: return "cooking_advice"
         case .progressQuestion: return "progress_question"
         case .rebalanceRequest: return "rebalance_request"

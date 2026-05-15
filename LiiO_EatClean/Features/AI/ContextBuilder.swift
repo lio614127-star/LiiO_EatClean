@@ -181,6 +181,20 @@ class ContextBuilder {
         
         """
         
+        if detectedIntents.contains(where: { $0.intent == .dailyPlanStatus }) {
+            prompt += """
+            
+            [CẨM NANG TRẢ LỜI KẾ HOẠCH HÔM NAY - CRITICAL]:
+            - Bạn đang trả lời câu hỏi đánh giá thực trạng kế hoạch/thực đơn hôm nay.
+            - TUYỆT ĐỐI KHÔNG TỰ ĐỘNG TẠO thực đơn mới trừ khi người dùng yêu cầu cụ thể (ví dụ: 'lên thực đơn mới').
+            - Phân biệt rõ: PlannedMeal (Kế hoạch - mục 4) và MealLog actual (Đã ăn thực tế - mục 2).
+            - PlannedMeal chưa được tick/nhấn liên kết sang actual thì được xem là "Chưa ăn" / "Chưa log". Bạn hãy đối soát xem những bữa nào còn trống.
+            - Nếu DailyPlan hôm nay chưa tồn tại (mục 4 trống hoặc báo dữ liệu chưa được tạo), hãy báo ngay là hôm nay chưa có kế hoạch và chủ động đề xuất tạo một cái.
+            - Không bịa số liệu, không bịa món ăn. Nếu có bữa ăn thực tế nằm ngoài kế hoạch, hãy ghi nhận và so sánh tác động lên tổng calories/macro còn lại.
+            
+            """
+        }
+        
         // Retain dynamic memory blocks for fine details not captured by snapshot
         prompt += buildMemoryBlock(memory)
         prompt += buildAbsoluteRestrictionBlock(memory)

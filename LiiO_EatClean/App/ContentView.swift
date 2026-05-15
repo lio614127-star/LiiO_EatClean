@@ -61,6 +61,14 @@ struct ContentView: View {
             SiriStyleVoiceOverlayV4(target: .contentView)
         }
         .animation(.spring(response: 0.4), value: voiceManager.state)
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name.appSwitchTab)) { notification in
+            if let tabRaw = notification.object as? Int {
+                print("[AppAction Router] Intercepted switchTab -> \(tabRaw)")
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    selectedTab = tabRaw
+                }
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("navigateToJournal"))) { _ in
             selectedTab = 1
         }

@@ -111,6 +111,11 @@ class AICoachContextBuilder {
         // Calculate derived fields (Nutrition balances, totals)
         self.calculateDerivedSnapshotFields(&snapshot)
         
+        print("[ContextBuilder] sections=\(requiredSections.map { $0.rawValue }.joined(separator: ","))")
+        print("[ContextBuilder] dailyPlan.exists=\(snapshot.todayPlan != nil)")
+        print("[ContextBuilder] plannedMealsCount=\(snapshot.todayPlan?.plannedMeals.count ?? 0)")
+        print("[ContextBuilder] actualMealLogsCount=\(snapshot.todayActualMeals.count)")
+        
         print("[AICoachContext] ✅ Complete in \(String(format: "%.3fs", Date().timeIntervalSince(startTime))) Quality=\(snapshot.contextQuality) TimedOut=\(snapshot.timedOut)")
         return snapshot
     }
